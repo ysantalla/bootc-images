@@ -24,7 +24,7 @@ curl -fsSL --retry 3 -o "$work/font.tar.xz" \
 echo "${JETBRAINS_SHA256}  $work/font.tar.xz" | sha256sum -c -
 fontdir=/usr/share/fonts/jetbrains-mono-nerd
 mkdir -p "$fontdir"
-tar -xJf "$work/font.tar.xz" -C "$fontdir" OFL.txt \
+tar -xJf "$work/font.tar.xz" -C "$fontdir" --no-same-owner OFL.txt \
   JetBrainsMonoNerdFontMono-Regular.ttf \
   JetBrainsMonoNerdFontMono-Bold.ttf \
   JetBrainsMonoNerdFontMono-Italic.ttf \
