@@ -58,7 +58,9 @@ jobs:
             latest
             ${{ inputs.fedora_version }}
             ${{ inputs.fedora_version }}-${{ steps.meta.outputs.date }}
-          build-args: FEDORA_VERSION=${{ inputs.fedora_version }}
+          build-args: |
+            FEDORA_VERSION=${{ inputs.fedora_version }}
+            BUILD_DATE=${{ steps.meta.outputs.date }}
           oci: false
 
       - name: Push

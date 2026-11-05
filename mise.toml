@@ -15,7 +15,7 @@ run = '''
 #!/usr/bin/env bash
 set -euo pipefail
 image="${usage_image?}"
-args=(--build-arg "FEDORA_VERSION=$FEDORA_VERSION")
+args=(--build-arg "FEDORA_VERSION=$FEDORA_VERSION" --build-arg "BUILD_DATE=$(date -u +%Y%m%d)")
 if [[ "$image" != "base" ]]; then
   sudo podman image exists "localhost/base:$FEDORA_VERSION" || mise run build base
   args+=(--build-arg BASE_IMAGE=localhost/base)
