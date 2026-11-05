@@ -11,7 +11,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only cancel pull request runs. On main, a run cancelled between push and
+  # cosign sign would leave :latest published without a signature.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   base:

@@ -295,7 +295,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 1. **Verify base** in a VM and on hardware. See the status below.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
-4. **Optional: enforce signed images** on hosts with `policy.json` and `registries.d` pointing at `cosign.pub`. Images are pushed before they are signed, and `cancel-in-progress` can stop a run in between, so fix that first or `latest` could fail verification.
+4. **Optional: enforce signed images** on hosts with `policy.json` and `registries.d` pointing at `cosign.pub`. Runs on `main` are no longer cancelled, but images are still pushed before they are signed, so a failed sign step would leave `latest` unsigned. Make signing fail the build loudly before enforcing.
 
 ### Status (2026-11-04)
 
