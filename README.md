@@ -16,7 +16,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | KDE Plasma, codecs (ffmpeg), Podman | From `kinoite-main` |
 | Incus | System containers and VMs (`--vm`). `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
-| Flatpaks | Zed, GNOME Boxes (for test VMs). List in `flatpaks.list` |
+| Flatpaks | Zed. List in `flatpaks.list` |
 | Updates | `ysantalla-update.timer`: downloads every ~12 h (on AC only), applied on reboot |
 
 ## Layout
@@ -78,7 +78,17 @@ mise run vm xps16-da16260          # builds local base first if missing, then th
 mise run iso xps16-da16260         # installer ISO
 ```
 
-Open the `.qcow2` in GNOME Boxes and log in with the user from `bib/config.toml`.
+Boot a throwaway copy with QEMU and log in with the user from `bib/config.toml`. The first boot is slow and the screen can stay black for a few minutes:
+
+```bash
+qemu-img create -f qcow2 -F qcow2 -b "$PWD/output/base/qcow2/disk.qcow2" output/base/vm-test.qcow2
+cp /usr/share/edk2/ovmf/OVMF_VARS.fd output/base/vm-vars.fd
+qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
+  -drive if=pflash,format=raw,file=output/base/vm-vars.fd \
+  -drive file=output/base/vm-test.qcow2,if=virtio \
+  -nic user,model=virtio-net-pci -device virtio-vga -display gtk
+```
 
 ## 3. Install on a machine
 

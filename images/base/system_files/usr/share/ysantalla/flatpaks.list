@@ -1,6 +1,5 @@
 # System Flatpaks (Flathub IDs). One per line.
 # Installed at boot whenever this list changes. Only adds, never removes.
 dev.zed.Zed
-org.gnome.Boxes
 # com.google.Chrome
 # org.libreoffice.LibreOffice

@@ -31,7 +31,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 **`base` adds:**
 - **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`).
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
-- **System Flatpaks** from a declarative list (Zed, GNOME Boxes).
+- **System Flatpaks** from a declarative list (Zed).
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer**, which replaces any upstream updater.
 
@@ -41,7 +41,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 
 These are deliberate choices. Do not add them back without the owner asking:
 - **Docker**: Podman is the container engine.
-- **libvirt / virt-manager**: Incus handles VMs, and GNOME Boxes (a Flatpak) covers GUI test VMs.
+- **libvirt / virt-manager / GNOME Boxes**: Incus handles VMs, including GUI ones (`--console=vga`).
 - **Toolbx / Distrobox**: removed from `kinoite-main` on purpose; Incus handles containers.
 - **Package layering on hosts** (`rpm-ostree install`): every change goes through the image.
 - **Out-of-tree kernels in `base`.**
@@ -134,7 +134,7 @@ All local tasks are defined in `mise.toml`. They need `mise` and rootful `podman
 mise tasks                          # list tasks
 mise run build base                 # build an image locally
 mise run build xps16-da16260        # builds local base first if missing
-mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2 (open in GNOME Boxes)
+mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2 (boot steps in README)
 mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build
 mise run switch xps16-da16260       # switch THIS machine to the published image
