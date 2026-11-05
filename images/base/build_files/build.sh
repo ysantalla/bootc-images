@@ -57,3 +57,4 @@ systemctl --global enable bootc-image-age.timer
 date -u +%s > /usr/share/bootc-images/build-time
 
 dnf5 clean all
+rm -rf /var/log/dnf5.log /var/lib/dnf
