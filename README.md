@@ -84,6 +84,12 @@ Open the `.qcow2` in GNOME Boxes and log in with the user from `bib/config.toml`
 
 Option A: boot the ISO from `mise run iso <image>`.
 
+The ISO is built from a local image, so point the machine at the registry after installing, or updates will not work:
+
+```bash
+sudo bootc switch ghcr.io/ysantalla/<image>:latest
+```
+
 Option B: from an existing Kinoite install:
 
 ```bash
