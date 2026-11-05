@@ -1,5 +1,5 @@
 [Unit]
-Description=ysantalla: download the new image (applied on next reboot)
+Description=bootc-images: download the new image (applied on next reboot)
 Wants=network-online.target
 After=network-online.target
 ConditionACPower=true

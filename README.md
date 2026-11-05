@@ -19,7 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
 | Flatpaks | Zed. List in `flatpaks.list` |
-| Updates | `ysantalla-update.timer`: downloads every ~12 h (on AC only), applied on reboot |
+| Updates | `bootc-update.timer`: downloads every ~12 h (on AC only), applied on reboot |
 
 ## Layout
 
@@ -37,10 +37,10 @@ images/
       shell.sh               Starship, Nerd Font and terminal defaults
       packages.txt           incus
     system_files/            copied as-is to / in the image
-      usr/libexec/ysantalla/           setup.sh, flatpaks.sh
-      usr/lib/systemd/system/          ysantalla-* services and timer
-      usr/lib/tmpfiles.d/              ysantalla-brave.conf
-      usr/share/ysantalla/flatpaks.list
+      usr/libexec/bootc-images/           setup.sh, flatpaks.sh
+      usr/lib/systemd/system/          bootc-* services and timer
+      usr/lib/tmpfiles.d/              bootc-brave.conf
+      usr/share/bootc-images/flatpaks.list
   xps16-da16260/
     Containerfile
     build_files/
@@ -122,8 +122,8 @@ incus admin init --minimal
 ```bash
 bootc status                                   # current image and rollback
 rpm-ostree status                              # no LayeredPackages
-systemctl status ysantalla-setup ysantalla-flatpaks
-systemctl list-timers ysantalla-update.timer
+systemctl status bootc-setup bootc-flatpaks
+systemctl list-timers bootc-update.timer
 id -nG                                         # includes incus-admin
 incus list
 flatpak list --system
@@ -143,7 +143,7 @@ sudo bootc usr-overlay         # TEMPORARY writable /usr to try something out
 ## Changing an image
 
 - **New package:** add it to `images/<image>/build_files/packages.txt`.
-- **New Flatpak:** add it to `images/base/system_files/usr/share/ysantalla/flatpaks.list`. Installed on next boot.
+- **New Flatpak:** add it to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. Installed on next boot.
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, and add a job to `build.yml`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.

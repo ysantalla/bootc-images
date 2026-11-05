@@ -75,10 +75,10 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/ysantalla/ setup.sh, flatpaks.sh
-    │           ├── lib/systemd/system/ ysantalla-*.service / .timer
-    │           ├── lib/tmpfiles.d/    ysantalla-brave.conf
-    │           └── share/ysantalla/   flatpaks.list
+    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh
+    │           ├── lib/systemd/system/ bootc-*.service / .timer
+    │           ├── lib/tmpfiles.d/    bootc-brave.conf
+    │           └── share/bootc-images/   flatpaks.list
     └── xps16-da16260/
         ├── Containerfile
         └── build_files/
@@ -108,8 +108,8 @@ Most bugs in bootc images come from writing to the wrong place. Follow these rul
 | `/home` | Symlink to `/var/home` | Never touch it from the image |
 
 Concrete rules:
-- **Scripts** go in `/usr/libexec/ysantalla/`. **Units** go in `/usr/lib/systemd/system/` and are enabled in `build.sh`. **Static data** goes in `/usr/share/ysantalla/`.
-- **Runtime state** goes in `/var/lib/ysantalla/`, created by the script that uses it or by `tmpfiles.d`.
+- **Scripts** go in `/usr/libexec/bootc-images/`. **Units** go in `/usr/lib/systemd/system/` and are enabled in `build.sh`. **Static data** goes in `/usr/share/bootc-images/`.
+- **Runtime state** goes in `/var/lib/bootc-images/`, created by the script that uses it or by `tmpfiles.d`.
 - **Users and groups:** prefer `sysusers.d`. Groups shipped by packages live in `/usr/lib/group` (nss-altfiles); `usermod -aG` only works once the group is in `/etc/group` and `/etc/gshadow`. That is why `setup.sh` syncs `incus-admin`. Reuse that pattern for any new group.
 - **RPMs that install into `/opt`:** follow `brave.sh`. Create a real `/opt`, install, move the result to `/usr/lib/<vendor>`, restore the `/opt -> var/opt` symlink, and add an `L` line in `tmpfiles.d`.
 - **Third-party repos** added at build time must end up **disabled** (`enabled=0`). Updates arrive through the image, never from the host.
@@ -121,10 +121,12 @@ Concrete rules:
 | Thing | Convention | Example |
 |---|---|---|
 | Machine image | `<line><size>-<model>`, lowercase, from the vendor model | `xps16-da16260` |
-| Our systemd units | `ysantalla-<purpose>.service/.timer` | `ysantalla-update.timer` |
-| Our directories | `ysantalla` namespace under `/usr/libexec`, `/usr/share`, `/var/lib` | `/usr/share/ysantalla/flatpaks.list` |
-| tmpfiles.d / sysusers.d | `ysantalla-<purpose>.conf` | `ysantalla-brave.conf` |
+| Our systemd units | `bootc-<purpose>.service/.timer` | `bootc-update.timer` |
+| Our directories | `bootc-images` namespace under `/usr/libexec`, `/usr/share`, `/var/lib` | `/usr/share/bootc-images/flatpaks.list` |
+| tmpfiles.d / sysusers.d | `bootc-<purpose>.conf` | `bootc-brave.conf` |
 | Image tags | `latest`, `<fedora>`, `<fedora>-<YYYYMMDD>` | `45-20261201` |
+
+The `bootc-` prefix shares a namespace with upstream bootc units such as `bootc-update-ca-trust.service`, so check a new name does not collide. `ysantalla` only names the GitHub owner and registry.
 
 All code, comments, unit descriptions and docs are in **English**.
 
@@ -153,12 +155,12 @@ mise run clean                      # remove output/
 
 ### Add a Flatpak
 
-Add its Flathub ID to `images/base/system_files/usr/share/ysantalla/flatpaks.list`. `ysantalla-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
+Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. `bootc-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
 
 ### Add a script or service
 
-1. Script: `system_files/usr/libexec/ysantalla/<name>.sh`, using `#!/usr/bin/env bash` and `set -euo pipefail`. It must be **idempotent** if it runs on boot.
-2. Unit: `system_files/usr/lib/systemd/system/ysantalla-<name>.service`.
+1. Script: `system_files/usr/libexec/bootc-images/<name>.sh`, using `#!/usr/bin/env bash` and `set -euo pipefail`. It must be **idempotent** if it runs on boot.
+2. Unit: `system_files/usr/lib/systemd/system/bootc-<name>.service`.
 3. Enable it in that image's `build.sh` (`systemctl enable ...`).
 4. Watch for ordering cycles: do not order a normal service `Before=` a socket unit (sockets start before `basic.target`).
 
@@ -196,14 +198,14 @@ Run these before considering a change done. Never claim something was tested if 
 
 ```bash
 # Shell scripts
-shellcheck images/*/build_files/*.sh images/*/system_files/usr/libexec/ysantalla/*.sh
+shellcheck images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
 
 # Workflows and TOML
 python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"
 python3 -c "import tomllib; tomllib.load(open('mise.toml','rb')); tomllib.load(open('bib/config.example.toml','rb'))"
 
 # Units (on a systemd host)
-systemd-analyze verify images/base/system_files/usr/lib/systemd/system/ysantalla-*
+systemd-analyze verify images/base/system_files/usr/lib/systemd/system/bootc-*
 
 # Real test: build, then boot it in a VM
 mise run build <image>
@@ -215,8 +217,8 @@ On a machine running the image:
 ```bash
 bootc status                     # current image + rollback target
 rpm-ostree status                # must show no LayeredPackages
-systemctl --failed               # nothing from ysantalla-*
-systemctl list-timers ysantalla-update.timer
+systemctl --failed               # nothing from bootc-*
+systemctl list-timers bootc-update.timer
 id -nG                           # includes incus-admin
 vainfo | grep iHD                # xps16-da16260 only
 ```

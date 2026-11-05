@@ -34,14 +34,14 @@ chmod 0644 "$fontdir"/*
 rm -rf "$work"
 
 # zsh: load our defaults, and skip the first-run wizard for users without a ~/.zshrc
-echo 'source /usr/share/ysantalla/zshrc' >> /etc/zshrc
+echo 'source /usr/share/bootc-images/zshrc' >> /etc/zshrc
 cat >> /etc/zshenv <<'ZSHENV'
 [[ -o interactive && ! -e "${ZDOTDIR:-$HOME}/.zshrc" ]] && touch "${ZDOTDIR:-$HOME}/.zshrc"
 ZSHENV
 
 # New users get zsh. Konsole and Yakuake open zsh for everyone through the profile.
 sed -i 's|^SHELL=.*|SHELL=/usr/bin/zsh|' /etc/default/useradd
-printf '\n[Desktop Entry]\nDefaultProfile=ysantalla.profile\n' >> /etc/xdg/konsolerc
+printf '\n[Desktop Entry]\nDefaultProfile=bootc-images.profile\n' >> /etc/xdg/konsolerc
 
 # Yakuake starts with the session (F12 opens it)
 mkdir -p /etc/xdg/autostart

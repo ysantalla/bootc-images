@@ -19,7 +19,7 @@ dnf5 -y remove toolbox distrobox
 /ctx/shell.sh
 
 # 3. Make our scripts executable
-chmod 0755 /usr/libexec/ysantalla/*.sh
+chmod 0755 /usr/libexec/bootc-images/*.sh
 
 # 4. Exactly one updater: ours (avoid two timers fighting each other)
 systemctl disable rpm-ostreed-automatic.timer 2>/dev/null || true
@@ -28,8 +28,8 @@ systemctl disable uupd.timer 2>/dev/null || true
 # 5. Services
 systemctl enable \
   incus.socket \
-  ysantalla-setup.service \
-  ysantalla-flatpaks.service \
-  ysantalla-update.timer
+  bootc-setup.service \
+  bootc-flatpaks.service \
+  bootc-update.timer
 
 dnf5 clean all

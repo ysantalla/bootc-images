@@ -1,11 +1,11 @@
 [Unit]
-Description=ysantalla: install the image's Flatpaks
+Description=bootc-images: install the image's Flatpaks
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=exec
-ExecStart=/usr/libexec/ysantalla/flatpaks.sh
+ExecStart=/usr/libexec/bootc-images/flatpaks.sh
 Restart=on-failure
 RestartSec=60
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=ysantalla: check for image updates
+Description=bootc-images: check for image updates
 
 [Timer]
 OnBootSec=15min

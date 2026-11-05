@@ -3,8 +3,8 @@
 # Only runs when the list changed. Never uninstalls anything.
 set -euo pipefail
 
-LIST=/usr/share/ysantalla/flatpaks.list
-STATE=/var/lib/ysantalla/flatpaks.sha256
+LIST=/usr/share/bootc-images/flatpaks.list
+STATE=/var/lib/bootc-images/flatpaks.sha256
 
 mkdir -p "$(dirname "$STATE")"
 sum=$(sha256sum "$LIST" | cut -d' ' -f1)

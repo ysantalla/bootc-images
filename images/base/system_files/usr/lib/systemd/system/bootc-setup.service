@@ -1,11 +1,11 @@
 [Unit]
-Description=ysantalla: Incus group and subuid/subgid
+Description=bootc-images: Incus group and subuid/subgid
 After=systemd-sysusers.service
 Before=incus.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/ysantalla/setup.sh
+ExecStart=/usr/libexec/bootc-images/setup.sh
 
 [Install]
 WantedBy=multi-user.target
