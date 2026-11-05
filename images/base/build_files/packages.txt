@@ -3,3 +3,7 @@
 
 # System containers and KVM virtual machines
 incus
+# Incus VMs: the incus RPM does not pull these in (edk2-ovmf and qemu-img already come from upstream)
+qemu-system-x86-core
+virtiofsd
+gdisk
