@@ -6,6 +6,9 @@ set -euxo pipefail
 mapfile -t PKGS < <(grep -vE '^\s*(#|$)' /ctx/packages.txt)
 dnf5 -y install "${PKGS[@]}"
 
+# Not used here: Incus covers containers (also removes the Toolbx login message)
+dnf5 -y remove toolbox distrobox
+
 # 2. Native Brave Origin (official RPM, with the /opt workaround)
 /ctx/brave.sh
 

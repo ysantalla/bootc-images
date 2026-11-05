@@ -42,6 +42,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 These are deliberate choices. Do not add them back without the owner asking:
 - **Docker**: Podman is the container engine.
 - **libvirt / virt-manager**: Incus handles VMs, and GNOME Boxes (a Flatpak) covers GUI test VMs.
+- **Toolbx / Distrobox**: removed from `kinoite-main` on purpose; Incus handles containers.
 - **Package layering on hosts** (`rpm-ostree install`): every change goes through the image.
 - **Out-of-tree kernels in `base`.**
 
