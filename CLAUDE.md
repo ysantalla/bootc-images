@@ -322,7 +322,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `reusable-build.yml` has an unused `id-token: write`, puts `GITHUB_TOKEN` directly in a script, and uses an unpinned cosign.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.
-- `setup.sh` gives no warning if a group is missing, and a stale `wheel` member aborts it before the subuid and subgid step.
 
 ---
 
