@@ -15,21 +15,38 @@ concurrency:
   # cosign sign would leave :latest published without a signature.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+
 jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: shellcheck
+        run: shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
+      - name: TOML
+        run: python3 -c "import tomllib; tomllib.load(open('mise.toml','rb')); tomllib.load(open('bib/config.example.toml','rb'))"
+      - name: The image ships the published signing key
+        run: cmp cosign.pub images/base/system_files/usr/share/bootc-images/cosign.pub
+
   base:
+    needs: lint
     uses: ./.github/workflows/reusable-build.yml
     permissions:
       contents: read
       packages: write
-      id-token: write
     with:
       image: base
       fedora_version: "45"
       push: ${{ github.event_name != 'pull_request' }}
-    secrets: inherit
+      # A pull request publishes nothing, so machine images build FROM this local base.
+      machine_image: ${{ github.event_name == 'pull_request' && 'xps16-da16260' || '' }}
+    secrets:
+      SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
+      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
   # Builds FROM the base just pushed, so it waits for it.
-  # Skipped on pull requests: the new base is not published there.
   xps16-da16260:
     needs: base
     if: github.event_name != 'pull_request'
@@ -37,9 +54,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
     with:
       image: xps16-da16260
       fedora_version: "45"
       push: true
-    secrets: inherit
+    secrets:
+      SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
+      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
