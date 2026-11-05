@@ -1,0 +1,6 @@
+[Unit]
+Description=bootc-images: warn when the running image is old
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/bootc-images/image-age.sh

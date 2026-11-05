@@ -1,0 +1,10 @@
+[Unit]
+Description=bootc-images: check the age of the running image
+
+[Timer]
+OnStartupSec=5min
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
