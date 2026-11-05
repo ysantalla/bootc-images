@@ -24,6 +24,9 @@ dnf5 -y remove toolbox distrobox
 # Tailscale, from its official repo
 /ctx/tailscale.sh
 
+# Signature policy for machines that opt in
+/ctx/signing.sh
+
 # 3. Make our scripts executable
 chmod 0755 /usr/libexec/bootc-images/*.sh
 
