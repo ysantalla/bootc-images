@@ -5,5 +5,7 @@
 incus
 # Incus VMs: the incus RPM does not pull these in (edk2-ovmf and qemu-img already come from upstream)
 qemu-system-x86-core
+# Incus always gives VMs a virtio-vga device, and QEMU ships it as a separate module
+qemu-device-display-virtio-vga
 virtiofsd
 gdisk
