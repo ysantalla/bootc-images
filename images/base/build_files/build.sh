@@ -41,4 +41,7 @@ systemctl --global enable \
   bootc-update-notify.service \
   bootc-update-notify.path
 
+# Per-user: installs the launchers for Flatpak apps at login
+systemctl --global enable bootc-desktop-entries.service
+
 dnf5 clean all
