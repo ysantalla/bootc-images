@@ -35,7 +35,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer**, which replaces any upstream updater.
 
-**`xps16-da16260` adds:** `intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390.
 
 ### Explicit non-goals
 

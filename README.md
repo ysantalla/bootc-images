@@ -41,7 +41,7 @@ images/
     Containerfile
     build_files/
       build.sh
-      packages.txt           intel-media-driver, libva-utils
+      packages.txt           libva-intel-media-driver, libva-utils
 bib/config.example.toml      user for test VMs
 mise.toml                    local tasks + cosign
 ```
