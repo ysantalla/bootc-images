@@ -1,0 +1,17 @@
+# xps16-da16260: Dell XPS 16 (2026), model DA16260, board 0VRKYR.
+# Core Ultra X9 388H (Panther Lake H) + Arc B390 (Xe3, xe driver).
+# Only what this hardware needs; everything else comes from base.
+ARG FEDORA_VERSION=45
+ARG BASE_IMAGE=ghcr.io/ysantalla/base
+
+FROM scratch AS ctx
+COPY build_files /
+
+FROM ${BASE_IMAGE}:${FEDORA_VERSION}
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build.sh
+
+RUN bootc container lint

@@ -1,0 +1,13 @@
+[Unit]
+Description=ysantalla: install the image's Flatpaks
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/libexec/ysantalla/flatpaks.sh
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

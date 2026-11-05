@@ -1,0 +1,43 @@
+name: build images
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+  schedule:
+    - cron: "30 8 * * *" # daily, after Universal Blue's builds
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  base:
+    uses: ./.github/workflows/reusable-build.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      image: base
+      fedora_version: "45"
+      push: ${{ github.event_name != 'pull_request' }}
+    secrets: inherit
+
+  # Builds FROM the base just pushed, so it waits for it.
+  # Skipped on pull requests: the new base is not published there.
+  xps16-da16260:
+    needs: base
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/reusable-build.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      image: xps16-da16260
+      fedora_version: "45"
+      push: true
+    secrets: inherit

@@ -1,0 +1,77 @@
+# Local tooling and tasks. Requires: mise, podman (rootful via sudo).
+# Usage: mise tasks | mise run vm base | mise run iso xps16-da16260
+
+[tools]
+cosign = "latest"
+
+[env]
+FEDORA_VERSION = "45"
+BOOTC_REGISTRY = "ghcr.io/ysantalla"
+
+[tasks.build]
+description = "Build an image into root's storage (machine images build the local base first if missing)"
+usage = 'arg "[image]" help="base or a machine image under images/" default="base"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+image="${usage_image?}"
+args=(--build-arg "FEDORA_VERSION=$FEDORA_VERSION")
+if [[ "$image" != "base" ]]; then
+  sudo podman image exists "localhost/base:$FEDORA_VERSION" || mise run build base
+  args+=(--build-arg BASE_IMAGE=localhost/base)
+fi
+sudo podman build "${args[@]}" \
+  -t "localhost/$image:$FEDORA_VERSION" -t "localhost/$image:latest" "images/$image"
+'''
+
+[tasks.disk]
+description = "Build an image and turn it into a disk: qcow2 (GNOME Boxes / Incus) or anaconda-iso"
+usage = '''
+arg "[image]" default="base"
+arg "[type]" help="qcow2 or anaconda-iso" default="qcow2"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+image="${usage_image?}"
+type="${usage_type?}"
+mise run build "$image"
+mkdir -p "output/$image"
+test -f bib/config.toml || cp bib/config.example.toml bib/config.toml
+sudo podman run --rm -it --privileged --pull=newer \
+  --security-opt label=type:unconfined_t \
+  -v "./output/$image:/output" \
+  -v ./bib/config.toml:/config.toml:ro \
+  -v /var/lib/containers/storage:/var/lib/containers/storage \
+  quay.io/centos-bootc/bootc-image-builder:latest \
+  --type "$type" --rootfs btrfs "localhost/$image:latest"
+'''
+
+[tasks.vm]
+description = "qcow2 disk for GNOME Boxes"
+usage = 'arg "[image]" default="base"'
+run = 'mise run disk "${usage_image?}" qcow2'
+
+[tasks.iso]
+description = "Installer ISO"
+usage = 'arg "[image]" default="base"'
+run = 'mise run disk "${usage_image?}" anaconda-iso'
+
+[tasks.switch-local]
+description = "Switch THIS machine to the local build (no registry)"
+usage = 'arg "[image]" default="base"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+mise run build "${usage_image?}"
+sudo bootc switch --transport containers-storage "localhost/${usage_image}:latest"
+'''
+
+[tasks.switch]
+description = "Switch THIS machine to the published image"
+usage = 'arg "[image]" default="base"'
+run = 'sudo bootc switch "$BOOTC_REGISTRY/${usage_image?}:latest"'
+
+[tasks.clean]
+description = "Remove generated disks"
+run = "sudo rm -rf output"

@@ -1,0 +1,6 @@
+# User for test VMs (bootc-image-builder).
+# Copy to bib/config.toml (git-ignored) and change the password.
+[[customizations.user]]
+name = "yasmany"
+password = "change-me"
+groups = ["wheel"]

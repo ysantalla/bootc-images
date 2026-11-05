@@ -1,0 +1,10 @@
+[Unit]
+Description=ysantalla: check for image updates
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=12h
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

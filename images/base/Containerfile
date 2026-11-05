@@ -1,0 +1,23 @@
+# base: near-stock Kinoite + codecs (from kinoite-main) + Podman + Incus + Brave Origin.
+# No Docker, no libvirt. Hardware-agnostic: every machine image builds FROM this one.
+#
+# Pin the Fedora version and bump it on purpose.
+# Fedora 45 shipped on 2026-11-03: if ublue has no :45 tag yet, use 44.
+ARG FEDORA_VERSION=45
+ARG BASE_IMAGE=ghcr.io/ublue-os/kinoite-main
+
+# Build context: these scripts never end up in the final image
+FROM scratch AS ctx
+COPY build_files /
+
+FROM ${BASE_IMAGE}:${FEDORA_VERSION}
+
+# Our files: scripts in /usr/libexec, units in /usr/lib/systemd, lists in /usr/share
+COPY system_files/ /
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build.sh
+
+RUN bootc container lint

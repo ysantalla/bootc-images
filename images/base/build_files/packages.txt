@@ -1,0 +1,5 @@
+# Packages added on top of kinoite-main (codecs and Podman are already there).
+# One per line. Lines starting with # are ignored.
+
+# System containers and KVM virtual machines
+incus
