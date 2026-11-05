@@ -55,6 +55,7 @@ for script in /usr/libexec/bootc-images/*.sh; do
   ok "executable $script" test -x "$script"
 done
 ok "starship runs" starship --version
+ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
 ok "Nerd Font is installed" test -s /usr/share/fonts/jetbrains-mono-nerd/JetBrainsMonoNerdFontMono-Regular.ttf
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/bootc-images/build-time
 

@@ -12,6 +12,11 @@ autoload -Uz compinit && compinit
 
 source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
+# Factory prompt style. A personal ~/.config/starship.toml takes over when it exists.
+if [[ -z "${STARSHIP_CONFIG:-}" && ! -e "${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml" ]]; then
+  export STARSHIP_CONFIG=/usr/share/bootc-images/starship.toml
+fi
+
 # A dumb terminal cannot render the prompt
 [[ "$TERM" != dumb ]] && eval "$(starship init zsh)"
 
