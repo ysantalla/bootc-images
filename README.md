@@ -19,7 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
 | Okular | Native PDF and document viewer |
-| Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
+| Terminal | zsh, Starship with a Powerlevel10k-style prompt, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides |
 | Updates | `bootc-update.timer`: downloads every ~6 h (on AC only, catching up after suspend), applied on reboot. A desktop notification says when one is ready |
@@ -47,7 +47,7 @@ images/
       usr/lib/systemd/user/            update notification, Flatpak launchers
       usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
       usr/lib/firewalld/zones/         bootc-incus.xml
-      usr/share/bootc-images/          flatpaks.list, zshrc, applications/
+      usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/
       usr/share/konsole/               bootc-images.profile
   xps16-da16260/
     Containerfile

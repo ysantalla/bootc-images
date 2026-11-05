@@ -1,0 +1,61 @@
+# p10k "classic" look: light OS segment, dark segment with directory and git.
+# Needs a Nerd Font (JetBrainsMono Nerd Font in bootc-images).
+
+format = """
+$os\
+[](fg:#e4e4e4 bg:#303030)\
+$directory\
+$git_branch\
+$git_status\
+[](fg:#303030) """
+
+right_format = """
+$cmd_duration\
+$status\
+$time"""
+
+add_newline = true
+
+[os]
+disabled = false
+style = "bg:#e4e4e4 fg:#1c1c1c"
+format = "[ $symbol]($style)"
+
+[os.symbols]
+Fedora = " "
+Linux = " "
+
+[directory]
+style = "bg:#303030 fg:#00afff"
+read_only_style = "bg:#303030 fg:#d75f5f"
+format = "[ $path ]($style)[$read_only]($read_only_style)"
+home_symbol = " ~"
+read_only = " "
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+symbol = ""
+style = "bg:#303030 fg:#5faf00"
+format = "[ $symbol $branch ]($style)"
+
+[git_status]
+style = "bg:#303030 fg:#d7af00"
+format = "[($all_status$ahead_behind )]($style)"
+
+[cmd_duration]
+min_time = 3000
+style = "fg:#d7af00"
+format = "[ $duration]($style) "
+
+[status]
+disabled = false
+symbol = "✘"
+style = "fg:#d75f5f"
+format = "[$symbol $status]($style) "
+
+[time]
+disabled = false
+time_format = "%H:%M"
+style = "fg:#6c6c6c"
+format = "[ $time]($style)"

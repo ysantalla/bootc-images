@@ -34,7 +34,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
 - **Okular:** native RPM.
-- **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
+- **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
@@ -88,7 +88,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-desktop-entries.service
     │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
     │           ├── lib/firewalld/zones/ bootc-incus.xml
-    │           ├── share/bootc-images/ flatpaks.list, zshrc, applications/
+    │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/
     │           └── share/konsole/     bootc-images.profile
     └── xps16-da16260/
         ├── Containerfile
@@ -323,7 +323,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Decisions pending from the owner:**
 - Hosts on `:latest` or `:45`. `:45` makes each Fedora upgrade deliberate, but needs a `bootc switch` each time.
 - Enabling `incus-startup.service`. Instances with autostart will not start at boot without it, but it starts Incus on every boot.
-- A Starship preset as the factory style. The owner wants a Powerlevel10k look.
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Whether to use the internal camera or a USB webcam for video calls.
 
