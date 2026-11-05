@@ -2,8 +2,12 @@
 Description=bootc-images: check for image updates
 
 [Timer]
-OnBootSec=15min
-OnUnitActiveSec=12h
+# Wall-clock schedule: unlike OnUnitActiveSec it counts suspended time, and
+# Persistent catches up on boot or resume after a missed run.
+# Every 6 h gives several chances a day to land on AC power (bootc-update.service
+# skips the download on battery).
+OnCalendar=*-*-* 00/6:00:00
+Persistent=true
 RandomizedDelaySec=30min
 
 [Install]

@@ -36,7 +36,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
 - **System Flatpaks** from a declarative list (Zed).
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
-- **Our own update timer**, which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
+- **Our own update timer** (wall-clock, every 6 h, `Persistent=true`), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
 
 **`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware.
 
@@ -319,7 +319,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Known small improvements, not applied:**
 - Pull requests do not validate machine images.
-- `bootc-update.timer` uses `OnUnitActiveSec`, which does not count suspended time. `OnCalendar` with `Persistent=true` suits a laptop better.
 - `reusable-build.yml` has an unused `id-token: write`, puts `GITHUB_TOKEN` directly in a script, and uses an unpinned cosign.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.

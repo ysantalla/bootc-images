@@ -20,7 +20,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed. List in `flatpaks.list` |
-| Updates | `bootc-update.timer`: downloads every ~12 h (on AC only), applied on reboot. A desktop notification says when one is ready |
+| Updates | `bootc-update.timer`: downloads every ~6 h (on AC only, catching up after suspend), applied on reboot. A desktop notification says when one is ready |
 
 ## Layout
 
