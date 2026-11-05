@@ -12,6 +12,9 @@ dnf5 -y remove toolbox distrobox
 # 2. Native Brave Origin (official RPM, with the /opt workaround)
 /ctx/brave.sh
 
+# Native Google Chrome (same /opt workaround)
+/ctx/chrome.sh
+
 # 3. Make our scripts executable
 chmod 0755 /usr/libexec/ysantalla/*.sh
 
