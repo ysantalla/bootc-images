@@ -4,3 +4,8 @@
 name = "yasmany"
 password = "change-me"
 groups = ["wheel"]
+
+# Room for Flatpaks, Incus images and two system versions.
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "40 GiB"
