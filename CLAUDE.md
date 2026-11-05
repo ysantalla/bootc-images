@@ -32,13 +32,16 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone lets instances get IPv4 and DNS.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
+- **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
+- **Okular:** native RPM.
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
-- **System Flatpaks** from a declarative list (Zed).
+- **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
+- **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
 
 ### Explicit non-goals
 
@@ -74,17 +77,18 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── build.sh               entry point: packages, Brave, services
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
+    │   │   ├── browsers.sh            browser launcher flags, first-run preferences
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
     │   │   ├── tailscale.sh           Tailscale from its official repo
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh
+    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh, desktop-entries.sh
     │           ├── lib/systemd/system/ bootc-*.service / .timer
-    │           ├── lib/systemd/user/  bootc-update-notify.service / .path
-    │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf
+    │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-desktop-entries.service
+    │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
     │           ├── lib/firewalld/zones/ bootc-incus.xml
-    │           ├── share/bootc-images/ flatpaks.list, zshrc
+    │           ├── share/bootc-images/ flatpaks.list, zshrc, applications/
     │           └── share/konsole/     bootc-images.profile
     └── xps16-da16260/
         ├── Containerfile
@@ -163,6 +167,8 @@ mise run clean                      # remove output/
 ### Add a Flatpak
 
 Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. `bootc-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
+
+For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applications/` with `TryExec=/var/lib/flatpak/exports/bin/<id>` and `X-Bootc-Images-Managed=true`. Flatpak's exports come before `/usr/share` in `XDG_DATA_DIRS`, so `bootc-desktop-entries.service` copies it to `~/.local/share/applications` at login. Files there without the marker are the user's and are never replaced. Flatpak overrides go in `bootc-flatpak-overrides.conf`.
 
 ### Add a script or service
 
@@ -309,6 +315,10 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
 - Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
+- Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
+- The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
+- GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
+- Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
 
 **Decisions pending from the owner:**
 - Hosts on `:latest` or `:45`. `:45` makes each Fedora upgrade deliberate, but needs a `bootc switch` each time.

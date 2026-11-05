@@ -17,9 +17,11 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`. `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
+| Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
+| Okular | Native PDF and document viewer |
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
-| Flatpaks | Zed. List in `flatpaks.list` |
+| Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides |
 | Updates | `bootc-update.timer`: downloads every ~6 h (on AC only, catching up after suspend), applied on reboot. A desktop notification says when one is ready |
 
 ## Layout
@@ -35,16 +37,17 @@ images/
       build.sh               packages, browsers, terminal, services
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
+      browsers.sh            browser launcher flags and first-run preferences
       shell.sh               Starship, Nerd Font and terminal defaults
       tailscale.sh           Tailscale from its official repo
-      packages.txt           Incus, QEMU, zsh, Yakuake
+      packages.txt           Incus, QEMU, zsh, Yakuake, Okular
     system_files/            copied as-is to / in the image
-      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh
+      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh, desktop-entries.sh
       usr/lib/systemd/system/          bootc-* services and timer
-      usr/lib/systemd/user/            update notification
-      usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf
+      usr/lib/systemd/user/            update notification, Flatpak launchers
+      usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
       usr/lib/firewalld/zones/         bootc-incus.xml
-      usr/share/bootc-images/          flatpaks.list, zshrc
+      usr/share/bootc-images/          flatpaks.list, zshrc, applications/
       usr/share/konsole/               bootc-images.profile
   xps16-da16260/
     Containerfile
@@ -162,7 +165,7 @@ vainfo | grep -E 'iHD|H264|HEVC|AV1'           # xps16-da16260 only: hardware de
 4. In `chrome://webrtc-internals`, under `outbound-rtp`: `powerEfficientEncoder: true` means hardware, while `libvpx`, `OpenH264` or `libaom` as `encoderImplementation` means CPU.
 5. Repeat in a real call, because each platform picks its own codec. `nvtop` shows CPU and GPU use.
 
-If it uses the CPU, try `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL`. Feature names change between Chrome versions. The image's Chrome wrapper does not read `chrome-flags.conf`, so permanent flags have to go in the `.desktop` file or a launcher, at build time.
+The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`browsers.sh`, and `build.sh` in the machine image).
 
 ## Day to day
 
@@ -188,6 +191,7 @@ Projects that need compilers go in an Incus container, not in the image.
 
 - **New package:** add it to `images/<image>/build_files/packages.txt`.
 - **New Flatpak:** add it to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. Installed on next boot.
+- **Custom Flatpak launcher:** add a `.desktop` with `TryExec` and `X-Bootc-Images-Managed=true` to `usr/share/bootc-images/applications/`. It is copied to `~/.local/share/applications` at login. A file there without that marker is yours and is left alone, and our copy does not follow changes the app makes to its own launcher.
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, and add a job to `build.yml`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
