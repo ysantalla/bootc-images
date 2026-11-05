@@ -32,4 +32,9 @@ systemctl enable \
   bootc-flatpaks.service \
   bootc-update.timer
 
+# Per-user: announces a downloaded update at login and when one arrives
+systemctl --global enable \
+  bootc-update-notify.service \
+  bootc-update-notify.path
+
 dnf5 clean all

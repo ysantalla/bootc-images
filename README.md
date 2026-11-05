@@ -19,7 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
 | Flatpaks | Zed. List in `flatpaks.list` |
-| Updates | `bootc-update.timer`: downloads every ~12 h (on AC only), applied on reboot |
+| Updates | `bootc-update.timer`: downloads every ~12 h (on AC only), applied on reboot. A desktop notification says when one is ready |
 
 ## Layout
 
@@ -37,7 +37,7 @@ images/
       shell.sh               Starship, Nerd Font and terminal defaults
       packages.txt           incus
     system_files/            copied as-is to / in the image
-      usr/libexec/bootc-images/           setup.sh, flatpaks.sh
+      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh
       usr/lib/systemd/system/          bootc-* services and timer
       usr/lib/tmpfiles.d/              bootc-brave.conf
       usr/share/bootc-images/flatpaks.list

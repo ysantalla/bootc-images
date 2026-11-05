@@ -7,3 +7,4 @@ ConditionACPower=true
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/bootc upgrade
+ExecStartPost=/usr/libexec/bootc-images/update-state.sh

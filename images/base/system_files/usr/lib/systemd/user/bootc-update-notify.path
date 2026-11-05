@@ -1,0 +1,9 @@
+[Unit]
+Description=bootc-images: watch for a downloaded system update
+PartOf=graphical-session.target
+
+[Path]
+PathChanged=/run/bootc-images/update-pending
+
+[Install]
+WantedBy=graphical-session.target

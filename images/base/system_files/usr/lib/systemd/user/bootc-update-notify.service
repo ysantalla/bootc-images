@@ -1,0 +1,12 @@
+[Unit]
+Description=bootc-images: announce a downloaded system update
+ConditionPathExists=/run/bootc-images/update-pending
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/bootc-images/update-notify.sh
+
+[Install]
+WantedBy=graphical-session.target

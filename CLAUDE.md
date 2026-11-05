@@ -35,7 +35,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
 - **System Flatpaks** from a declarative list (Zed).
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
-- **Our own update timer**, which replaces any upstream updater.
+- **Our own update timer**, which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
 
 **`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390.
 
@@ -75,7 +75,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh
+    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh
     │           ├── lib/systemd/system/ bootc-*.service / .timer
     │           ├── lib/tmpfiles.d/    bootc-brave.conf
     │           └── share/bootc-images/   flatpaks.list
