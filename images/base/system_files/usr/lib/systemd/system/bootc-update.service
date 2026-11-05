@@ -6,5 +6,6 @@ ConditionACPower=true
 
 [Service]
 Type=oneshot
+ExecCondition=/usr/libexec/bootc-images/update-allowed.sh
 ExecStart=/usr/bin/bootc upgrade
 ExecStartPost=/usr/libexec/bootc-images/update-state.sh

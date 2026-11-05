@@ -2,7 +2,7 @@
 # Usage: mise tasks | mise run vm base | mise run iso xps16-da16260
 
 [tools]
-cosign = "latest"
+cosign = "3.1.4"
 
 [env]
 FEDORA_VERSION = "45"
@@ -53,7 +53,7 @@ usage = 'arg "[image]" default="base"'
 run = 'mise run disk "${usage_image?}" qcow2'
 
 [tasks.iso]
-description = "Installer ISO"
+description = "Installer ISO. It may erase the target disk: not for machines with data"
 usage = 'arg "[image]" default="base"'
 run = 'mise run disk "${usage_image?}" anaconda-iso'
 

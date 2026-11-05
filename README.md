@@ -22,14 +22,15 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides |
-| Updates | `bootc-update.timer`: downloads every ~6 h (on AC only, catching up after suspend), applied on reboot. A desktop notification says when one is ready |
+| Updates | `bootc-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
 
 ## Layout
 
 ```
 .github/workflows/
-  build.yml                  base → xps16-da16260 (daily, on push, manual)
-  reusable-build.yml         build + push to GHCR + cosign signature
+  build.yml                  lint → base → xps16-da16260 (daily, on push, manual)
+  reusable-build.yml         build + test + push to GHCR + cosign signature and verify
+tests/smoke.sh               checks each built image from the inside, before it is published
 images/
   base/
     Containerfile
@@ -38,16 +39,17 @@ images/
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       browsers.sh            browser launcher flags and first-run preferences
+      signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, Okular
     system_files/            copied as-is to / in the image
-      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh, desktop-entries.sh
+      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
       usr/lib/systemd/system/          bootc-* services and timer
-      usr/lib/systemd/user/            update notification, Flatpak launchers
+      usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers
       usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
       usr/lib/firewalld/zones/         bootc-incus.xml
-      usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/
+      usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/konsole/               bootc-images.profile
   xps16-da16260/
     Containerfile
@@ -63,7 +65,7 @@ mise.toml                    local tasks + cosign
 ```bash
 mise trust && mise install        # installs cosign for this repo
 
-# Signing key WITHOUT a password (press Enter twice)
+# Signing key, with a password that only CI needs
 cosign generate-key-pair
 
 git init -b main
@@ -73,10 +75,11 @@ git commit -m "Initial bootc images"
 
 gh repo create ysantalla/bootc-images --public --source . --remote origin
 gh secret set SIGNING_SECRET < cosign.key
+gh secret set COSIGN_PASSWORD        # the password you just chose
 git push -u origin main
 ```
 
-`cosign.key` is git-ignored. Keep it in your password manager and delete it from disk.
+`cosign.key` is git-ignored. CI is the only thing that needs it, so delete it from disk once the secrets are set. If a key is lost or exposed, generate a new pair, update both secrets, and commit the new `cosign.pub` in both places it lives: the repo root and `images/base/system_files/usr/share/bootc-images/`. CI checks that they match. Machines enforcing signatures must already run an image with the new key, or they stop updating until you switch them again.
 
 The repo is public, so GitHub disables the daily schedule after 60 days without repository activity. It warns by email; re-enable the workflow if that happens.
 
@@ -137,6 +140,16 @@ echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 ```
 
 **Avoid `mise run iso` on a machine with data.** That installer may erase the disk without asking (not confirmed in its docs). It also includes the `bib/config.toml` user, and it is built from a local image, so you would have to run `bootc switch` afterwards for updates to work. The 40 GiB disk setting may not be accepted for ISOs; if the build rejects it, remove that block from `bib/config.toml`.
+
+### Require signed images (optional)
+
+The image carries the policy and key, but a machine only enforces them after this, once per machine:
+
+```bash
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/ysantalla/xps16-da16260:latest
+```
+
+From then on it refuses unsigned images. Tags built before the key rotation of 2026-11-05 are signed with the old key and will be refused too.
 
 ## 4. Verify
 

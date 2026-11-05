@@ -13,8 +13,15 @@ on:
       push:
         required: true
         type: boolean
+      machine_image:
+        description: Also build and test this machine image FROM the local build, without publishing it
+        required: false
+        type: string
+        default: ""
     secrets:
       SIGNING_SECRET:
+        required: false
+      COSIGN_PASSWORD:
         required: false
 
 jobs:
@@ -23,14 +30,13 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
     steps:
       - name: Free disk space on the runner
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Metadata
         id: meta
@@ -41,7 +47,7 @@ jobs:
       # Before the build: machine images pull FROM our base on GHCR.
       - name: Log in to GHCR
         if: inputs.push
-        uses: redhat-actions/podman-login@v1
+        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -49,7 +55,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
         with:
           context: images/${{ inputs.image }}
           containerfiles: images/${{ inputs.image }}/Containerfile
@@ -63,24 +69,62 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.date }}
           oci: false
 
+      - name: Test the image
+        env:
+          IMAGE: ${{ inputs.image }}
+          VERSION: ${{ inputs.fedora_version }}
+          BUILD_DATE: ${{ steps.meta.outputs.date }}
+        run: |
+          label=$(podman inspect "localhost/$IMAGE:$VERSION" --format '{{index .Labels "org.opencontainers.image.version"}}')
+          test "$label" = "$VERSION.$BUILD_DATE"
+          podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
+
+      - name: Build the machine image
+        if: inputs.machine_image != ''
+        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        with:
+          context: images/${{ inputs.machine_image }}
+          containerfiles: images/${{ inputs.machine_image }}/Containerfile
+          image: ${{ inputs.machine_image }}
+          tags: ${{ inputs.fedora_version }}
+          build-args: |
+            FEDORA_VERSION=${{ inputs.fedora_version }}
+            BUILD_DATE=${{ steps.meta.outputs.date }}
+            BASE_IMAGE=localhost/${{ inputs.image }}
+          oci: false
+
+      - name: Test the machine image
+        if: inputs.machine_image != ''
+        env:
+          IMAGE: ${{ inputs.machine_image }}
+          VERSION: ${{ inputs.fedora_version }}
+        run: podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
+
       - name: Push
         id: push
         if: inputs.push
-        uses: redhat-actions/push-to-registry@v2
+        uses: redhat-actions/push-to-registry@5860fc963bf8f2b3221773a023141612f010c469 # v2
         with:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
           registry: ${{ steps.meta.outputs.registry }}
 
-      - uses: sigstore/cosign-installer@v3
+      # Pinned: machines enforcing signatures were tested against this version's
+      # .sig format. Test that again before moving to another major version.
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
         if: inputs.push
+        with:
+          cosign-release: v2.5.2
 
-      - name: Sign with cosign
+      - name: Sign with cosign and verify the result
         if: inputs.push
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          COSIGN_PASSWORD: ""
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          REF: ${{ steps.meta.outputs.registry }}/${{ inputs.image }}@${{ steps.push.outputs.digest }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY \
-            "${{ steps.meta.outputs.registry }}/${{ inputs.image }}@${{ steps.push.outputs.digest }}"
+          echo "$GHCR_TOKEN" | cosign login ghcr.io -u "$GHCR_USER" --password-stdin
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY "$REF"
+          cosign verify --key cosign.pub "$REF" > /dev/null

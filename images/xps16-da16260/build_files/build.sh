@@ -26,3 +26,4 @@ done
 #   - .dellptl kernel for IPU7 webcam / IR / ISH (needs initramfs + Secure Boot signing)
 
 dnf5 clean all
+rm -rf /var/log/dnf5.log /var/lib/dnf

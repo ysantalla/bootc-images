@@ -24,6 +24,9 @@ dnf5 -y remove toolbox distrobox
 # Tailscale, from its official repo
 /ctx/tailscale.sh
 
+# Signature policy for machines that opt in
+/ctx/signing.sh
+
 # 3. Make our scripts executable
 chmod 0755 /usr/libexec/bootc-images/*.sh
 
@@ -47,4 +50,11 @@ systemctl --global enable \
 # Per-user: installs the launchers for Flatpak apps at login
 systemctl --global enable bootc-desktop-entries.service
 
+# Per-user: warns when the running image is old
+systemctl --global enable bootc-image-age.timer
+
+# Read by image-age.sh
+date -u +%s > /usr/share/bootc-images/build-time
+
 dnf5 clean all
+rm -rf /var/log/dnf5.log /var/lib/dnf
