@@ -1,6 +1,7 @@
 # XPS 16 DA16260 extras on top of base. One per line.
 
-# Hardware video decode/encode on the Arc B390 (VA-API iHD driver): H.264, HEVC, VP9, AV1
+# Hardware video decode/encode on the Arc B390 (VA-API iHD driver): H.264, HEVC, VP9, AV1.
+# kinoite-main ships both today. They stay listed so this machine keeps them if upstream drops them.
 libva-intel-media-driver
 # vainfo, to verify the above
 libva-utils

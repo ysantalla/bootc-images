@@ -39,9 +39,10 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
-- **Our own update timer** (wall-clock, every 6 h, `Persistent=true`), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
+- **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
+- **Signature policy:** `signing.sh` adds our registry and key to `policy.json`. Machines only enforce it after `bootc switch --enforce-container-sigpolicy`.
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
 
 ### Explicit non-goals
 
@@ -63,13 +64,14 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── CLAUDE.md                          this file
 ├── README.md                          user-facing setup and usage guide
 ├── mise.toml                          local tasks + tool versions (cosign)
-├── cosign.pub                         public signing key (committed)
+├── cosign.pub                         public signing key (committed, copied into the base image)
+├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
 ├── .gitignore                         output/, bib/config.toml, cosign.key
 ├── bib/
 │   └── config.example.toml            user for test VMs built with bootc-image-builder
 ├── .github/workflows/
 │   ├── build.yml                      orchestrator: base → machine images
-│   └── reusable-build.yml             build → push to GHCR → cosign sign
+│   └── reusable-build.yml             build → test → push to GHCR → cosign sign and verify
 └── images/
     ├── base/
     │   ├── Containerfile
@@ -78,17 +80,18 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
     │   │   ├── browsers.sh            browser launcher flags, first-run preferences
+    │   │   ├── signing.sh             signature policy for machines that opt in
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
     │   │   ├── tailscale.sh           Tailscale from its official repo
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh, desktop-entries.sh
+    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
     │           ├── lib/systemd/system/ bootc-*.service / .timer
-    │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-desktop-entries.service
+    │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-image-age.*, bootc-desktop-entries.service
     │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
     │           ├── lib/firewalld/zones/ bootc-incus.xml
-    │           ├── share/bootc-images/ flatpaks.list, zshrc, applications/
+    │           ├── share/bootc-images/ flatpaks.list, zshrc, applications/, cosign.pub
     │           └── share/konsole/     bootc-images.profile
     └── xps16-da16260/
         ├── Containerfile
@@ -198,8 +201,11 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 
 - **`build.yml`** runs on push to `main` (excluding `*.md`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
-- **On pull requests,** only `base` is built and nothing is pushed. Machine images are skipped because the new base is not published.
-- **`reusable-build.yml`** builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), and signs the digest with cosign using the `SIGNING_SECRET` secret.
+- **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
+- **On pull requests,** nothing is pushed. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
+- **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
+- **Actions are pinned by SHA** and Dependabot proposes updates. cosign stays on 2.x, because enforcing machines were tested against its `.sig` format.
+- **`reusable-build.yml`** builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
@@ -213,7 +219,7 @@ Run these before considering a change done. Never claim something was tested if 
 
 ```bash
 # Shell scripts
-shellcheck images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
+shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
 
 # Workflows and TOML
 python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"
@@ -301,7 +307,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 1. **Verify base** in a VM and on hardware. See the status below.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
-4. **Optional: enforce signed images** on hosts with `policy.json` and `registries.d` pointing at `cosign.pub`. Runs on `main` are no longer cancelled, but images are still pushed before they are signed, so a failed sign step would leave `latest` unsigned. Make signing fail the build loudly before enforcing.
+4. **Optional: rechunk the images.** Every build publishes 684 MB of new layers on `xps16-da16260` (634 MB `base`, 50 MB machine), measured across three builds on 2026-11-05, even when nothing changed. Rechunking should reduce it, but it changes how images are laid out, so test it in a VM first.
 
 ### Status (2026-11-04)
 
@@ -315,6 +321,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
 - Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
+- `bootc switch --enforce-container-sigpolicy` on a real machine. The policy file was only tested with `skopeo`.
+- The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
 - The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
 - GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
@@ -325,11 +333,10 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Enabling `incus-startup.service`. Instances with autostart will not start at boot without it, but it starts Incus on every boot.
 - A Starship preset as the factory style. The owner wants a Powerlevel10k look.
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
+- Firewall on untrusted networks. The default zone accepts ports 1025-65535 on any network, which is Fedora's default. A stricter zone needs testing with KDE Connect and Network Displays.
 - Whether to use the internal camera or a USB webcam for video calls.
 
 **Known small improvements, not applied:**
-- Pull requests do not validate machine images.
-- `reusable-build.yml` has an unused `id-token: write`, puts `GITHUB_TOKEN` directly in a script, and uses an unpinned cosign.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.
 

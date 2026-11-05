@@ -1,8 +1,7 @@
-# base: near-stock Kinoite + codecs (from kinoite-main) + Podman + Incus + Brave Origin.
+# base: near-stock Kinoite (codecs and Podman from kinoite-main) plus the layer every machine shares.
 # No Docker, no libvirt. Hardware-agnostic: every machine image builds FROM this one.
 #
 # Pin the Fedora version and bump it on purpose.
-# Fedora 45 shipped on 2026-11-03: if ublue has no :45 tag yet, use 44.
 ARG FEDORA_VERSION=45
 ARG BASE_IMAGE=ghcr.io/ublue-os/kinoite-main
 
