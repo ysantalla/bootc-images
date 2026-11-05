@@ -55,7 +55,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.image }}
           containerfiles: images/${{ inputs.image }}/Containerfile
@@ -81,7 +81,7 @@ jobs:
 
       - name: Build the machine image
         if: inputs.machine_image != ''
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.machine_image }}
           containerfiles: images/${{ inputs.machine_image }}/Containerfile
