@@ -15,6 +15,9 @@ dnf5 -y remove toolbox distrobox
 # Native Google Chrome (same /opt workaround)
 /ctx/chrome.sh
 
+# zsh, Starship, Nerd Font, Konsole and Yakuake defaults
+/ctx/shell.sh
+
 # 3. Make our scripts executable
 chmod 0755 /usr/libexec/ysantalla/*.sh
 

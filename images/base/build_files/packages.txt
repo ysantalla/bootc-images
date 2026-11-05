@@ -3,6 +3,12 @@
 
 # System containers and KVM virtual machines
 incus
+# Terminal: Yakuake is the F12 drop-down, shell.sh holds the rest of the setup
+zsh
+zsh-autosuggestions
+zsh-syntax-highlighting
+yakuake
+
 # Incus VMs: the incus RPM does not pull these in (edk2-ovmf and qemu-img already come from upstream)
 qemu-system-x86-core
 # Incus always gives VMs a virtio-vga device, and QEMU ships it as a separate module

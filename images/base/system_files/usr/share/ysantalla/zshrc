@@ -1,0 +1,19 @@
+# System-wide zsh defaults, loaded from /etc/zshrc.
+# Personal settings go in ~/.zshrc, which runs after this file and can override anything here.
+
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE
+setopt AUTO_CD INTERACTIVE_COMMENTS
+
+bindkey -e
+autoload -Uz compinit && compinit
+
+source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# A dumb terminal cannot render the prompt
+[[ "$TERM" != dumb ]] && eval "$(starship init zsh)"
+
+# Must stay last: it wraps the widgets defined above
+source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

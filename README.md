@@ -17,6 +17,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Incus | System containers and VMs (`--vm`). `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
+| Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
 | Flatpaks | Zed. List in `flatpaks.list` |
 | Updates | `ysantalla-update.timer`: downloads every ~12 h (on AC only), applied on reboot |
 
@@ -33,6 +34,7 @@ images/
       build.sh               packages, Brave, services
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
+      shell.sh               Starship, Nerd Font and terminal defaults
       packages.txt           incus
     system_files/            copied as-is to / in the image
       usr/libexec/ysantalla/           setup.sh, flatpaks.sh

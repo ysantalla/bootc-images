@@ -32,6 +32,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`).
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
+- **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
 - **System Flatpaks** from a declarative list (Zed).
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer**, which replaces any upstream updater.
@@ -70,6 +71,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── build.sh               entry point: packages, Brave, services
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
+    │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
