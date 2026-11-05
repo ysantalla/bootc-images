@@ -18,6 +18,9 @@ dnf5 -y remove toolbox distrobox
 # zsh, Starship, Nerd Font, Konsole and Yakuake defaults
 /ctx/shell.sh
 
+# Tailscale, from its official repo
+/ctx/tailscale.sh
+
 # 3. Make our scripts executable
 chmod 0755 /usr/libexec/bootc-images/*.sh
 
@@ -28,6 +31,7 @@ systemctl disable uupd.timer 2>/dev/null || true
 # 5. Services
 systemctl enable \
   incus.socket \
+  tailscaled.service \
   bootc-setup.service \
   bootc-flatpaks.service \
   bootc-update.timer

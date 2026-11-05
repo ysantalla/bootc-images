@@ -33,11 +33,12 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
+- **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
 - **System Flatpaks** from a declarative list (Zed).
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer**, which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself.
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware.
 
 ### Explicit non-goals
 
@@ -74,6 +75,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
+    │   │   ├── tailscale.sh           Tailscale from its official repo
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/

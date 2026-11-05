@@ -4,8 +4,8 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker, no libvirt, no Toolbx or Distrobox |
-| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel VA-API driver for the Arc B390 |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker, no libvirt, no Toolbx or Distrobox |
+| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
 
 `base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
 
@@ -18,6 +18,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
+| Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed. List in `flatpaks.list` |
 | Updates | `bootc-update.timer`: downloads every ~12 h (on AC only), applied on reboot. A desktop notification says when one is ready |
 
@@ -35,6 +36,7 @@ images/
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       shell.sh               Starship, Nerd Font and terminal defaults
+      tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake
     system_files/            copied as-is to / in the image
       usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh
@@ -48,7 +50,7 @@ images/
     Containerfile
     build_files/
       build.sh
-      packages.txt           libva-intel-media-driver, libva-utils
+      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools
 bib/config.example.toml      user for test VMs
 mise.toml                    local tasks + cosign
 ```
@@ -171,6 +173,9 @@ sudo ostree admin pin 0        # pin a deployment you know is good
 sudo bootc switch ghcr.io/ysantalla/xps16-da16260:45-20261201   # go back to a specific build
 sudo bootc usr-overlay         # TEMPORARY writable /usr to try something out
 sudo bootc upgrade --check     # look for an update without downloading it
+sudo powertop                  # xps16-da16260: what uses the battery (avoid --auto-tune)
+sensors                        # xps16-da16260: temperatures and fans
+sudo intel_gpu_top             # xps16-da16260: GPU and video engines, may be limited on xe
 ```
 
 When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart.

@@ -4,3 +4,8 @@
 libva-intel-media-driver
 # vainfo, to verify the above
 libva-utils
+
+# Measure battery, temperature and GPU use
+powertop
+lm_sensors
+igt-gpu-tools
