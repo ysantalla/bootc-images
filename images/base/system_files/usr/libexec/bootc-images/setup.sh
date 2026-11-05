@@ -11,6 +11,8 @@ for g in "${GROUPS_TO_SYNC[@]}"; do
     line=$(grep "^${g}:" /usr/lib/group || true)
     if [[ -n "$line" ]]; then
       echo "$line" >> /etc/group
+    else
+      echo "warning: group $g not found in /etc/group or /usr/lib/group" >&2
     fi
   fi
   if grep -q "^${g}:" /etc/group && ! grep -q "^${g}:" /etc/gshadow; then
@@ -21,6 +23,11 @@ done
 # Add every admin user (wheel) to those groups
 members=$(getent group wheel | cut -d: -f4 | tr ',' ' ')
 for u in $members; do
+  # A stale wheel entry for a deleted user must not abort the subuid/subgid step
+  if ! id "$u" &>/dev/null; then
+    echo "warning: wheel member $u does not exist, skipping" >&2
+    continue
+  fi
   for g in "${GROUPS_TO_SYNC[@]}"; do
     if grep -q "^${g}:" /etc/group && ! id -nG "$u" | tr ' ' '\n' | grep -qx "$g"; then
       usermod -aG "$g" "$u"

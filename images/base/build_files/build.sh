@@ -15,6 +15,9 @@ dnf5 -y remove toolbox distrobox
 # Native Google Chrome (same /opt workaround)
 /ctx/chrome.sh
 
+# Wayland flags and system title bar for both browsers
+/ctx/browsers.sh
+
 # zsh, Starship, Nerd Font, Konsole and Yakuake defaults
 /ctx/shell.sh
 
@@ -40,5 +43,8 @@ systemctl enable \
 systemctl --global enable \
   bootc-update-notify.service \
   bootc-update-notify.path
+
+# Per-user: installs the launchers for Flatpak apps at login
+systemctl --global enable bootc-desktop-entries.service
 
 dnf5 clean all

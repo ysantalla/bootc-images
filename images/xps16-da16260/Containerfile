@@ -9,6 +9,12 @@ COPY build_files /
 
 FROM ${BASE_IMAGE}:${FEDORA_VERSION}
 
+# Our own version, so `bootc status` and the update notification show this build
+# instead of the version label inherited from upstream. CI passes the build date.
+ARG FEDORA_VERSION
+ARG BUILD_DATE=local
+LABEL org.opencontainers.image.version="${FEDORA_VERSION}.${BUILD_DATE}"
+
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=tmpfs,dst=/tmp \
