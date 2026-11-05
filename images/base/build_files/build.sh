@@ -47,4 +47,10 @@ systemctl --global enable \
 # Per-user: installs the launchers for Flatpak apps at login
 systemctl --global enable bootc-desktop-entries.service
 
+# Per-user: warns when the running image is old
+systemctl --global enable bootc-image-age.timer
+
+# Read by image-age.sh
+date -u +%s > /usr/share/bootc-images/build-time
+
 dnf5 clean all
