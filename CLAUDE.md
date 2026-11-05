@@ -34,7 +34,8 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
 - **Okular:** native RPM.
-- **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
+- **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
+- **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, MesloLGS Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
@@ -236,7 +237,7 @@ mise run vm <image>
 On a machine running the image:
 
 ```bash
-bootc status                     # current image + rollback target
+sudo bootc status                # current image + rollback target
 rpm-ostree status                # must show no LayeredPackages
 systemctl --failed               # nothing from bootc-*
 systemctl list-timers bootc-update.timer
@@ -309,19 +310,23 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
 4. **Optional: rechunk the images.** Every build publishes 684 MB of new layers on `xps16-da16260` (634 MB `base`, 50 MB machine), measured across three builds on 2026-11-05, even when nothing changed. Rechunking should reduce it, but it changes how images are laid out, so test it in a VM first.
 
-### Status (2026-11-04)
+### Status (2026-11-05)
 
 Images build, publish and verify with `cosign.pub`, and pull without credentials.
 
-**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, but its agent was not up after 60 s, so `incus exec` into a VM is unconfirmed; `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Nerd Font, Konsole profile and Yakuake.
+**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, but its agent was not up after 60 s, so `incus exec` into a VM is unconfirmed; `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
+
+**Verified in a VM (`xps16-da16260`, `45.20261105`, 2026-11-05):** boots from a local disk; `bootc switch` to GHCR; no layered packages; `bootc rollback` in both directions, with the home directory kept; Flatpak install. `bootc switch --enforce-container-sigpolicy` deploys as `ostree-image-signed`, and `bootc upgrade --check` reports no error, but that was the same digest, so no new image has been accepted or refused under it yet.
 
 **Not tested yet:**
-- `bootc rollback`.
-- `xps16-da16260` has never booted, and nothing is verified on the real XPS.
+- Nothing is verified on the real XPS.
+- MesloLGS Nerd Font in Konsole, from a published image, on a new user. JetBrainsMono Nerd Font Mono did not appear in Konsole's font list in a VM, and why is unknown. `MesloLGS NF` from `powerlevel10k-media` displayed correctly, so it is the fallback.
+- Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
+- Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
 - Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
-- `bootc switch --enforce-container-sigpolicy` on a real machine. The policy file was only tested with `skopeo`.
+- Accepting and refusing a new image with signatures enforced. The policy file was only tested against other images with `skopeo`.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
 - The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
