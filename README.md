@@ -4,7 +4,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Flatpaks, auto-updates. Codecs and Podman come from kinoite-main. No Docker, no libvirt |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker, no libvirt, no Toolbx or Distrobox |
 | `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel VA-API driver for the Arc B390 |
 
 `base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
@@ -14,7 +14,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Component | How |
 |---|---|
 | KDE Plasma, codecs (ffmpeg), Podman | From `kinoite-main` |
-| Incus | System containers and VMs (`--vm`). `incus.socket` enabled; group and subuid set up at boot |
+| Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`. `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Terminal | zsh, Starship, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc` |
@@ -31,16 +31,19 @@ images/
   base/
     Containerfile
     build_files/             build-time only, not shipped in the image
-      build.sh               packages, Brave, services
+      build.sh               packages, browsers, terminal, services
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       shell.sh               Starship, Nerd Font and terminal defaults
-      packages.txt           incus
+      packages.txt           Incus, QEMU, zsh, Yakuake
     system_files/            copied as-is to / in the image
       usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-state.sh, update-notify.sh
       usr/lib/systemd/system/          bootc-* services and timer
-      usr/lib/tmpfiles.d/              bootc-brave.conf
-      usr/share/bootc-images/flatpaks.list
+      usr/lib/systemd/user/            update notification
+      usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf
+      usr/lib/firewalld/zones/         bootc-incus.xml
+      usr/share/bootc-images/          flatpaks.list, zshrc
+      usr/share/konsole/               bootc-images.profile
   xps16-da16260/
     Containerfile
     build_files/
@@ -82,40 +85,53 @@ mise run vm xps16-da16260          # builds local base first if missing, then th
 mise run iso xps16-da16260         # installer ISO
 ```
 
-Boot a throwaway copy with QEMU and log in with the user from `bib/config.toml`. The first boot is slow and the screen can stay black for a few minutes:
+Test disks are 40 GiB with the current `bib/config.example.toml`. If you already have a `bib/config.toml`, add its `[[customizations.filesystem]]` block by hand, because the file is not updated for you. Change the password there too. A 20 GiB disk fills up with Flatpaks, Incus images and two system versions.
+
+Boot a throwaway copy with QEMU, leaving the built disk untouched, and log in with the user from `bib/config.toml`. The first boot is slow and the screen can stay black for a few minutes. **View → serial0** shows the boot messages meanwhile.
 
 ```bash
 qemu-img create -f qcow2 -F qcow2 -b "$PWD/output/base/qcow2/disk.qcow2" output/base/vm-test.qcow2
 cp /usr/share/edk2/ovmf/OVMF_VARS.fd output/base/vm-vars.fd
-qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
+
+GDK_BACKEND=x11 GDK_SCALE=1 qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
   -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
   -drive if=pflash,format=raw,file=output/base/vm-vars.fd \
   -drive file=output/base/vm-test.qcow2,if=virtio \
-  -nic user,model=virtio-net-pci -device virtio-vga -display gtk
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
+  -chardev qemu-vdagent,id=vdagent,name=vdagent,clipboard=on \
+  -device virtio-serial-pci \
+  -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
+  -device virtio-vga,xres=3200,yres=1800 -display gtk,zoom-to-fit=off
 ```
+
+- **Sharp text on a host with fractional scaling:** `GDK_BACKEND=x11 GDK_SCALE=1` avoids the host rescaling QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match, and pick `xres` and `yres` to fit your monitor.
+- **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host. The clipboard flags may not work under Wayland, so SSH is the reliable route.
+- **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
+- **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine
 
-Option A: boot the ISO from `mise run iso <image>`.
+**Recommended:** install stock Fedora Kinoite, then switch to the image. You get the normal installer with disk encryption, and the previous system stays in the boot menu.
 
-The ISO is built from a local image, so point the machine at the registry after installing, or updates will not work:
+1. Install `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` from <https://download.fedoraproject.org/pub/fedora/linux/releases/45/Kinoite/x86_64/iso/>. Back up first, enable encryption and create your user.
+2. Switch, on AC power and online:
 
-```bash
-sudo bootc switch ghcr.io/ysantalla/<image>:latest
-```
+   ```bash
+   sudo bootc switch ghcr.io/ysantalla/xps16-da16260:latest
+   systemctl reboot
+   ```
 
-Option B: from an existing Kinoite install:
-
-```bash
-sudo bootc switch ghcr.io/ysantalla/xps16-da16260:latest
-systemctl reboot
-```
+   If `bootc` is missing, use `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/ysantalla/xps16-da16260:latest`. If it complains about the signature, use `ostree-unverified-registry:` instead of `ostree-image-signed:docker://`.
 
 Log out and back in once so the `incus-admin` group takes effect. Then, the first time:
 
 ```bash
 incus admin init --minimal
+curl https://mise.run | sh
+echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 ```
+
+**Avoid `mise run iso` on a machine with data.** That installer may erase the disk without asking (not confirmed in its docs). It also includes the `bib/config.toml` user, and it is built from a local image, so you would have to run `bootc switch` afterwards for updates to work. The 40 GiB disk setting may not be accepted for ISOs; if the build rejects it, remove that block from `bib/config.toml`.
 
 ## 4. Verify
 
@@ -130,6 +146,22 @@ flatpak list --system
 vainfo | grep -E 'iHD|H264|HEVC|AV1'           # xps16-da16260 only: hardware decode
 ```
 
+### Hardware video in Chrome (xps16-da16260 only)
+
+1. `vainfo | grep -E 'Driver version|EncSlice'` should show `iHD` and encode profiles.
+2. In `chrome://gpu`, check `Video Encode`, `Video Decode` and `Ozone platform`.
+3. Test without a camera, pressing **Start** and **Call**:
+
+   ```bash
+   google-chrome-stable --use-fake-device-for-media-stream --use-fake-ui-for-media-stream \
+     https://webrtc.github.io/samples/src/content/peerconnection/pc1/
+   ```
+
+4. In `chrome://webrtc-internals`, under `outbound-rtp`: `powerEfficientEncoder: true` means hardware, while `libvpx`, `OpenH264` or `libaom` as `encoderImplementation` means CPU.
+5. Repeat in a real call, because each platform picks its own codec. `nvtop` shows CPU and GPU use.
+
+If it uses the CPU, try `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL`. Feature names change between Chrome versions. The image's Chrome wrapper does not read `chrome-flags.conf`, so permanent flags have to go in the `.desktop` file or a launcher, at build time.
+
 ## Day to day
 
 ```bash
@@ -138,7 +170,14 @@ sudo bootc rollback            # go back to the previous version
 sudo ostree admin pin 0        # pin a deployment you know is good
 sudo bootc switch ghcr.io/ysantalla/xps16-da16260:45-20261201   # go back to a specific build
 sudo bootc usr-overlay         # TEMPORARY writable /usr to try something out
+sudo bootc upgrade --check     # look for an update without downloading it
 ```
+
+When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart.
+
+To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `starship preset gruvbox-rainbow -o ~/.config/starship.toml`, then open a new tab. Delete that file to go back to the default.
+
+Projects that need compilers go in an Incus container, not in the image.
 
 ## Changing an image
 
@@ -147,6 +186,7 @@ sudo bootc usr-overlay         # TEMPORARY writable /usr to try something out
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, and add a job to `build.yml`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
+- **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:
 
@@ -156,8 +196,10 @@ Rules:
 
 ## Notes
 
-- Fedora 45 shipped on 2026-11-03. If `kinoite-main:45` doesn't exist yet, use `44`.
 - The build disables `rpm-ostreed-automatic.timer` and `uupd.timer` if present, so there's only one updater.
-- Brave Origin updates with the image (daily build), not from the machine: Brave's repo is disabled in `/etc/yum.repos.d`.
+- Brave Origin and Chrome update with the image (daily build), not from the machine: their repos are disabled in `/etc/yum.repos.d`.
+- Hosts follow `:latest`, so bumping `FEDORA_VERSION` moves them to the new Fedora release on the next update.
+- `ujust` recipes from Universal Blue that use Distrobox or Toolbx no longer work.
+- Removing a name from `flatpaks.list` does not uninstall it from existing machines: use `flatpak uninstall`.
 - Flatpak apps don't use the host's codecs or VA-API driver; they use their runtime's (`ffmpeg-full` and the Intel VA-API extension).
-- Planned for `xps16-da16260`, one step at a time: auto-boost service (RAPL PL2), then the `.dellptl` kernel (IPU7 webcam, IR, ISH) with Secure Boot signing.
+- Project status, findings and planned work are in `CLAUDE.md`.

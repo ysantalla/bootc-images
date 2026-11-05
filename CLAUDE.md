@@ -29,7 +29,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 **From `kinoite-main` (upstream, not ours):** KDE Plasma, full ffmpeg codecs, Podman, Flathub, bootc.
 
 **`base` adds:**
-- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`).
+- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone lets instances get IPv4 and DNS.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship, JetBrainsMono Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`.
@@ -47,6 +47,8 @@ These are deliberate choices. Do not add them back without the owner asking:
 - **Toolbx / Distrobox**: removed from `kinoite-main` on purpose; Incus handles containers.
 - **Package layering on hosts** (`rpm-ostree install`): every change goes through the image.
 - **Out-of-tree kernels in `base`.**
+- **Compilers in `base`** (`gcc`, `make`, `cmake`): projects that need them run in an Incus container, because the owner wants a minimal base.
+- **`mise` in the image:** it is installed per user with `curl https://mise.run | sh`.
 
 ---
 
@@ -77,8 +79,11 @@ These are deliberate choices. Do not add them back without the owner asking:
     │       └── usr/
     │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh
     │           ├── lib/systemd/system/ bootc-*.service / .timer
-    │           ├── lib/tmpfiles.d/    bootc-brave.conf
-    │           └── share/bootc-images/   flatpaks.list
+    │           ├── lib/systemd/user/  bootc-update-notify.service / .path
+    │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf
+    │           ├── lib/firewalld/zones/ bootc-incus.xml
+    │           ├── share/bootc-images/ flatpaks.list, zshrc
+    │           └── share/konsole/     bootc-images.profile
     └── xps16-da16260/
         ├── Containerfile
         └── build_files/
@@ -110,7 +115,7 @@ Most bugs in bootc images come from writing to the wrong place. Follow these rul
 Concrete rules:
 - **Scripts** go in `/usr/libexec/bootc-images/`. **Units** go in `/usr/lib/systemd/system/` and are enabled in `build.sh`. **Static data** goes in `/usr/share/bootc-images/`.
 - **Runtime state** goes in `/var/lib/bootc-images/`, created by the script that uses it or by `tmpfiles.d`.
-- **Users and groups:** prefer `sysusers.d`. Groups shipped by packages live in `/usr/lib/group` (nss-altfiles); `usermod -aG` only works once the group is in `/etc/group` and `/etc/gshadow`. That is why `setup.sh` syncs `incus-admin`. Reuse that pattern for any new group.
+- **Users and groups:** prefer `sysusers.d`. Groups from packages can live in `/usr/lib/group` (nss-altfiles), and those installed with `dnf5` during our build can land in the image's `/etc/group` instead, which is where `incus-admin` was. `usermod -aG` only works once the group is in `/etc/group` and `/etc/gshadow`. That is why `setup.sh` syncs `incus-admin`. Reuse that pattern for any new group.
 - **RPMs that install into `/opt`:** follow `brave.sh`. Create a real `/opt`, install, move the result to `/usr/lib/<vendor>`, restore the `/opt -> var/opt` symlink, and add an `L` line in `tmpfiles.d`.
 - **Third-party repos** added at build time must end up **disabled** (`enabled=0`). Updates arrive through the image, never from the host.
 
@@ -161,8 +166,9 @@ Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.
 
 1. Script: `system_files/usr/libexec/bootc-images/<name>.sh`, using `#!/usr/bin/env bash` and `set -euo pipefail`. It must be **idempotent** if it runs on boot.
 2. Unit: `system_files/usr/lib/systemd/system/bootc-<name>.service`.
-3. Enable it in that image's `build.sh` (`systemctl enable ...`).
+3. Enable it in that image's `build.sh` (`systemctl enable ...`, or `systemctl --global enable ...` for units in `lib/systemd/user`).
 4. Watch for ordering cycles: do not order a normal service `Before=` a socket unit (sockets start before `basic.target`).
+5. Do not make a long boot task `Type=oneshot` under `multi-user.target`: the boot would wait for it. `bootc-flatpaks.service` uses `Type=exec` for that reason.
 
 ### Add a new machine
 
@@ -187,6 +193,7 @@ Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.
 - **On pull requests,** only `base` is built and nothing is pushed. Machine images are skipped because the new base is not published.
 - **`reusable-build.yml`** builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), and signs the digest with cosign using the `SIGNING_SECRET` secret.
 - **Images are public** on GHCR, so machines pull without credentials.
+- **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
 A failed build never reaches a machine: hosts keep running the last good image.
 
@@ -230,7 +237,7 @@ vainfo | grep iHD                # xps16-da16260 only
 - **Never commit `cosign.key`**, `bib/config.toml`, or any credential. Only `cosign.pub` is committed.
 - **Never remove `bootc container lint`** from a Containerfile.
 - **Never use `:latest` for the upstream base.** Pin `FEDORA_VERSION`.
-- **Never add a second updater.** `build.sh` disables `rpm-ostreed-automatic.timer` and `uupd.timer` on purpose.
+- **Never add a second updater.** `build.sh` disables `rpm-ostreed-automatic.timer` and `uupd.timer` on purpose. `bootc-fetch-apply-updates.timer` comes disabled upstream and reboots the machine, so keep it that way. The update notification only announces. `flatpak-system-update.timer` from upstream stays, because it only updates Flatpaks.
 - **Never run `rpm-ostree install`** (layering) on hosts as a fix. Fix it in the image.
 - **Never write into `/var` or `/home` from a Containerfile.**
 - **Ask the owner before:**
@@ -257,16 +264,64 @@ vainfo | grep iHD                # xps16-da16260 only
 
 Panther Lake is new hardware. Prefer upstream Fedora kernel and Mesa support, and add workarounds only when something is confirmed broken.
 
+### Kernel options
+
+Reviewed on 2026-11-04, when the image had Fedora's 7.2.15. The owner does not want a kernel swap for now, so do not propose one unprompted. Linux 7.4 was at rc1 and arrives through the daily build once Fedora ships it.
+
+| Option | Version seen | Notes |
+|---|---|---|
+| Fedora `updates` | 7.2.15 | Default. No extra work |
+| Fedora Koji build | 7.3.1-200.fc45 | Built by Fedora, but pinned by hand and gets no patches until bumped |
+| `@kernel-vanilla/stable` COPR | 7.3.1 | Needs an owner MOK, or Secure Boot off |
+| `@kernel-vanilla/mainline` COPR | 7.4 pre-release | Too risky for the main machine |
+| `thunderbirdtr/xps-fedora` COPR | 7.2.15 `.dellptl` | Same version, with hardware patches. See below |
+
+No readable source named a 7.3 or 7.4 change for this model with the 388H. Phoronix pages could not be read directly, so the 7.4 items come from search summaries: IPU7 and IPU7.5 support in the IPU6 driver, Intelligent Bias Control v3 for Xe3, and GPU cold reset recovery.
+
+### `xps-fedora` (`.dellptl`)
+
+The project documents this model and board with an X7 358H, not the 388H, so confirm its findings on this machine first. It reports, on stock Fedora: VRR not detected, PSR glitches and link errors, RGB camera with raw nodes only, and no IR camera driver. Audio, Wi-Fi, Bluetooth, touchpad and keyboard light work. It is a small project, apparently with one maintainer.
+
+It targets a Fedora install using `dnf`, signing kernels and modules locally with an akmods key, which does not fit a read-only `/usr`. If it is needed, reuse it in stages, in this image only: the kernel first (VRR, PSR, IR sensor), then the thermal fix from `dell-xps-ptl-config`, and the camera last, since that needs an IPU7 module built in the image and closed Intel libraries. The build must fail if no `.dellptl` kernel matches the expected version. Review `dell-xps-ptl-config` before starting auto-boost, since it also ships power profiles.
+
 ---
 
 ## 10. Roadmap
 
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
-1. **Verify base** in a VM and on hardware: Incus, Brave Origin, Flatpaks, updates and rollback.
+1. **Verify base** in a VM and on hardware. See the status below.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
-4. **Optional: enforce signed images** on hosts with `policy.json` and `registries.d` pointing at `cosign.pub`.
+4. **Optional: enforce signed images** on hosts with `policy.json` and `registries.d` pointing at `cosign.pub`. Images are pushed before they are signed, and `cancel-in-progress` can stop a run in between, so fix that first or `latest` could fail verification.
+
+### Status (2026-11-04)
+
+Images build, publish and verify with `cosign.pub`, and pull without credentials.
+
+**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, but its agent was not up after 60 s, so `incus exec` into a VM is unconfirmed; `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Nerd Font, Konsole profile and Yakuake.
+
+**Not tested yet:**
+- `bootc rollback`.
+- `xps16-da16260` has never booted, and nothing is verified on the real XPS.
+- On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
+- Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
+- `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
+
+**Decisions pending from the owner:**
+- Hosts on `:latest` or `:45`. `:45` makes each Fedora upgrade deliberate, but needs a `bootc switch` each time.
+- Enabling `incus-startup.service`. Instances with autostart will not start at boot without it, but it starts Incus on every boot.
+- A Starship preset as the factory style. The owner wants a Powerlevel10k look.
+- Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
+- Whether to use the internal camera or a USB webcam for video calls.
+
+**Known small improvements, not applied:**
+- Pull requests do not validate machine images.
+- `bootc-update.timer` uses `OnUnitActiveSec`, which does not count suspended time. `OnCalendar` with `Persistent=true` suits a laptop better.
+- `reusable-build.yml` has an unused `id-token: write`, puts `GITHUB_TOKEN` directly in a script, and uses an unpinned cosign.
+- Nothing prunes old tags on GHCR.
+- `mise run build` reuses a stale local base.
+- `setup.sh` gives no warning if a group is missing, and a stale `wheel` member aborts it before the subuid and subgid step.
 
 ---
 
