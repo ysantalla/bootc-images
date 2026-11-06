@@ -17,7 +17,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`. `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
-| Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
+| Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar is a first-run preference |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
 | Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme from [plasma-tips](https://github.com/ysantalla/plasma-tips), with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
@@ -42,7 +42,7 @@ images/
       build.sh               packages, browsers, terminal, services
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
-      browsers.sh            browser launcher flags and first-run preferences
+      browsers.sh            first-run browser preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
       plasma-theme.sh        Plasma style, pinned to a plasma-tips commit

@@ -13,7 +13,7 @@ for file in \
   /usr/share/applications/com.google.Chrome.desktop \
   /usr/share/applications/brave-origin.desktop \
   /usr/share/applications/com.brave.Origin.desktop; do
-  sed -i -E "s|^(Exec=/usr/bin/[a-z-]+ --ozone-platform=wayland)|\\1 ${FLAGS}|" "$file"
+  sed -i -E "s|^(Exec=/usr/bin/[a-z-]+)|\\1 ${FLAGS}|" "$file"
   grep -q "^Exec=.*${FLAGS}" "$file"
   if grep '^Exec=' "$file" | grep -qvF -- "$FLAGS"; then
     echo "Exec line without flags in $file" >&2

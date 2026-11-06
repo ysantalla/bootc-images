@@ -95,7 +95,7 @@ ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/sha
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/bootc-images/build-time
 
 for launcher in "${LAUNCHERS[@]}"; do
-  ok "Wayland flag in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" --ozone-platform=wayland
+  ok "no Wayland flag in $launcher" no_exec_has "/usr/share/applications/$launcher.desktop" --ozone-platform
 done
 for dir in /usr/lib/google/chrome /usr/lib/brave.com/brave-origin; do
   ok "system title bar in $dir" jq -e '.browser.custom_chrome_frame == false' "$dir/initial_preferences"
