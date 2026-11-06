@@ -125,6 +125,7 @@ GDK_BACKEND=x11 GDK_SCALE=1 qemu-system-x86_64 -enable-kvm -machine q35 -cpu hos
 
 - **Sharp text on a host with fractional scaling:** `GDK_BACKEND=x11 GDK_SCALE=1` avoids the host rescaling QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match, and pick `xres` and `yres` to fit your monitor.
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
+- **Sound:** add `-audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0` to play through the host. It has no microphone input; use `hda-duplex` to add one.
 - **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host. The clipboard flags may not work under Wayland, so SSH is the reliable route.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
