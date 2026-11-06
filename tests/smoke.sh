@@ -20,6 +20,7 @@ ok() { # ok <description> <command...>
 not() { ! "$@"; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
+podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
@@ -32,10 +33,10 @@ no_exec_has() { ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
 LAUNCHERS=(google-chrome com.google.Chrome brave-origin com.brave.Origin)
 ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 
-for pkg in incus okular haruna zsh yakuake firefox google-chrome-stable brave-origin tailscale jq; do
+for pkg in incus okular haruna podman-docker docker-compose zsh yakuake firefox google-chrome-stable brave-origin tailscale jq; do
   ok "package $pkg" rpm -q "$pkg"
 done
-for pkg in toolbox distrobox; do
+for pkg in toolbox distrobox moby-engine docker-cli; do
   ok "package $pkg is absent" not rpm -q "$pkg"
 done
 
@@ -45,7 +46,7 @@ done
 for unit in bootc-fetch-apply-updates.timer rpm-ostreed-automatic.timer uupd.timer; do
   ok "not enabled $unit" not enabled "$unit"
 done
-for unit in bootc-update-notify.service bootc-update-notify.path bootc-desktop-entries.service bootc-image-age.timer; do
+for unit in bootc-update-notify.service bootc-update-notify.path bootc-desktop-entries.service bootc-image-age.timer podman.socket; do
   ok "user enabled $unit" user_enabled "$unit"
 done
 
@@ -62,6 +63,8 @@ DECODERS=$(ffmpeg -hide_banner -decoders 2>/dev/null)
 for decoder in h264 hevc vp9 av1 mpeg2video aac ac3 eac3 dca truehd flac opus; do
   ok "ffmpeg decodes $decoder" has_decoder "$decoder"
 done
+ok "docker is Podman" podman_docker
+ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins/docker-compose
 ok "starship runs" starship --version
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
 # A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank

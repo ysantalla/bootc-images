@@ -42,6 +42,12 @@ systemctl enable \
   bootc-flatpaks.service \
   bootc-update.timer
 
+# Per-user: the API socket that `docker compose` talks to
+systemctl --global enable podman.socket
+
+# Quiet the "Emulate Docker CLI" line podman-docker prints on every command
+touch /etc/containers/nodocker
+
 # Per-user: announces a downloaded update at login and when one arrives
 systemctl --global enable \
   bootc-update-notify.service \
