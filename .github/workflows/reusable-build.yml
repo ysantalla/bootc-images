@@ -55,7 +55,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.image }}
           containerfiles: images/${{ inputs.image }}/Containerfile
@@ -68,6 +68,8 @@ jobs:
             FEDORA_VERSION=${{ inputs.fedora_version }}
             BUILD_DATE=${{ steps.meta.outputs.date }}
           oci: false
+          # v3 squashes by default, and machines would download the whole image on every update
+          squash: false
 
       - name: Test the image
         env:
@@ -81,7 +83,7 @@ jobs:
 
       - name: Build the machine image
         if: inputs.machine_image != ''
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.machine_image }}
           containerfiles: images/${{ inputs.machine_image }}/Containerfile
@@ -92,6 +94,7 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.date }}
             BASE_IMAGE=localhost/${{ inputs.image }}
           oci: false
+          squash: false
 
       - name: Test the machine image
         if: inputs.machine_image != ''
