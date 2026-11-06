@@ -22,7 +22,14 @@ enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
-font_in_cache() { fc-cat /usr/share/fonts 2>/dev/null | grep -q "$1"; }
+# As on a real machine: mtimes of 0 and a user who cannot rewrite the image's font cache
+machine_sees_font() {
+  find /usr/share/fonts -type d -exec touch -d @0 {} +
+  local home
+  home=$(mktemp -d)
+  chmod 0777 "$home"
+  [[ -n "$(runuser -u nobody -- env HOME="$home" XDG_CACHE_HOME="$home/.cache" fc-list "$1" family)" ]]
+}
 font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
 repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '^enabled=1' "/etc/yum.repos.d/$1.repo"; }
@@ -68,9 +75,8 @@ ok "docker is Podman" podman_docker
 ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins/docker-compose
 ok "starship runs" starship --version
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
-# Must run before the fc-list and fc-match calls below, which can rewrite the cache as root.
-# Without this entry, a real machine does not see the font even though its files are there.
-ok "image font cache has the terminal font" font_in_cache meslo-lgs-nerd
+# Must run before the fc-list and fc-match calls below, which can rewrite the cache as root
+ok "a machine can see the terminal font" machine_sees_font "MesloLGS Nerd Font"
 # A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank
 ok "terminal font has the Fedora icon" font_has "MesloLGS Nerd Font" f30a
 ok "terminal font has the prompt separator" font_has "MesloLGS Nerd Font" e0b0
