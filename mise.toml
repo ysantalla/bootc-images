@@ -69,6 +69,10 @@ if [[ -f "$dir/vm-test.qcow2" ]] && ! qemu-img info "$dir/vm-test.qcow2" >/dev/n
   echo "This VM is already running" >&2
   exit 1
 fi
+if [[ "$disk" -nt "$dir/vm-test.qcow2" && -f "$dir/vm-test.qcow2" ]]; then
+  echo "$disk was rebuilt, so this VM's copy is stale. Run: mise run vm-reset $usage_image" >&2
+  exit 1
+fi
 if [[ ! -f "$dir/vm-test.qcow2" ]]; then
   qemu-img create -f qcow2 -F qcow2 -b "$PWD/$disk" "$dir/vm-test.qcow2"
   cp /usr/share/edk2/ovmf/OVMF_VARS.fd "$dir/vm-vars.fd"
@@ -131,5 +135,5 @@ usage = 'arg "[image]" default="base"'
 run = 'sudo bootc switch "$BOOTC_REGISTRY/${usage_image?}:latest"'
 
 [tasks.clean]
-description = "Remove generated disks"
+description = "Remove generated disks and every test VM"
 run = "sudo rm -rf output"
