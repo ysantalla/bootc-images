@@ -32,7 +32,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone lets instances get IPv4 and DNS.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
-- **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
+- **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar on first run. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-bootc-compose.conf` silences the provider notice.
 - **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme from `ysantalla/plasma-tips`, pinned to a commit in `plasma-theme.sh`, with Breeze's dark icons. They are the default for new users. The owner's Tela icon theme is not included.
 - **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
@@ -84,7 +84,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── build.sh               entry point: packages, Brave, services
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
-    │   │   ├── browsers.sh            browser launcher flags, first-run preferences
+    │   │   ├── browsers.sh            first-run browser preferences
     │   │   ├── signing.sh             signature policy for machines that opt in
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
     │   │   ├── plasma-theme.sh        Plasma style from plasma-tips (pinned commit)
@@ -345,7 +345,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
-- Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
+- Whether the Intel video flags in `xps16-da16260` are needed, or do anything: compare a real video with and without them on the XPS. `AcceleratedVideoEncoder` may not be the current name, since other sources use `VaapiVideoEncoder`.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.

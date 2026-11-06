@@ -15,7 +15,7 @@ dnf5 -y remove toolbox distrobox
 # Native Google Chrome (same /opt workaround)
 /ctx/chrome.sh
 
-# Wayland flags and system title bar for both browsers
+# System title bar for both browsers
 /ctx/browsers.sh
 
 # zsh, Starship, Nerd Font, Konsole and Yakuake defaults
