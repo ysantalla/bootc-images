@@ -62,6 +62,10 @@ systemctl --global enable bootc-desktop-entries.service
 # Per-user: warns when the running image is old
 systemctl --global enable bootc-image-age.timer
 
+# Fonts installed outside RPM are missing from the cache RPM scriptlets generate. Machines
+# cannot fix it: /usr is read-only, and all its mtimes are 0, so the cache still looks valid.
+fc-cache -f
+
 # Read by image-age.sh
 date -u +%s > /usr/share/bootc-images/build-time
 

@@ -172,6 +172,10 @@ mise run clean                      # remove output/
 2. Hardware-specific? It goes in the machine image, never in `base`.
 3. Run `mise run build <image>` and confirm the build and the lint pass.
 
+### Add a font
+
+RPM fonts need nothing else. A font installed by a script must exist before the `fc-cache -f` in `base`'s `build.sh`, or machines will not see it: `/usr` is read-only and its mtimes are 0, so the stale cache still looks valid. A machine image that installs one by script needs its own `fc-cache -f`. Running as root in a container hides this, so check with `tests/smoke.sh`.
+
 ### Add a Flatpak
 
 Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. `bootc-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
@@ -324,7 +328,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Not tested yet:**
 - Nothing is verified on the real XPS.
-- MesloLGS Nerd Font in Konsole, from a published image, on a new user. JetBrainsMono Nerd Font Mono did not appear in Konsole's font list in a VM, and why is unknown. `MesloLGS NF` from `powerlevel10k-media` displayed correctly, so it is the fallback.
+- MesloLGS Nerd Font in Konsole from a published image. The image's font cache did not include it, which is probably also why JetBrainsMono Nerd Font Mono never appeared in Konsole. As a normal user with mtimes at 0, the bug reproduces in a container, and `fc-cache -f` at build time fixes it.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - The Plasma style and colors in a real session: taskbar indicators, whether they follow the accent color, and whether a new user gets them by default.
 - Docker commands in a real session: `docker run`, and `docker compose` on the owner's projects, which use profiles, health checks and published ports. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
