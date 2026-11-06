@@ -74,9 +74,11 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── .gitignore                         output/, bib/config.toml, cosign.key
 ├── bib/
 │   └── config.example.toml            user for test VMs built with bootc-image-builder
-├── .github/workflows/
-│   ├── build.yml                      orchestrator: base → machine images
-│   └── reusable-build.yml             build → test → push to GHCR → cosign sign and verify
+├── .github/
+│   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
+│   └── workflows/
+│       ├── build.yml                  orchestrator: base → machine images
+│       └── reusable-build.yml         verify FROM → build → test → push to GHCR → cosign sign and verify
 └── images/
     ├── base/
     │   ├── Containerfile
@@ -168,9 +170,9 @@ mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow
 mise run vm-up base                 # boot the test VM, keeping its contents
 mise run vm-reset base              # erase the test VM's copy, after asking
 mise run iso xps16-da16260          # installer ISO
-mise run switch-local base          # switch THIS machine to a local build
+mise run switch-local base          # switch THIS machine to a local build (the name is required)
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
-mise run clean                      # remove output/
+mise run clean                      # remove output/, after asking
 ```
 
 ### Add a package
@@ -218,11 +220,15 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 
 - **`build.yml`** runs on push to `main` (excluding `*.md`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
+- **The `FROM` image is verified before each build:** `kinoite-main` against `.github/keys/ublue-os.pub`, and our `base` against `cosign.pub`. It is pulled by digest, and the build steps use `--pull=never`, so the build uses the verified copy. If Universal Blue rotates its key the build fails: replace the key with `/etc/pki/containers/ublue-os.pub` from the new image, after checking it against `cosign.pub` in `ublue-os/main`.
+- **`squash: false`** stays on the build steps. `buildah-build` v3 squashes by default, which would make machines download the whole image on every update.
+- **One build date per run,** set by the `lint` job, so tags match across images.
+- **`main` is protected:** no force-pushes or deletion, and pull requests need `lint` and `base / build` to pass. The owner can still bypass it.
 - **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
 - **On pull requests,** nothing is pushed. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
-- **`reusable-build.yml`** builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build.
+- **`reusable-build.yml`** verifies the `FROM` image, builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
@@ -345,9 +351,11 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Nothing is verified on the real XPS.
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - A user created after the Plasma defaults shipped.
-- Inter and no sub-pixel text in a real session, and on the XPS panel.
+- Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
 - Haruna with audio, and Intel hardware decode on the XPS. `vm-up` sound was heard in YouTube, in a browser in the VM.
 - Installing stock Kinoite and running `bootc switch`, the path `README.md` recommends. All VM results started from a bootc-image-builder disk.
+- **Restart now** in the update notification. It now calls Plasma's `org.kde.Shutdown` `logoutAndReboot` and falls back to `systemctl reboot`; neither the call nor the prompt for unsaved work was tried in a session.
+- A published build after the action updates of 2026-11-06 (`podman-login` 2, `push-to-registry` 3, `buildah-build` 3, `cosign-installer` 4 with cosign 2.5.2): check that an enforcing machine accepts it and that layers are still reused.
 - The Slack launcher in a real session. It gained `--file-forwarding`, which `man flatpak-run` says `@@u %U @@` needs. Check that it opens `slack://` links.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
@@ -370,7 +378,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Known small improvements, not applied:**
 - A signing failure after the push can leave `:latest` unsigned. Fixing it needs a staging tag.
-- CI does not verify the signature of the upstream `kinoite-main` image.
+- A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
+- A wrong ID in `flatpaks.list` makes `bootc-flatpaks.service` retry every hour without end.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.
 

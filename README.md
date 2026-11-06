@@ -34,7 +34,8 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 ```
 .github/workflows/
   build.yml                  lint → base → xps16-da16260 (daily, on push, manual)
-  reusable-build.yml         build + test + push to GHCR + cosign signature and verify
+  reusable-build.yml         verify the FROM image + build + test + push to GHCR + cosign signature and verify
+  keys/ublue-os.pub          Universal Blue's public key, to verify kinoite-main
 tests/smoke.sh               checks each built image from the inside, before it is published
 images/
   base/
@@ -102,6 +103,8 @@ mise run vm base                   # output/base/qcow2/disk.qcow2
 mise run vm xps16-da16260          # builds local base first if missing, then the XPS layer
 mise run iso xps16-da16260         # installer ISO
 ```
+
+`mise run vm` and `mise run iso` need a `bib/config.toml`: copy `bib/config.example.toml` and set your own password.
 
 Test disks are 40 GiB with the current `bib/config.example.toml`. If you already have a `bib/config.toml`, add its `[[customizations.filesystem]]` block by hand, because the file is not updated for you. Change the password there too. A 20 GiB disk fills up with Flatpaks, Incus images and two system versions.
 
@@ -198,13 +201,13 @@ sensors                        # xps16-da16260: temperatures and fans
 sudo intel_gpu_top             # xps16-da16260: GPU and video engines, may be limited on xe
 ```
 
-When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart.
+When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart. The button restarts through Plasma, so apps can ask about unsaved work.
 
 To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `starship preset gruvbox-rainbow -o ~/.config/starship.toml`, then open a new tab. Delete that file to go back to the default.
 
 Projects that need compilers go in an Incus container, not in the image.
 
-On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every manual `bootc switch`. `mise run switch` already passes it. According to bootc's source, a switch without it stops enforcing.
+On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every manual `bootc switch`. `mise run switch <image>` already passes it. According to bootc's source, a switch without it stops enforcing.
 
 ## Changing an image
 
