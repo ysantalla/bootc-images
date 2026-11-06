@@ -204,7 +204,7 @@ To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `s
 
 Projects that need compilers go in an Incus container, not in the image.
 
-On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every `bootc switch`, including `mise run switch`, which does not pass it. According to bootc's source, a switch without it stops enforcing.
+On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every manual `bootc switch`. `mise run switch` already passes it. According to bootc's source, a switch without it stops enforcing.
 
 ## Changing an image
 
