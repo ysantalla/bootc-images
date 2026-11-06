@@ -9,7 +9,11 @@ COLOR_SCHEME=BreezeDarkCustom
 
 work=$(mktemp -d)
 git -C "$work" init -q
-git -C "$work" fetch -q --depth 1 https://github.com/ysantalla/plasma-tips.git "$THEME_COMMIT"
+for attempt in 1 2 3; do
+  git -C "$work" fetch -q --depth 1 https://github.com/ysantalla/plasma-tips.git "$THEME_COMMIT" && break
+  (( attempt < 3 )) || exit 1
+  sleep 10
+done
 git -C "$work" -c advice.detachedHead=false checkout -q FETCH_HEAD
 test "$(git -C "$work" rev-parse HEAD)" = "$THEME_COMMIT"
 
