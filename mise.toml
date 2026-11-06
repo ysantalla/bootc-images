@@ -130,9 +130,9 @@ sudo bootc switch --transport containers-storage "localhost/${usage_image}:lates
 '''
 
 [tasks.switch]
-description = "Switch THIS machine to the published image"
+description = "Switch THIS machine to the published image, requiring its signature"
 usage = 'arg "[image]" default="base"'
-run = 'sudo bootc switch "$BOOTC_REGISTRY/${usage_image?}:latest"'
+run = 'sudo bootc switch --enforce-container-sigpolicy "$BOOTC_REGISTRY/${usage_image?}:latest"'
 
 [tasks.clean]
 description = "Remove generated disks and every test VM"
