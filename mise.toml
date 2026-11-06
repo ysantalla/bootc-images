@@ -37,7 +37,10 @@ image="${usage_image?}"
 type="${usage_type?}"
 mise run build "$image"
 mkdir -p "output/$image"
-test -f bib/config.toml || cp bib/config.example.toml bib/config.toml
+if [[ ! -f bib/config.toml ]]; then
+  echo "Missing bib/config.toml. Copy bib/config.example.toml and set your own password" >&2
+  exit 1
+fi
 sudo podman run --rm -it --privileged --pull=newer \
   --security-opt label=type:unconfined_t \
   -v "./output/$image:/output" \
@@ -121,7 +124,7 @@ run = 'mise run disk "${usage_image?}" anaconda-iso'
 
 [tasks.switch-local]
 description = "Switch THIS machine to the local build (no registry)"
-usage = 'arg "[image]" default="base"'
+usage = 'arg "<image>" help="required, so a missing name never moves a machine to base"'
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
@@ -131,9 +134,27 @@ sudo bootc switch --transport containers-storage "localhost/${usage_image}:lates
 
 [tasks.switch]
 description = "Switch THIS machine to the published image, requiring its signature"
-usage = 'arg "[image]" default="base"'
+usage = 'arg "<image>" help="required, so a missing name never moves a machine to base"'
 run = 'sudo bootc switch --enforce-container-sigpolicy "$BOOTC_REGISTRY/${usage_image?}:latest"'
 
 [tasks.clean]
-description = "Remove generated disks and every test VM"
-run = "sudo rm -rf output"
+description = "Remove generated disks and every test VM, after asking"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+[[ -d output ]] || exit 0
+for copy in output/*/vm-test.qcow2; do
+  [[ -f "$copy" ]] || continue
+  if ! qemu-img info "$copy" >/dev/null 2>&1; then
+    echo "A VM is running on $copy. Shut it down first" >&2
+    exit 1
+  fi
+done
+if [[ ! -t 0 ]]; then
+  echo "Run this from a terminal: it asks for confirmation" >&2
+  exit 1
+fi
+read -r -p "Erase output/, with every disk and test VM? [y/N] " answer
+[[ "$answer" == [yY] ]] || exit 0
+sudo rm -rf output
+'''
