@@ -20,6 +20,7 @@ ok() { # ok <description> <command...>
 not() { ! "$@"; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
+has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
 repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '^enabled=1' "/etc/yum.repos.d/$1.repo"; }
@@ -31,7 +32,7 @@ no_exec_has() { ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
 LAUNCHERS=(google-chrome com.google.Chrome brave-origin com.brave.Origin)
 ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 
-for pkg in incus okular zsh yakuake firefox google-chrome-stable brave-origin tailscale jq; do
+for pkg in incus okular haruna zsh yakuake firefox google-chrome-stable brave-origin tailscale jq; do
   ok "package $pkg" rpm -q "$pkg"
 done
 for pkg in toolbox distrobox; do
@@ -55,6 +56,11 @@ done
 ok "/opt links to var/opt" test "$(readlink /opt)" = var/opt
 for script in /usr/libexec/bootc-images/*.sh; do
   ok "executable $script" test -x "$script"
+done
+# Read once: with pipefail, `ffmpeg | grep -q` fails when grep stops reading early
+DECODERS=$(ffmpeg -hide_banner -decoders 2>/dev/null)
+for decoder in h264 hevc vp9 av1 mpeg2video aac ac3 eac3 dca truehd flac opus; do
+  ok "ffmpeg decodes $decoder" has_decoder "$decoder"
 done
 ok "starship runs" starship --version
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
