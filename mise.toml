@@ -52,6 +52,64 @@ description = "qcow2 disk for test VMs"
 usage = 'arg "[image]" default="base"'
 run = 'mise run disk "${usage_image?}" qcow2'
 
+[tasks.vm-up]
+description = "Boot the test VM. Creates its throwaway copy only if it is missing"
+usage = '''
+arg "[image]" default="base"
+flag "--gl" help="OpenGL through the host GPU. Video decode stays in software"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dir="output/${usage_image?}"
+disk="$dir/qcow2/disk.qcow2"
+test -f "$disk" || { echo "Missing $disk. Run: mise run vm $usage_image" >&2; exit 1; }
+# QEMU holds a write lock on the disk, however it was started
+if [[ -f "$dir/vm-test.qcow2" ]] && ! qemu-img info "$dir/vm-test.qcow2" >/dev/null 2>&1; then
+  echo "This VM is already running" >&2
+  exit 1
+fi
+if [[ ! -f "$dir/vm-test.qcow2" ]]; then
+  qemu-img create -f qcow2 -F qcow2 -b "$PWD/$disk" "$dir/vm-test.qcow2"
+  cp /usr/share/edk2/ovmf/OVMF_VARS.fd "$dir/vm-vars.fd"
+fi
+video=(-device virtio-vga,xres=1920,yres=1080 -display gtk,zoom-to-fit=off)
+if [[ "${usage_gl:-false}" == "true" ]]; then
+  video=(-device virtio-vga-gl,xres=1920,yres=1080 -display gtk,gl=on,zoom-to-fit=off)
+fi
+GDK_BACKEND=x11 GDK_SCALE=1 exec qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
+  -drive if=pflash,format=raw,file="$dir/vm-vars.fd" \
+  -drive file="$dir/vm-test.qcow2",if=virtio \
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
+  -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
+  "${video[@]}"
+'''
+
+[tasks.vm-reset]
+description = "Erase the test VM's copy, including its home directory. The built disk stays"
+usage = 'arg "[image]" default="base"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dir="output/${usage_image?}"
+if [[ ! -f "$dir/vm-test.qcow2" ]]; then
+  echo "$dir has no VM copy" >&2
+  exit 0
+fi
+if ! qemu-img info "$dir/vm-test.qcow2" >/dev/null 2>&1; then
+  echo "Shut this VM down first" >&2
+  exit 1
+fi
+if [[ ! -t 0 ]]; then
+  echo "Run this from a terminal: it asks for confirmation" >&2
+  exit 1
+fi
+read -r -p "Erase $dir/vm-test.qcow2 and everything in that VM? [y/N] " answer
+[[ "$answer" == [yY] ]] || exit 0
+rm -f "$dir/vm-test.qcow2" "$dir/vm-vars.fd"
+'''
+
 [tasks.iso]
 description = "Installer ISO. It may erase the target disk: not for machines with data"
 usage = 'arg "[image]" default="base"'

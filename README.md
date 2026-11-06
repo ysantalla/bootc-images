@@ -102,32 +102,18 @@ Test disks are 40 GiB with the current `bib/config.example.toml`. If you already
 
 Boot a throwaway copy with QEMU, leaving the built disk untouched, and log in with the user from `bib/config.toml`. The first boot is slow and the screen can stay black for a few minutes. **View → serial0** shows the boot messages meanwhile.
 
-Create the copy once. **Running this again erases the VM**, including its home directory and system versions:
-
 ```bash
-qemu-img create -f qcow2 -F qcow2 -b "$PWD/output/base/qcow2/disk.qcow2" output/base/vm-test.qcow2
-cp /usr/share/edk2/ovmf/OVMF_VARS.fd output/base/vm-vars.fd
+mise run vm-up xps16-da16260         # boots it, and creates the copy only if it is missing
+mise run vm-up xps16-da16260 --gl    # with OpenGL through the host GPU
+mise run vm-reset xps16-da16260      # erases the copy, after asking
 ```
 
-Boot it, as many times as you need:
-
-```bash
-GDK_BACKEND=x11 GDK_SCALE=1 qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
-  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
-  -drive if=pflash,format=raw,file=output/base/vm-vars.fd \
-  -drive file=output/base/vm-test.qcow2,if=virtio \
-  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
-  -chardev qemu-vdagent,id=vdagent,name=vdagent,clipboard=on \
-  -device virtio-serial-pci \
-  -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
-  -device virtio-vga,xres=3200,yres=1800 -display gtk,zoom-to-fit=off
-```
-
-- **Sharp text on a host with fractional scaling:** `GDK_BACKEND=x11 GDK_SCALE=1` avoids the host rescaling QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match, and pick `xres` and `yres` to fit your monitor.
+- **Sharp text on a host with fractional scaling:** `vm-up` sets `GDK_BACKEND=x11 GDK_SCALE=1` so the host does not rescale QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match.
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
-- **Sound:** add `-audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0` to play through the host. It has no microphone input; use `hda-duplex` to add one.
-- **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host. The clipboard flags may not work under Wayland, so SSH is the reliable route.
+- **Sound:** `vm-up` plays through the host, with no microphone input.
+- **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
+- **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
 - **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine
