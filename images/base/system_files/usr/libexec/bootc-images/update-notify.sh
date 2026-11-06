@@ -8,6 +8,8 @@ action=$(notify-send --app-name="System update" --icon=system-software-update \
   --expire-time=0 --action=reboot="Restart now" \
   "Update ready" "Version $version will be applied on the next restart.")
 
+# Ask Plasma, so apps with unsaved work can object. Plain reboot only without Plasma.
 if [[ "$action" == reboot ]]; then
-  systemctl reboot
+  busctl --user call org.kde.Shutdown /Shutdown org.kde.Shutdown logoutAndReboot \
+    || systemctl reboot
 fi

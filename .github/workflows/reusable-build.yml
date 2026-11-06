@@ -10,6 +10,20 @@ on:
       fedora_version:
         required: true
         type: string
+      build_date:
+        description: YYYYMMDD, shared by every image of one run
+        required: true
+        type: string
+      from_image:
+        description: The image this one builds FROM, without a tag. Empty skips the signature check
+        required: false
+        type: string
+        default: ""
+      from_key:
+        description: Public key that must have signed from_image
+        required: false
+        type: string
+        default: ""
       push:
         required: true
         type: boolean
@@ -36,26 +50,46 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Metadata
         id: meta
         run: |
           echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
-          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
       # Before the build: machine images pull FROM our base on GHCR.
       - name: Log in to GHCR
         if: inputs.push
-        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1
+        uses: redhat-actions/podman-login@50c2d9a331bb67c8fdab99b86455fad05e2e3252 # v2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Pinned: machines enforcing signatures were tested against this version's
+      # .sig format. Test that again before moving to another major version.
+      # Also runs on PRs, so an update to this action is exercised before it merges.
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v2.5.2
+
+      # The build uses exactly the copy verified here: it is pulled by digest, and
+      # the build steps never pull (--pull=never).
+      - name: Verify and pull the image this one builds FROM
+        if: inputs.from_image != ''
+        env:
+          FROM: ${{ inputs.from_image }}
+          KEY: ${{ inputs.from_key }}
+          VERSION: ${{ inputs.fedora_version }}
+        run: |
+          digest=$(skopeo inspect --format '{{.Digest}}' "docker://$FROM:$VERSION")
+          cosign verify --key "$KEY" "$FROM@$digest" > /dev/null
+          podman pull "$FROM@$digest"
+          podman tag "$FROM@$digest" "$FROM:$VERSION"
+
       - name: Build
         id: build
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.image }}
           containerfiles: images/${{ inputs.image }}/Containerfile
@@ -63,17 +97,20 @@ jobs:
           tags: >-
             latest
             ${{ inputs.fedora_version }}
-            ${{ inputs.fedora_version }}-${{ steps.meta.outputs.date }}
+            ${{ inputs.fedora_version }}-${{ inputs.build_date }}
           build-args: |
             FEDORA_VERSION=${{ inputs.fedora_version }}
-            BUILD_DATE=${{ steps.meta.outputs.date }}
+            BUILD_DATE=${{ inputs.build_date }}
           oci: false
+          # v3 squashes by default, and machines would download the whole image on every update
+          squash: false
+          extra-args: --pull=never
 
       - name: Test the image
         env:
           IMAGE: ${{ inputs.image }}
           VERSION: ${{ inputs.fedora_version }}
-          BUILD_DATE: ${{ steps.meta.outputs.date }}
+          BUILD_DATE: ${{ inputs.build_date }}
         run: |
           label=$(podman inspect "localhost/$IMAGE:$VERSION" --format '{{index .Labels "org.opencontainers.image.version"}}')
           test "$label" = "$VERSION.$BUILD_DATE"
@@ -81,7 +118,7 @@ jobs:
 
       - name: Build the machine image
         if: inputs.machine_image != ''
-        uses: redhat-actions/buildah-build@9dc2ade9b5db229966b5025ae266311e12f349c4 # v2
+        uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         with:
           context: images/${{ inputs.machine_image }}
           containerfiles: images/${{ inputs.machine_image }}/Containerfile
@@ -89,9 +126,11 @@ jobs:
           tags: ${{ inputs.fedora_version }}
           build-args: |
             FEDORA_VERSION=${{ inputs.fedora_version }}
-            BUILD_DATE=${{ steps.meta.outputs.date }}
+            BUILD_DATE=${{ inputs.build_date }}
             BASE_IMAGE=localhost/${{ inputs.image }}
           oci: false
+          squash: false
+          extra-args: --pull=never
 
       - name: Test the machine image
         if: inputs.machine_image != ''
@@ -100,18 +139,10 @@ jobs:
           VERSION: ${{ inputs.fedora_version }}
         run: podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
 
-      # Pinned: machines enforcing signatures were tested against this version's
-      # .sig format. Test that again before moving to another major version.
-      # Before the push, so a failed install publishes nothing. Also runs on PRs,
-      # so an update to this action is exercised before it merges.
-      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
-        with:
-          cosign-release: v2.5.2
-
       - name: Push
         id: push
         if: inputs.push
-        uses: redhat-actions/push-to-registry@5860fc963bf8f2b3221773a023141612f010c469 # v2
+        uses: redhat-actions/push-to-registry@94ade333c38ecc0e60e94785125d9a52ca423b37 # v3.0.0
         with:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
