@@ -100,6 +100,14 @@ jobs:
           VERSION: ${{ inputs.fedora_version }}
         run: podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
 
+      # Pinned: machines enforcing signatures were tested against this version's
+      # .sig format. Test that again before moving to another major version.
+      # Before the push, so a failed install publishes nothing. Also runs on PRs,
+      # so an update to this action is exercised before it merges.
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+        with:
+          cosign-release: v2.5.2
+
       - name: Push
         id: push
         if: inputs.push
@@ -108,13 +116,6 @@ jobs:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
           registry: ${{ steps.meta.outputs.registry }}
-
-      # Pinned: machines enforcing signatures were tested against this version's
-      # .sig format. Test that again before moving to another major version.
-      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
-        if: inputs.push
-        with:
-          cosign-release: v2.5.2
 
       - name: Sign with cosign and verify the result
         if: inputs.push

@@ -15,6 +15,9 @@ okular
 # Video player. Native, so it uses the image's full ffmpeg and the machine's VA-API driver
 haruna
 
+# Desktop interface font, set in plasma-theme.sh
+rsms-inter-fonts
+
 # Same metrics as Calibri and Cambria, so Office documents keep their layout.
 # Microsoft's fonts are not redistributable in this public image.
 google-carlito-fonts

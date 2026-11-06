@@ -14,10 +14,15 @@ fi
 
 flatpak remote-add --system --if-not-exists flathub \
   https://dl.flathub.org/repo/flathub.flatpakrepo
+# A stock install may already have this remote, disabled or filtered
+flatpak remote-modify --system --enable --no-filter flathub
 
 mapfile -t apps < <(grep -vE '^\s*(#|$)' "$LIST")
-if (( ${#apps[@]} > 0 )); then
-  flatpak install --system --noninteractive --or-update flathub "${apps[@]}"
-fi
+# One at a time, so a bad ID does not block the others. The list counts as done only if all succeed.
+failed=0
+for app in "${apps[@]}"; do
+  flatpak install --system --noninteractive --or-update flathub "$app" || failed=1
+done
+(( failed == 0 ))
 
 echo "$sum" > "$STATE"

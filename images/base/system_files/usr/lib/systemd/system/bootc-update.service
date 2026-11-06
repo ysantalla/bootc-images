@@ -6,6 +6,8 @@ ConditionACPower=true
 
 [Service]
 Type=oneshot
+# A stalled download would otherwise block every later run until a reboot
+TimeoutStartSec=2h
 ExecCondition=/usr/libexec/bootc-images/update-allowed.sh
 ExecStart=/usr/bin/bootc upgrade
 ExecStartPost=/usr/libexec/bootc-images/update-state.sh

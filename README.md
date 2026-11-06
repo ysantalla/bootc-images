@@ -4,8 +4,8 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
-| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, Docker commands on Podman, Okular, Haruna, Office fonts, Plasma style, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
+| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
 
 `base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
 
@@ -17,9 +17,10 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`. `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
-| Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
+| Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar is a first-run preference |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
-| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme from [plasma-tips](https://github.com/ysantalla/plasma-tips), with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
+| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme, with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
+| Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
@@ -39,23 +40,27 @@ images/
   base/
     Containerfile
     build_files/             build-time only, not shipped in the image
-      build.sh               packages, browsers, terminal, services
+      build.sh               packages, browsers, terminal, Plasma style, services, font cache
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
-      browsers.sh            browser launcher flags and first-run preferences
+      browsers.sh            first-run browser preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
-      plasma-theme.sh        Plasma style, pinned to a plasma-tips commit
+      plasma-theme.sh        makes the Plasma style, colors and fonts the default
       tailscale.sh           Tailscale from its official repo
-      packages.txt           Incus, QEMU, zsh, Yakuake, Okular
+      packages.txt           Incus, QEMU, zsh, Yakuake, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
       usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
       usr/lib/systemd/system/          bootc-* services and timer
       usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers
       usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
+      usr/lib/environment.d/           60-bootc-docker-host.conf
       usr/lib/firewalld/zones/         bootc-incus.xml
       usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
+      usr/share/containers/containers.conf.d/ 60-bootc-compose.conf
       usr/share/konsole/               bootc-images.profile
+      usr/share/plasma/desktoptheme/   breeze-custom (Plasma style)
+      usr/share/color-schemes/         BreezeDarkCustom.colors
   xps16-da16260/
     Containerfile
     build_files/
@@ -114,7 +119,7 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 - **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
-- **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
+- **What a VM cannot test:** it has no Intel GPU, so `vainfo` fails there on either image. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine
 
@@ -160,7 +165,7 @@ systemctl list-timers bootc-update.timer
 id -nG                                         # includes incus-admin
 incus list
 flatpak list --system
-vainfo | grep -E 'iHD|H264|HEVC|AV1'           # xps16-da16260 only: hardware decode
+vainfo | grep -E 'iHD|H264|HEVC|AV1'           # Intel hardware only: hardware decode
 ```
 
 ### Hardware video in Chrome (xps16-da16260 only)
@@ -177,7 +182,7 @@ vainfo | grep -E 'iHD|H264|HEVC|AV1'           # xps16-da16260 only: hardware de
 4. In `chrome://webrtc-internals`, under `outbound-rtp`: `powerEfficientEncoder: true` means hardware, while `libvpx`, `OpenH264` or `libaom` as `encoderImplementation` means CPU.
 5. Repeat in a real call, because each platform picks its own codec. `nvtop` shows CPU and GPU use.
 
-The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`browsers.sh`, and `build.sh` in the machine image).
+The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`build.sh` in the machine image).
 
 ## Day to day
 
@@ -199,15 +204,17 @@ To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `s
 
 Projects that need compilers go in an Incus container, not in the image.
 
+On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every `bootc switch`, including `mise run switch`, which does not pass it. According to bootc's source, a switch without it stops enforcing.
+
 ## Changing an image
 
 - **New package:** add it to `images/<image>/build_files/packages.txt`.
 - **New Flatpak:** add it to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. Installed on next boot.
 - **Custom Flatpak launcher:** add a `.desktop` with `TryExec` and `X-Bootc-Images-Managed=true` to `usr/share/bootc-images/applications/`. It is copied to `~/.local/share/applications` at login. A file there without that marker is yours and is left alone, and our copy does not follow changes the app makes to its own launcher.
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
-- **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, and add a job to `build.yml`.
+- **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, add a job to `build.yml`, and add a `case` for it in `tests/smoke.sh`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
-- **Plasma style update:** change `THEME_COMMIT` in `images/base/build_files/plasma-theme.sh` to the new `plasma-tips` commit.
+- **Plasma style update:** edit `usr/share/plasma/desktoptheme/breeze-custom/` and `usr/share/color-schemes/` under `images/base/system_files/`. Its own `README.md` explains the taskbar file.
 - **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:

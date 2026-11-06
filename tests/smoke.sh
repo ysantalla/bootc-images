@@ -21,6 +21,14 @@ not() { ! "$@"; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
+zsh_is_clean() { [[ -z "$(HOME=$(mktemp -d) TERM=dumb zsh -ic exit 2>&1)" ]]; }
+# Only our units: upstream's bootc-* complain here. Read once: with pipefail, `verify | grep -q` misreads a match
+units_are_valid() {
+  local out
+  out=$(cd /usr/lib/systemd/system && systemd-analyze verify bootc-flatpaks.service bootc-setup.service bootc-update.service bootc-update.timer 2>&1)
+  ! grep -qE 'bootc-(flatpaks|setup|update)\.' <<<"$out"
+}
+user_units_are_valid() { local out; out=$(systemd-analyze --user verify /usr/lib/systemd/user/bootc-* 2>&1); ! grep -q bootc- <<<"$out"; }
 podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 # As on a real machine: mtimes of 0 and a user who cannot rewrite the image's font cache
@@ -37,7 +45,7 @@ repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '
 
 # Every Exec line of a launcher carries (or lacks) a flag
 all_exec_have() { grep -q '^Exec=' "$1" && ! grep '^Exec=' "$1" | grep -qvF -- "$2"; }
-no_exec_has() { ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
+no_exec_has() { [[ -f "$1" ]] && ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
 
 LAUNCHERS=(google-chrome com.google.Chrome brave-origin com.brave.Origin)
 ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
@@ -76,6 +84,11 @@ ok "docker is Podman" podman_docker
 ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins/docker-compose
 ok "docker compose runs without the provider notice" compose_is_quiet
 ok "starship runs" starship --version
+ok "zsh starts without errors" zsh_is_clean
+ok "Konsole opens our profile" grep -qx 'DefaultProfile=bootc-images.profile' /etc/xdg/konsolerc
+ok "Yakuake starts with the session" test -f /etc/xdg/autostart/org.kde.yakuake.desktop
+ok "our system units are valid" units_are_valid
+ok "our user units are valid" user_units_are_valid
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
 # Must run before the fc-list and fc-match calls below, which can rewrite the cache as root
 ok "a machine can see the terminal font" machine_sees_font "MesloLGS Nerd Font"
@@ -89,13 +102,17 @@ ok "Plasma style is the default" grep -q '^name=breeze-custom$' /etc/xdg/plasmar
 ok "Plasma style is in the look-and-feel" grep -q '^name=breeze-custom$' /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults
 ok "color scheme is installed" grep -q '^Name=Breeze Dark Custom' /usr/share/color-schemes/BreezeDarkCustom.colors
 ok "color scheme is the default" grep -q '^ColorScheme=BreezeDarkCustom$' /etc/xdg/kdeglobals
+ok "a machine can see the interface font" machine_sees_font Inter
+ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
+ok "no sub-pixel text in KDE" grep -q '^XftSubPixel=none$' /etc/xdg/kdeglobals
+ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/bootc-images/build-time
 
 for launcher in "${LAUNCHERS[@]}"; do
-  ok "Wayland flag in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" --ozone-platform=wayland
+  ok "no Wayland flag in $launcher" no_exec_has "/usr/share/applications/$launcher.desktop" --ozone-platform
 done
 for dir in /usr/lib/google/chrome /usr/lib/brave.com/brave-origin; do
   ok "system title bar in $dir" jq -e '.browser.custom_chrome_frame == false' "$dir/initial_preferences"
