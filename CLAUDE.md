@@ -35,6 +35,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-bootc-compose.conf` silences the provider notice.
 - **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme from `ysantalla/plasma-tips`, pinned to a commit in `plasma-theme.sh`, with Breeze's dark icons. They are the default for new users. The owner's Tela icon theme is not included.
+- **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
 - **Okular:** native RPM.
 - **Haruna:** native RPM. It plays through `mpv-libs` and the full ffmpeg, both from negativo17 via `kinoite-main`. `yt-dlp` comes as a weak dependency.
 - **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
@@ -339,6 +340,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Nothing is verified on the real XPS.
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - A user created after the Plasma defaults shipped.
+- Inter and no sub-pixel text in a real session, and on the XPS panel.
 - Haruna with audio, and Intel hardware decode on the XPS.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.

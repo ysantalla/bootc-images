@@ -89,6 +89,10 @@ ok "Plasma style is the default" grep -q '^name=breeze-custom$' /etc/xdg/plasmar
 ok "Plasma style is in the look-and-feel" grep -q '^name=breeze-custom$' /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults
 ok "color scheme is installed" grep -q '^Name=Breeze Dark Custom' /usr/share/color-schemes/BreezeDarkCustom.colors
 ok "color scheme is the default" grep -q '^ColorScheme=BreezeDarkCustom$' /etc/xdg/kdeglobals
+ok "a machine can see the interface font" machine_sees_font Inter
+ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
+ok "no sub-pixel text in KDE" grep -q '^XftSubPixel=none$' /etc/xdg/kdeglobals
+ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The owner's Plasma style and color scheme, as the default for new users.
+# The owner's Plasma style, color scheme and fonts, as the default for new users.
 # Source: github.com/ysantalla/plasma-tips, pinned to a commit. To update, change the commit here.
 set -euxo pipefail
 
@@ -35,4 +35,29 @@ grep -q "^name=$THEME_ID\$" "$defaults"
 grep -q "^ColorScheme=$COLOR_SCHEME\$" "$defaults"
 grep -q '^Theme=breeze-dark$' "$defaults"
 printf '[Theme]\nname=%s\n' "$THEME_ID" > /etc/xdg/plasmarc
-printf '[General]\nColorScheme=%s\n\n[Icons]\nTheme=breeze-dark\n' "$COLOR_SCHEME" > /etc/xdg/kdeglobals
+
+# The owner's interface fonts. Noto stays the system's sans-serif, for its language coverage.
+FONT_TAIL=-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+cat > /etc/xdg/kdeglobals <<EOF
+[General]
+ColorScheme=$COLOR_SCHEME
+XftAntialias=true
+XftHintStyle=hintslight
+XftSubPixel=none
+font=Inter,11,$FONT_TAIL
+menuFont=Inter,11,$FONT_TAIL
+smallestReadableFont=Inter,9,$FONT_TAIL
+toolBarFont=Inter,11,$FONT_TAIL
+
+[Icons]
+Theme=breeze-dark
+
+[WM]
+activeFont=Inter,11,$FONT_TAIL
+EOF
+
+# No sub-pixel text for apps that read fontconfig: Fedora assumes RGB stripes on KDE, and OLED
+# panels often lack them. This replaces its rule rather than overriding it.
+test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
+rm /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
+ln -s /usr/share/fontconfig/conf.avail/10-sub-pixel-none.conf /etc/fonts/conf.d/10-sub-pixel-none.conf
