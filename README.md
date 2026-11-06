@@ -19,6 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
 | Okular | Native PDF and document viewer |
+| Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |

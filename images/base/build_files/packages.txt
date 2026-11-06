@@ -12,6 +12,9 @@ yakuake
 # PDF and document viewer
 okular
 
+# Video player. Native, so it uses the image's full ffmpeg and the machine's VA-API driver
+haruna
+
 # Same metrics as Calibri and Cambria, so Office documents keep their layout.
 # Microsoft's fonts are not redistributable in this public image.
 google-carlito-fonts

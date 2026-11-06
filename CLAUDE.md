@@ -34,6 +34,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
 - **Okular:** native RPM.
+- **Haruna:** native RPM. It plays through `mpv-libs` and the full ffmpeg, both from negativo17 via `kinoite-main`. `yt-dlp` comes as a weak dependency.
 - **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, MesloLGS Nerd Font, and Konsole and Yakuake defaults (`shell.sh`). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
@@ -322,6 +323,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Nothing is verified on the real XPS.
 - MesloLGS Nerd Font in Konsole, from a published image, on a new user. JetBrainsMono Nerd Font Mono did not appear in Konsole's font list in a VM, and why is unknown. `MesloLGS NF` from `powerlevel10k-media` displayed correctly, so it is the fallback.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
+- Haruna in a real session: playback, opening videos by default (the KDE defaults still name Dragon Player, which is not installed), and Intel hardware decode on the XPS.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
 - Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
