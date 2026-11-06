@@ -19,6 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
+| Plasma style | `breeze-custom` from [plasma-tips](https://github.com/ysantalla/plasma-tips), with custom taskbar indicators, as the default for new users. An existing `~/.config/plasmarc` keeps its choice |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
@@ -44,6 +45,7 @@ images/
       browsers.sh            browser launcher flags and first-run preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
+      plasma-theme.sh        Plasma style, pinned to a plasma-tips commit
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, Okular
     system_files/            copied as-is to / in the image
@@ -218,6 +220,7 @@ Projects that need compilers go in an Incus container, not in the image.
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, and add a job to `build.yml`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
+- **Plasma style update:** change `THEME_COMMIT` in `images/base/build_files/plasma-theme.sh` to the new `plasma-tips` commit.
 - **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:

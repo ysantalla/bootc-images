@@ -21,6 +21,9 @@ dnf5 -y remove toolbox distrobox
 # zsh, Starship, Nerd Font, Konsole and Yakuake defaults
 /ctx/shell.sh
 
+# The owner's Plasma style, as the default for new users
+/ctx/plasma-theme.sh
+
 # Tailscale, from its official repo
 /ctx/tailscale.sh
 
