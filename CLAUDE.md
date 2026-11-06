@@ -159,7 +159,9 @@ All local tasks are defined in `mise.toml`. They need `mise` and rootful `podman
 mise tasks                          # list tasks
 mise run build base                 # build an image locally
 mise run build xps16-da16260        # builds local base first if missing
-mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2 (boot steps in README)
+mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2
+mise run vm-up base                 # boot the test VM, keeping its contents
+mise run vm-reset base              # erase the test VM's copy, after asking
 mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build
 mise run switch xps16-da16260       # switch THIS machine to the published image
