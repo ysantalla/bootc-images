@@ -34,7 +34,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): menu launchers pass `--ozone-platform=wayland`, and `initial_preferences` asks for the system title bar on first run. Terminal launches and installed web apps do not get launcher flags. The build fails if a vendor `.desktop` change stops the flags from applying.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`).
-- **Plasma style:** `breeze-custom` from `ysantalla/plasma-tips`, pinned to a commit in `plasma-theme.sh`. It is the default for new users, and the repo's `breeze-dark` stays out because it would replace Plasma's own. The owner's `BreezeDarkCustom` color scheme is not in that repo, so it is not in the image.
+- **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme from `ysantalla/plasma-tips`, pinned to a commit in `plasma-theme.sh`, with Breeze's dark icons. They are the default for new users. The owner's Tela icon theme is not included.
 - **Okular:** native RPM.
 - **Haruna:** native RPM. It plays through `mpv-libs` and the full ffmpeg, both from negativo17 via `kinoite-main`. `yt-dlp` comes as a weak dependency.
 - **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
@@ -326,7 +326,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Nothing is verified on the real XPS.
 - MesloLGS Nerd Font in Konsole, from a published image, on a new user. JetBrainsMono Nerd Font Mono did not appear in Konsole's font list in a VM, and why is unknown. `MesloLGS NF` from `powerlevel10k-media` displayed correctly, so it is the fallback.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
-- The Plasma style in a real session: taskbar indicators, and whether a new user gets it by default.
+- The Plasma style and colors in a real session: taskbar indicators, whether they follow the accent color, and whether a new user gets them by default.
 - Docker commands in a real session: `docker run`, and `docker compose` on the owner's projects, which use profiles, health checks and published ports. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - Haruna in a real session: playback, opening videos by default (the KDE defaults still name Dragon Player, which is not installed), and Intel hardware decode on the XPS.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
