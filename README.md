@@ -19,7 +19,8 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
 | Okular | Native PDF and document viewer |
-| Terminal | zsh, Starship with a Powerlevel10k-style prompt, JetBrainsMono Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
+| Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
+| Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides |
 | Updates | `bootc-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
@@ -97,10 +98,16 @@ Test disks are 40 GiB with the current `bib/config.example.toml`. If you already
 
 Boot a throwaway copy with QEMU, leaving the built disk untouched, and log in with the user from `bib/config.toml`. The first boot is slow and the screen can stay black for a few minutes. **View → serial0** shows the boot messages meanwhile.
 
+Create the copy once. **Running this again erases the VM**, including its home directory and system versions:
+
 ```bash
 qemu-img create -f qcow2 -F qcow2 -b "$PWD/output/base/qcow2/disk.qcow2" output/base/vm-test.qcow2
 cp /usr/share/edk2/ovmf/OVMF_VARS.fd output/base/vm-vars.fd
+```
 
+Boot it, as many times as you need:
+
+```bash
 GDK_BACKEND=x11 GDK_SCALE=1 qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
   -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
   -drive if=pflash,format=raw,file=output/base/vm-vars.fd \
@@ -113,6 +120,7 @@ GDK_BACKEND=x11 GDK_SCALE=1 qemu-system-x86_64 -enable-kvm -machine q35 -cpu hos
 ```
 
 - **Sharp text on a host with fractional scaling:** `GDK_BACKEND=x11 GDK_SCALE=1` avoids the host rescaling QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match, and pick `xres` and `yres` to fit your monitor.
+- **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
 - **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host. The clipboard flags may not work under Wayland, so SSH is the reliable route.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
@@ -154,7 +162,7 @@ From then on it refuses unsigned images. Tags built before the key rotation of 2
 ## 4. Verify
 
 ```bash
-bootc status                                   # current image and rollback
+sudo bootc status                              # current image and rollback
 rpm-ostree status                              # no LayeredPackages
 systemctl status bootc-setup bootc-flatpaks
 systemctl list-timers bootc-update.timer

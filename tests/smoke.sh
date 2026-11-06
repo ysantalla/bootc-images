@@ -20,6 +20,8 @@ ok() { # ok <description> <command...>
 not() { ! "$@"; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
+font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
+font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
 repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '^enabled=1' "/etc/yum.repos.d/$1.repo"; }
 
 # Every Exec line of a launcher carries (or lacks) a flag
@@ -56,7 +58,12 @@ for script in /usr/libexec/bootc-images/*.sh; do
 done
 ok "starship runs" starship --version
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
-ok "Nerd Font is installed" test -s /usr/share/fonts/jetbrains-mono-nerd/JetBrainsMonoNerdFontMono-Regular.ttf
+# A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank
+ok "terminal font has the Fedora icon" font_has "MesloLGS Nerd Font" f30a
+ok "terminal font has the prompt separator" font_has "MesloLGS Nerd Font" e0b0
+ok "Calibri documents use Carlito" font_for Calibri Carlito
+ok "Cambria documents use Caladea" font_for Cambria Caladea
+ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/bootc-images/build-time
 
 for launcher in "${LAUNCHERS[@]}"; do

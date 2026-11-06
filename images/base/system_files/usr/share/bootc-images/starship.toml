@@ -1,5 +1,5 @@
 # p10k "classic" look: light OS segment, dark segment with directory and git.
-# Needs a Nerd Font (JetBrainsMono Nerd Font in bootc-images).
+# Needs a Nerd Font (MesloLGS Nerd Font in bootc-images).
 
 format = """
 $os\

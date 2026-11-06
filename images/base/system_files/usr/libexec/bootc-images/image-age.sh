@@ -10,5 +10,5 @@ days=$(( ($(date +%s) - built) / 86400 ))
 
 if (( days > MAX_DAYS )); then
   notify-send --app-name="System update" --icon=dialog-warning \
-    "System image is out of date" "This image was built $days days ago. Check 'bootc status' and the GitHub Actions builds."
+    "System image is out of date" "This image was built $days days ago. Check 'sudo bootc status' and the GitHub Actions builds."
 fi
