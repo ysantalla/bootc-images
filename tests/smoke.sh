@@ -70,6 +70,11 @@ ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-ima
 # A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank
 ok "terminal font has the Fedora icon" font_has "MesloLGS Nerd Font" f30a
 ok "terminal font has the prompt separator" font_has "MesloLGS Nerd Font" e0b0
+THEME=/usr/share/plasma/desktoptheme/breeze-custom
+ok "Plasma style has its id" jq -e '.KPlugin.Id == "breeze-custom"' "$THEME/metadata.json"
+ok "Plasma style has its taskbar" gzip -t "$THEME/widgets/tasks.svgz"
+ok "Plasma style is the default" grep -q '^name=breeze-custom$' /etc/xdg/plasmarc
+ok "Plasma style is in the look-and-feel" grep -q '^name=breeze-custom$' /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile
