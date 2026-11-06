@@ -326,18 +326,23 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Verified in a VM (`xps16-da16260`, `45.20261105`, 2026-11-05):** boots from a local disk; `bootc switch` to GHCR; no layered packages; `bootc rollback` in both directions, with the home directory kept; Flatpak install. `bootc switch --enforce-container-sigpolicy` deploys as `ostree-image-signed`, and `bootc upgrade --check` reports no error, but that was the same digest, so no new image has been accepted or refused under it yet.
 
+**Verified in a VM (`xps16-da16260`, `45.20261106`, 2026-11-05):**
+- Enforced signatures: an image signed with the current key was accepted through both `bootc switch` and `bootc upgrade`, and an image signed with the old key was refused with a signature error, leaving the deployments unchanged.
+- MesloLGS Nerd Font in Konsole, with the prompt icons, after the `fc-cache -f` fix. `tests/smoke.sh` catches the original failure.
+- `breeze-custom`, `BreezeDarkCustom` and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
+- `docker run`, and `docker compose up` and `down` with nginx, a published port and a named volume, which survives `down`.
+- Haruna opens an HEVC file from Dolphin by default and shows the picture. Audio and hardware decode were not checked.
+
 **Not tested yet:**
 - Nothing is verified on the real XPS.
-- MesloLGS Nerd Font in Konsole from a published image. The image's font cache did not include it, which is probably also why JetBrainsMono Nerd Font Mono never appeared in Konsole. As a normal user with mtimes at 0, the bug reproduces in a container, and `fc-cache -f` at build time fixes it.
+- `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
+- A user created after the Plasma defaults shipped.
+- Haruna with audio, and Intel hardware decode on the XPS.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
-- The Plasma style and colors in a real session: taskbar indicators, whether they follow the accent color, and whether a new user gets them by default.
-- Docker commands in a real session: `docker run`, and `docker compose` on the owner's projects, which use profiles, health checks and published ports. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
-- Haruna in a real session: playback, opening videos by default (the KDE defaults still name Dragon Player, which is not installed), and Intel hardware decode on the XPS.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
 - Whether Chrome and Brave run on native Wayland. They should by default since Chrome 140, and nothing in the image sets it. Check `chrome://gpu`, or start them with `env -u DISPLAY`.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
-- Accepting and refusing a new image with signatures enforced. The policy file was only tested against other images with `skopeo`.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
 - The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
