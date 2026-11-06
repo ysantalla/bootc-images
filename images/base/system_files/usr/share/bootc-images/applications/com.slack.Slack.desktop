@@ -3,7 +3,7 @@ TryExec=/var/lib/flatpak/exports/bin/com.slack.Slack
 X-Bootc-Images-Managed=true
 Categories=GNOME;GTK;Network;InstantMessaging;
 Comment=Slack Desktop
-Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=com.slack.Slack com.slack.Slack --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer --ozone-platform=wayland @@u %U @@
+Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=com.slack.Slack --file-forwarding com.slack.Slack --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer --ozone-platform=wayland @@u %U @@
 GenericName=Slack Client for Linux
 Icon=com.slack.Slack
 MimeType=x-scheme-handler/slack;
