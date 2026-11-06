@@ -113,7 +113,7 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 - **Sound:** `vm-up` plays through the host, with no microphone input.
 - **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
-- **`--gl`:** gives the VM OpenGL for testing GPU compositing. Video decode stays in software, and it is not Vulkan.
+- **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
 - **What a VM cannot test:** it has no Intel GPU, and the Intel driver is only in `xps16-da16260`, so `vainfo` fails there. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine
