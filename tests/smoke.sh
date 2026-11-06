@@ -75,6 +75,8 @@ ok "Plasma style has its id" jq -e '.KPlugin.Id == "breeze-custom"' "$THEME/meta
 ok "Plasma style has its taskbar" gzip -t "$THEME/widgets/tasks.svgz"
 ok "Plasma style is the default" grep -q '^name=breeze-custom$' /etc/xdg/plasmarc
 ok "Plasma style is in the look-and-feel" grep -q '^name=breeze-custom$' /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults
+ok "color scheme is installed" grep -q '^Name=Breeze Dark Custom' /usr/share/color-schemes/BreezeDarkCustom.colors
+ok "color scheme is the default" grep -q '^ColorScheme=BreezeDarkCustom$' /etc/xdg/kdeglobals
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile
