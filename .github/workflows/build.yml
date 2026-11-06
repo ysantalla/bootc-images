@@ -21,7 +21,12 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-24.04
+    outputs:
+      # One date for the whole run, so a build that crosses midnight UTC keeps matching tags
+      date: ${{ steps.date.outputs.date }}
     steps:
+      - id: date
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: shellcheck
         run: shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
@@ -39,6 +44,9 @@ jobs:
     with:
       image: base
       fedora_version: "45"
+      build_date: ${{ needs.lint.outputs.date }}
+      from_image: ghcr.io/ublue-os/kinoite-main
+      from_key: .github/keys/ublue-os.pub
       push: ${{ github.event_name != 'pull_request' }}
       # A pull request publishes nothing, so machine images build FROM this local base.
       machine_image: ${{ github.event_name == 'pull_request' && 'xps16-da16260' || '' }}
@@ -48,7 +56,7 @@ jobs:
 
   # Builds FROM the base just pushed, so it waits for it.
   xps16-da16260:
-    needs: base
+    needs: [lint, base]
     if: github.event_name != 'pull_request'
     uses: ./.github/workflows/reusable-build.yml
     permissions:
@@ -57,6 +65,9 @@ jobs:
     with:
       image: xps16-da16260
       fedora_version: "45"
+      build_date: ${{ needs.lint.outputs.date }}
+      from_image: ghcr.io/ysantalla/base
+      from_key: cosign.pub
       push: true
     secrets:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
