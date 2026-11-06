@@ -20,6 +20,11 @@ haruna
 google-carlito-fonts
 google-crosextra-caladea-fonts
 
+# Docker commands on top of Podman, with no Docker engine.
+# `docker compose` runs the real Compose through Podman's socket.
+podman-docker
+docker-compose
+
 # Incus VMs: the incus RPM does not pull these in (edk2-ovmf and qemu-img already come from upstream)
 qemu-system-x86-core
 # Incus always gives VMs a virtio-vga device, and QEMU ships it as a separate module

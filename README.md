@@ -4,7 +4,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker, no libvirt, no Toolbx or Distrobox |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
 | `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
 
 `base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
@@ -18,6 +18,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Menu launchers for both browsers start on Wayland, and `xps16-da16260` adds Intel video flags. The system title bar is a first-run preference. Terminal launches and installed web apps do not get the flags |
+| Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
