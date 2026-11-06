@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "ysantalla880919@gmail.com",
+                "Name": "Ing. Yasmany Santalla"
+            }
+        ],
+        "Category": "",
+        "Description": "Customized Breeze Dark theme with modified taskbar indicators",
+        "EnabledByDefault": true,
+        "Id": "breeze-custom",
+        "License": "LGPL-2.1-or-later",
+        "Name": "Breeze Dark Custom",
+        "Version": "1.1.0",
+        "Website": "https://github.com/ysantalla/bootc-images"
+    },
+    "X-Plasma-API": "6.0"
+}

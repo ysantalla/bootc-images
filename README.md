@@ -19,7 +19,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar is a first-run preference |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
-| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme from [plasma-tips](https://github.com/ysantalla/plasma-tips), with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
+| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme, with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
@@ -46,7 +46,7 @@ images/
       browsers.sh            first-run browser preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
-      plasma-theme.sh        Plasma style, pinned to a plasma-tips commit
+      plasma-theme.sh        makes the Plasma style, colors and fonts the default
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
@@ -59,6 +59,8 @@ images/
       usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-bootc-compose.conf
       usr/share/konsole/               bootc-images.profile
+      usr/share/plasma/desktoptheme/   breeze-custom (Plasma style)
+      usr/share/color-schemes/         BreezeDarkCustom.colors
   xps16-da16260/
     Containerfile
     build_files/
@@ -212,7 +214,7 @@ On a machine that enforces signatures, add `--enforce-container-sigpolicy` to ev
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, add a job to `build.yml`, and add a `case` for it in `tests/smoke.sh`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
-- **Plasma style update:** change `THEME_COMMIT` in `images/base/build_files/plasma-theme.sh` to the new `plasma-tips` commit.
+- **Plasma style update:** edit `usr/share/plasma/desktoptheme/breeze-custom/` and `usr/share/color-schemes/` under `images/base/system_files/`. Its own `README.md` explains the taskbar file.
 - **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:

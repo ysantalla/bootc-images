@@ -34,7 +34,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar on first run. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-bootc-compose.conf` silences the provider notice.
-- **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme from `ysantalla/plasma-tips`, pinned to a commit in `plasma-theme.sh`, with Breeze's dark icons. They are the default for new users. The owner's Tela icon theme is not included.
+- **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme in `system_files`, moved here from `ysantalla/plasma-tips`, with Breeze's dark icons. `plasma-theme.sh` makes them the default for new users. The owner's Tela icon theme is not included.
 - **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
 - **Okular:** native RPM.
 - **Haruna:** native RPM. It plays through `mpv-libs` and the full ffmpeg, both from negativo17 via `kinoite-main`. `yt-dlp` comes as a weak dependency.
@@ -87,7 +87,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   ├── browsers.sh            first-run browser preferences
     │   │   ├── signing.sh             signature policy for machines that opt in
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
-    │   │   ├── plasma-theme.sh        Plasma style from plasma-tips (pinned commit)
+    │   │   ├── plasma-theme.sh        makes the Plasma style, colors and fonts the default
     │   │   ├── tailscale.sh           Tailscale from its official repo
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
@@ -100,7 +100,9 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/firewalld/zones/ bootc-incus.xml
     │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
     │           ├── share/containers/containers.conf.d/ 60-bootc-compose.conf
-    │           └── share/konsole/     bootc-images.profile
+    │           ├── share/konsole/     bootc-images.profile
+    │           ├── share/plasma/desktoptheme/ breeze-custom
+    │           └── share/color-schemes/ BreezeDarkCustom.colors
     └── xps16-da16260/
         ├── Containerfile
         └── build_files/
@@ -346,7 +348,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Inter and no sub-pixel text in a real session, and on the XPS panel.
 - Haruna with audio, and Intel hardware decode on the XPS. `vm-up` sound was heard in YouTube, in a browser in the VM.
 - Installing stock Kinoite and running `bootc switch`, the path `README.md` recommends. All VM results started from a bootc-image-builder disk.
-- The Slack launcher keeps the owner's line, with `@@u %U @@` but no `--file-forwarding`, which `man flatpak-run` says those markers need. Check that it opens `slack://` links.
+- The Slack launcher in a real session. It gained `--file-forwarding`, which `man flatpak-run` says `@@u %U @@` needs. Check that it opens `slack://` links.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
