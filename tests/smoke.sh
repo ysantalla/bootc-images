@@ -20,6 +20,7 @@ ok() { # ok <description> <command...>
 not() { ! "$@"; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
+compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
 podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 # As on a real machine: mtimes of 0 and a user who cannot rewrite the image's font cache
@@ -73,6 +74,7 @@ for decoder in h264 hevc vp9 av1 mpeg2video aac ac3 eac3 dca truehd flac opus; d
 done
 ok "docker is Podman" podman_docker
 ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins/docker-compose
+ok "docker compose runs without the provider notice" compose_is_quiet
 ok "starship runs" starship --version
 ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
 # Must run before the fc-list and fc-match calls below, which can rewrite the cache as root
