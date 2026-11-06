@@ -25,10 +25,11 @@ zsh_is_clean() { [[ -z "$(HOME=$(mktemp -d) TERM=dumb zsh -ic exit 2>&1)" ]]; }
 # Only our units: upstream's bootc-* complain here. Read once: with pipefail, `verify | grep -q` misreads a match
 units_are_valid() {
   local out
+  command -v systemd-analyze >/dev/null || return 1
   out=$(cd /usr/lib/systemd/system && systemd-analyze verify bootc-flatpaks.service bootc-setup.service bootc-update.service bootc-update.timer 2>&1)
   ! grep -qE 'bootc-(flatpaks|setup|update)\.' <<<"$out"
 }
-user_units_are_valid() { local out; out=$(systemd-analyze --user verify /usr/lib/systemd/user/bootc-* 2>&1); ! grep -q bootc- <<<"$out"; }
+user_units_are_valid() { local out; command -v systemd-analyze >/dev/null || return 1; out=$(systemd-analyze --user verify /usr/lib/systemd/user/bootc-* 2>&1); ! grep -q bootc- <<<"$out"; }
 podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 # As on a real machine: mtimes of 0 and a user who cannot rewrite the image's font cache
@@ -38,6 +39,13 @@ machine_sees_font() {
   home=$(mktemp -d)
   chmod 0777 "$home"
   [[ -n "$(runuser -u nobody -- env HOME="$home" XDG_CACHE_HOME="$home/.cache" fc-list "$1" family)" ]]
+}
+# What a user with an empty home reads, with the config path Plasma's session sets
+kde_default() { # kde_default <file> <group> <key> <expected prefix>
+  local value
+  value=$(HOME=$(mktemp -d) XDG_CONFIG_DIRS=/etc/xdg:/usr/share/kde-settings/kde-profile/default/xdg \
+    kreadconfig6 --file "$1" --group "$2" --key "$3")
+  [[ "$value" == "$4"* ]]
 }
 font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
@@ -105,6 +113,15 @@ ok "color scheme is the default" grep -q '^ColorScheme=BreezeDarkCustom$' /etc/x
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
 ok "no sub-pixel text in KDE" grep -q '^XftSubPixel=none$' /etc/xdg/kdeglobals
+ok "Plasma's session reads /etc/xdg first" grep -q 'XDG_CONFIG_DIRS=/etc/xdg:' /etc/xdg/plasma-workspace/env/env.sh
+ok "a new user gets the interface font" kde_default kdeglobals General font Inter,11,
+ok "a new user gets the menu font" kde_default kdeglobals General menuFont Inter,11,
+ok "a new user gets no sub-pixel text" kde_default kdeglobals General XftSubPixel none
+ok "a new user gets the dark icons" kde_default kdeglobals Icons Theme breeze-dark
+ok "a new user gets the color scheme" kde_default kdeglobals General ColorScheme BreezeDarkCustom
+ok "a new user gets the Plasma style" kde_default plasmarc Theme name breeze-custom
+ok "Slack launcher forwards links" all_exec_have /usr/share/bootc-images/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
+ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr/libexec/bootc-images/update-notify.sh
 ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
