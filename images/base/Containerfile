@@ -1,5 +1,5 @@
 # base: near-stock Kinoite (codecs and Podman from kinoite-main) plus the layer every machine shares.
-# No Docker, no libvirt. Hardware-agnostic: every machine image builds FROM this one.
+# No Docker engine, no libvirt. Hardware-agnostic: every machine image builds FROM this one.
 #
 # Pin the Fedora version and bump it on purpose.
 ARG FEDORA_VERSION=45

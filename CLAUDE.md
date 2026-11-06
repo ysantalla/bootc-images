@@ -81,7 +81,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     ├── base/
     │   ├── Containerfile
     │   ├── build_files/               build-time only, NOT shipped in the image
-    │   │   ├── build.sh               entry point: packages, Brave, services
+    │   │   ├── build.sh               entry point: packages, browsers, terminal, Plasma style, services, font cache
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
     │   │   ├── browsers.sh            first-run browser preferences
@@ -96,8 +96,10 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/systemd/system/ bootc-*.service / .timer
     │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-image-age.*, bootc-desktop-entries.service
     │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
+    │           ├── lib/environment.d/ 60-bootc-docker-host.conf
     │           ├── lib/firewalld/zones/ bootc-incus.xml
     │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
+    │           ├── share/containers/containers.conf.d/ 60-bootc-compose.conf
     │           └── share/konsole/     bootc-images.profile
     └── xps16-da16260/
         ├── Containerfile
@@ -109,7 +111,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 ### Build pattern (every image follows it)
 
 1. A `ctx` stage (`FROM scratch`) holds `build_files/`. It is bind-mounted during the build, so build scripts **never end up in the image**.
-2. `system_files/` (when present) is copied to `/`.
+2. `system_files/` is copied to `/` in `base`. `xps16-da16260` has no `COPY` line or `chmod` yet, so the first machine script or unit (auto-boost) must add both.
 3. `build.sh` runs with `/var/cache` as a cache mount and `/tmp` as tmpfs.
 4. `bootc container lint` runs last. **It must pass.** Never remove it.
 
@@ -197,7 +199,8 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 
 1. `cp -r images/xps16-da16260 images/<model>` and strip it down to what the new hardware needs.
 2. Add a job to `.github/workflows/build.yml` with `needs: base`, mirroring the XPS job.
-3. Update the image table in `README.md` and in this file.
+3. Add a `case` for it in `tests/smoke.sh`: an unknown name fails the build.
+4. Update the image table in `README.md` and in this file.
 
 ### Bump the Fedora version
 
@@ -216,12 +219,12 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 - **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
 - **On pull requests,** nothing is pushed. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
-- **Actions are pinned by SHA** and Dependabot proposes updates. cosign stays on 2.x, because enforcing machines were tested against its `.sig` format.
+- **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
-A failed build never reaches a machine: hosts keep running the last good image.
+A failed build or test never reaches a machine. A signing failure after the push can leave `:latest` unsigned: enforcing machines refuse it, and others accept it.
 
 ---
 
@@ -341,7 +344,9 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - A user created after the Plasma defaults shipped.
 - Inter and no sub-pixel text in a real session, and on the XPS panel.
-- Haruna with audio, and Intel hardware decode on the XPS.
+- Haruna with audio, and Intel hardware decode on the XPS. `vm-up` sound was heard in YouTube, in a browser in the VM.
+- Installing stock Kinoite and running `bootc switch`, the path `README.md` recommends. All VM results started from a bootc-image-builder disk.
+- The Slack launcher keeps the owner's line, with `@@u %U @@` but no `--file-forwarding`, which `man flatpak-run` says those markers need. Check that it opens `slack://` links.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
@@ -362,6 +367,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Whether to use the internal camera or a USB webcam for video calls.
 
 **Known small improvements, not applied:**
+- A signing failure after the push can leave `:latest` unsigned. Fixing it needs a staging tag.
+- CI does not verify the signature of the upstream `kinoite-main` image.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.
 
