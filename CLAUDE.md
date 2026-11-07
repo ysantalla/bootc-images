@@ -41,6 +41,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, MesloLGS Nerd Font, Konsole and Yakuake defaults (`shell.sh`), and `fastfetch` for a system summary. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
+- **Firewall:** the default zone `bootc-laptop` only lets in DHCPv6, mDNS, KDE Connect and GNOME Network Displays. Trusted networks go to `FedoraWorkstation` by hand, and the tailnet is accepted.
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
 - **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `bootc-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
@@ -100,7 +101,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-image-age.*, bootc-desktop-entries.service
     │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
     │           ├── lib/environment.d/ 60-bootc-docker-host.conf
-    │           ├── lib/firewalld/zones/ bootc-incus.xml
+    │           ├── lib/firewalld/zones/ bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
     │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
     │           ├── share/containers/containers.conf.d/ 60-bootc-compose.conf
     │           ├── share/konsole/     bootc-images.profile
@@ -381,11 +382,12 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Also decided by the owner:** `incus-startup.service` stays disabled (2026-11-06). Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
 
+**Firewall, decided by the owner (2026-11-07):** the default zone is `bootc-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `bootc-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
+
 **VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
 
 **Decisions pending from the owner:**
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
-- Firewall on untrusted networks. The default zone accepts ports 1025-65535 on any network, which is Fedora's default. A stricter zone needs testing with KDE Connect and Network Displays.
 - Whether to use the internal camera or a USB webcam for video calls.
 
 **Known small improvements, not applied:**

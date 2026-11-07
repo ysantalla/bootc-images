@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default zone, so a network not marked as trusted cannot reach development servers or containers. -->
+<zone>
+  <short>Laptop</short>
+  <description>Any network: only DHCPv6, local discovery, KDE Connect and GNOME Network Displays can reach this machine. Assign a trusted home network to FedoraWorkstation instead.</description>
+  <service name="dhcpv6-client"/>
+  <service name="mdns"/>
+  <service name="kdeconnect"/>
+  <!-- GNOME Network Displays: the display connects back for Miracast (RTSP) and Miracast over the network -->
+  <port protocol="tcp" port="7236"/>
+  <port protocol="tcp" port="7250"/>
+</zone>
