@@ -157,6 +157,57 @@ fi
 echo "Screen: incus console $name --type=vga"
 '''
 
+[tasks.power]
+description = "Power profile, RAPL limits and turbostat on THIS machine, idle and optionally under load, saved under output/power/"
+usage = 'flag "--load <seconds>" help="Also load every CPU this long. Plug in AC first" default="0"'
+run = '''
+#!/usr/bin/env bash
+set -uo pipefail
+load="${usage_load:-0}"
+[[ "$load" =~ ^[0-9]+$ ]] || { echo "--load takes whole seconds" >&2; exit 1; }
+mkdir -p output/power
+report="output/power/$(hostname -s)-$(date +%Y%m%d-%H%M%S).txt"
+sudo -v || exit 1
+
+values() { # values <file>...: path = value, for the files that exist
+  local f
+  for f in "$@"; do [[ -e "$f" ]] && printf '%s = %s\n' "$f" "$(sudo cat "$f" 2>&1)"; done
+  return 0
+}
+turbo() { # turbo <seconds>: package power, busy MHz and temperature every 2 s
+  sudo turbostat --quiet --show PkgWatt,CorWatt,GFXWatt,Busy%,Bzy_MHz,PkgTmp \
+    --interval 2 --num_iterations "$(( $1 / 2 > 0 ? $1 / 2 : 1 ))" 2>&1
+}
+
+{
+  date -Is
+  values /sys/class/dmi/id/product_name /sys/class/dmi/id/bios_version
+  uname -r
+  echo "powerprofilesctl: $(powerprofilesctl get 2>&1)"
+  values /sys/firmware/acpi/platform_profile /sys/firmware/acpi/platform_profile_choices \
+    /sys/class/power_supply/A*/online \
+    /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference
+  # PL1 is constraint 0 (long term), PL2 constraint 1 (short term), in microwatts
+  for zone in /sys/class/powercap/intel-rapl*:*; do
+    [[ -e "$zone/name" ]] && values "$zone/name" "$zone"/constraint_*_power_limit_uw "$zone"/constraint_*_time_window_us
+  done
+
+  printf '\n## Idle, 6 s\n'
+  turbo 6
+
+  if (( load > 0 )); then
+    printf '\n## Every CPU loaded, %s s\n' "$load"
+    # timeout stops the load even if this task is interrupted
+    for _ in $(seq "$(nproc)"); do timeout "$load" yes >/dev/null & done
+    turbo "$load"
+    wait
+    echo "powerprofilesctl after: $(powerprofilesctl get 2>&1)"
+  fi
+} | tee "$report"
+
+echo "Saved: $report"
+'''
+
 [tasks.iso]
 description = "Installer ISO. It may erase the target disk: not for machines with data"
 usage = 'arg "[image]" default="base"'

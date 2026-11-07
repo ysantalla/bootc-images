@@ -195,6 +195,16 @@ vainfo | grep -E 'iHD|H264|HEVC|AV1'           # Intel hardware only: hardware d
 
 The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`build.sh` in the machine image).
 
+### Power limits
+
+From the repo, on AC power:
+
+```bash
+mise run power --load 60    # profile, PL1/PL2, then turbostat idle and with every CPU loaded for 60 s
+```
+
+The report is saved in `output/power/`, which git ignores.
+
 ## Day to day
 
 ```bash
