@@ -24,7 +24,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
-| Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
+| Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile, Yakuake (F12) and `fastfetch`. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides. Zed uses KDE's window borders; to undo it, remove `/var/lib/flatpak/overrides/dev.zed.Zed` |
 | Updates | `bootc-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
@@ -49,7 +49,7 @@ images/
       shell.sh               Starship, Nerd Font and terminal defaults
       plasma-theme.sh        makes the Plasma style, colors and fonts the default
       tailscale.sh           Tailscale from its official repo
-      packages.txt           Incus, QEMU, zsh, Yakuake, Okular, Haruna, fonts, Docker commands
+      packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
       usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
       usr/lib/systemd/system/          bootc-* services and timer

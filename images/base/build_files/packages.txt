@@ -8,6 +8,8 @@ zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
 yakuake
+# System summary in the terminal
+fastfetch
 
 # PDF and document viewer
 okular
