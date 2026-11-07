@@ -48,6 +48,7 @@ jobs:
       from_image: ghcr.io/ublue-os/kinoite-main
       from_key: .github/keys/ublue-os.pub
       push: ${{ github.event_name != 'pull_request' }}
+      rechunk: true
       # A pull request publishes nothing, so machine images build FROM this local base.
       machine_image: ${{ github.event_name == 'pull_request' && 'xps16-da16260' || '' }}
     secrets:
