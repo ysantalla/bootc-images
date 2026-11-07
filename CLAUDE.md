@@ -230,11 +230,11 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 - **On pull requests,** nothing is pushed. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
-- **`reusable-build.yml`** verifies the `FROM` image, builds with buildah, pushes to GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build.
+- **`reusable-build.yml`** verifies the `FROM` image, builds with buildah, pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
-A failed build or test never reaches a machine. A signing failure after the push can leave `:latest` unsigned: enforcing machines refuse it, and others accept it.
+A failed build, test or signature never reaches a machine: `latest` only moves after the signature is verified. A failure while moving the tags can leave them on different digests, all signed.
 
 ---
 
@@ -389,7 +389,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Whether to use the internal camera or a USB webcam for video calls.
 
 **Known small improvements, not applied:**
-- A signing failure after the push can leave `:latest` unsigned. Fixing it needs a staging tag.
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
 - A wrong ID in `flatpaks.list` makes `bootc-flatpaks.service` retry every hour without end.
 - Nothing prunes old tags on GHCR.
