@@ -357,6 +357,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Not tested yet:**
 - Nothing is verified on the real XPS.
+- `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - A user created after the Plasma defaults shipped.
 - Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
