@@ -26,7 +26,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile and Yakuake (F12). Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
-| Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides |
+| Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides. Zed uses KDE's window borders; to undo it, remove `/var/lib/flatpak/overrides/dev.zed.Zed` |
 | Updates | `bootc-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
 
 ## Layout
@@ -129,7 +129,12 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 
 **Recommended:** install stock Fedora Kinoite, then switch to the image. You get the normal installer with disk encryption, and the previous system stays in the boot menu.
 
-1. Install `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` from <https://download.fedoraproject.org/pub/fedora/linux/releases/45/Kinoite/x86_64/iso/>. Back up first, enable encryption and create your user.
+1. Install `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` from <https://download.fedoraproject.org/pub/fedora/linux/releases/45/Kinoite/x86_64/iso/>. Back up first and create your user. For the disk:
+
+   - Keep the automatic partitioning, unless the disk also holds another system. `/usr` belongs to bootc and `/var` survives updates and rollbacks, so `home` needs no partition of its own.
+   - Tick **Encrypt my data**, which covers the whole disk. Encrypting only `home` would leave the rest of `/var` readable: Incus instances, Podman data, logs and Tailscale's credentials. `/boot` and the EFI partition stay unencrypted, as they must.
+   - Use a long passphrase and keep a copy away from the laptop: without it the data is lost. Check the keyboard layout first, since you type it before the desktop starts.
+   - A suspended laptop stays unlocked. Shut it down when you want the full protection, for example when travelling.
 2. Switch, on AC power and online:
 
    ```bash
