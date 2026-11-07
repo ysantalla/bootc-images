@@ -37,6 +37,10 @@ chmod 0755 /usr/libexec/bootc-images/*.sh
 systemctl disable rpm-ostreed-automatic.timer 2>/dev/null || true
 systemctl disable uupd.timer 2>/dev/null || true
 
+# Firewall: unknown networks get the strict zone; trusted ones are set to FedoraWorkstation by hand
+sed -i 's/^DefaultZone=.*/DefaultZone=bootc-laptop/' /etc/firewalld/firewalld.conf
+grep -qx 'DefaultZone=bootc-laptop' /etc/firewalld/firewalld.conf
+
 # 5. Services
 systemctl enable \
   incus.socket \

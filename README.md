@@ -56,7 +56,7 @@ images/
       usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers
       usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
       usr/lib/environment.d/           60-bootc-docker-host.conf
-      usr/lib/firewalld/zones/         bootc-incus.xml
+      usr/lib/firewalld/zones/         bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
       usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-bootc-compose.conf
       usr/share/konsole/               bootc-images.profile
@@ -208,6 +208,12 @@ sudo intel_gpu_top             # xps16-da16260: GPU and video engines, may be li
 ```
 
 When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart. The button restarts through Plasma, so apps can ask about unsaved work.
+
+On any network, the firewall only lets in DHCPv6, local discovery, KDE Connect and GNOME Network Displays, so development servers and containers stay out of reach. Your devices on Tailscale can still reach them. To open the usual Fedora ports on your home network, mark it once (`nmcli connection show` lists the names):
+
+```bash
+nmcli connection modify "Home Wi-Fi" connection.zone FedoraWorkstation
+```
 
 To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `starship preset gruvbox-rainbow -o ~/.config/starship.toml`, then open a new tab. Delete that file to go back to the default.
 

@@ -61,6 +61,8 @@ ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 for pkg in incus okular haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq; do
   ok "package $pkg" rpm -q "$pkg"
 done
+ok "firewall defaults to bootc-laptop" grep -qx 'DefaultZone=bootc-laptop' /etc/firewalld/firewalld.conf
+ok "firewall configuration is valid" firewall-offline-cmd --check-config
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/bootc-flatpak-overrides.conf
 
 for pkg in toolbox distrobox moby-engine docker-cli; do

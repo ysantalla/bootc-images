@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the owner's devices are on the tailnet, so they can reach development servers here. -->
+<zone target="ACCEPT">
+  <short>Tailscale</short>
+  <description>Traffic from the owner's tailnet.</description>
+  <interface name="tailscale0"/>
+</zone>
