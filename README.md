@@ -129,7 +129,12 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 
 **Recommended:** install stock Fedora Kinoite, then switch to the image. You get the normal installer with disk encryption, and the previous system stays in the boot menu.
 
-1. Install `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` from <https://download.fedoraproject.org/pub/fedora/linux/releases/45/Kinoite/x86_64/iso/>. Back up first, enable encryption and create your user.
+1. Install `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` from <https://download.fedoraproject.org/pub/fedora/linux/releases/45/Kinoite/x86_64/iso/>. Back up first and create your user. For the disk:
+
+   - Keep the automatic partitioning, unless the disk also holds another system. `/usr` belongs to bootc and `/var` survives updates and rollbacks, so `home` needs no partition of its own.
+   - Tick **Encrypt my data**, which covers the whole disk. Encrypting only `home` would leave the rest of `/var` readable: Incus instances, Podman data, logs and Tailscale's credentials. `/boot` and the EFI partition stay unencrypted, as they must.
+   - Use a long passphrase and keep a copy away from the laptop: without it the data is lost. Check the keyboard layout first, since you type it before the desktop starts.
+   - A suspended laptop stays unlocked. Shut it down when you want the full protection, for example when travelling.
 2. Switch, on AC power and online:
 
    ```bash
