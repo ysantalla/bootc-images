@@ -10,3 +10,5 @@ libva-utils
 powertop
 lm_sensors
 igt-gpu-tools
+# turbostat: real package power, busy MHz and temperature, to check power limits
+kernel-tools
