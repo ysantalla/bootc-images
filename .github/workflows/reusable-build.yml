@@ -139,13 +139,23 @@ jobs:
           VERSION: ${{ inputs.fedora_version }}
         run: podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
 
-      - name: Push
+      # Only the staging tag is pushed here. Machines follow latest, which moves
+      # to this digest only after its signature is verified, so a failed signing
+      # leaves them on the previous signed image.
+      - name: Tag for staging
+        if: inputs.push
+        env:
+          IMAGE: ${{ inputs.image }}
+          VERSION: ${{ inputs.fedora_version }}
+        run: podman tag "localhost/$IMAGE:$VERSION" "localhost/$IMAGE:staging"
+
+      - name: Push to the staging tag
         id: push
         if: inputs.push
         uses: redhat-actions/push-to-registry@94ade333c38ecc0e60e94785125d9a52ca423b37 # v3.0.0
         with:
           image: ${{ steps.build.outputs.image }}
-          tags: ${{ steps.build.outputs.tags }}
+          tags: staging
           registry: ${{ steps.meta.outputs.registry }}
 
       - name: Sign with cosign and verify the result
@@ -160,3 +170,19 @@ jobs:
           echo "$GHCR_TOKEN" | cosign login ghcr.io -u "$GHCR_USER" --password-stdin
           cosign sign -y --key env://COSIGN_PRIVATE_KEY "$REF"
           cosign verify --key cosign.pub "$REF" > /dev/null
+
+      # --preserve-digests keeps the signed manifest, so every tag carries the signature
+      - name: Move the published tags to the signed image
+        if: inputs.push
+        env:
+          REPO: ${{ steps.meta.outputs.registry }}/${{ inputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          for tag in $TAGS; do
+            skopeo copy --preserve-digests "docker://$REPO@$DIGEST" "docker://$REPO:$tag"
+          done
+          for tag in $TAGS; do
+            test "$(skopeo inspect --format '{{.Digest}}' "docker://$REPO:$tag")" = "$DIGEST"
+          done
+          cosign verify --key cosign.pub "$REPO:latest" > /dev/null
