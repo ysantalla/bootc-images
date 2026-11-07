@@ -32,7 +32,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone lets instances get IPv4 and DNS.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
-- **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar on first run. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
+- **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar and Qt colors on first run, in new profiles only. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-bootc-compose.conf` silences the provider notice.
 - **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme in `system_files`, moved here from `ysantalla/plasma-tips`, with Breeze's dark icons. `plasma-theme.sh` makes them the default for new users. The owner's Tela icon theme is not included.
 - **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
@@ -370,7 +370,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
-- The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
+- The system title bar and Qt colors in a real browser. Fresh headless Chrome and Brave profiles with `--force-first-run` wrote both preferences; additional profiles and how the colors look were not checked.
 - GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
 - Installing a system from an ISO through a VM viewer.
 - Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.

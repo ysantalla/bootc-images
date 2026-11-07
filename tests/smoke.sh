@@ -135,6 +135,7 @@ for launcher in "${LAUNCHERS[@]}"; do
 done
 for dir in /usr/lib/google/chrome /usr/lib/brave.com/brave-origin; do
   ok "system title bar in $dir" jq -e '.browser.custom_chrome_frame == false' "$dir/initial_preferences"
+  ok "Qt colors in $dir" jq -e '.extensions.theme.system_theme == 2' "$dir/initial_preferences"
 done
 
 ok "signature policy for our registry" jq -e '.transports.docker["ghcr.io/ysantalla"][0].type == "sigstoreSigned"' /etc/containers/policy.json
