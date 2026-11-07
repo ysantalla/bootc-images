@@ -224,6 +224,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applica
 - **`build.yml`** runs on push to `main` (excluding `*.md`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
 - **The `FROM` image is verified before each build:** `kinoite-main` against `.github/keys/ublue-os.pub`, and our `base` against `cosign.pub`. It is pulled by digest, and the build steps use `--pull=never`, so the build uses the verified copy. If Universal Blue rotates its key the build fails: replace the key with `/etc/pki/containers/ublue-os.pub` from the new image, after checking it against `cosign.pub` in `ublue-os/main`.
+- **`base` is rechunked** after the build (`rechunk: true`), with the image's own rpm-ostree and `--previous-build` pointing at the published tag. It re-adds the labels, since `--rootfs` drops them, and lints the result.
 - **`squash: false`** stays on the build steps. `buildah-build` v3 squashes by default, which would make machines download the whole image on every update.
 - **One build date per run,** set by the `lint` job, so tags match across images.
 - **`main` is protected:** no force-pushes or deletion, and pull requests need `lint` and `base / build` to pass. The owner can still bypass it.
@@ -333,7 +334,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 1. **Verify base** in a VM and on hardware. See the status below.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
-4. **Optional: rechunk the images.** Every build publishes 684 MB of new layers on `xps16-da16260` (634 MB `base`, 50 MB machine), measured across three builds on 2026-11-05, even when nothing changed. Rechunking should reduce it, but it changes how images are laid out, so test it in a VM first.
+4. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. Still to check: a VM switching to a rechunked image, and the real download between two daily builds.
 
 ### Status (2026-11-05)
 

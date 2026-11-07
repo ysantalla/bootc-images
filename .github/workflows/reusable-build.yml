@@ -27,6 +27,11 @@ on:
       push:
         required: true
         type: boolean
+      rechunk:
+        description: Split the image into one layer per package group, so updates only download what changed
+        required: false
+        type: boolean
+        default: false
       machine_image:
         description: Also build and test this machine image FROM the local build, without publishing it
         required: false
@@ -105,6 +110,40 @@ jobs:
           # v3 squashes by default, and machines would download the whole image on every update
           squash: false
           extra-args: --pull=never
+
+      # Uses the rpm-ostree inside the image, so no other tool has to be pulled and verified.
+      # --previous-build keeps the layout of the published image, so unchanged packages
+      # keep the same layers. Its file times are zero, so the result is reproducible.
+      - name: Rechunk
+        if: inputs.rechunk
+        env:
+          IMAGE: ${{ inputs.image }}
+          VERSION: ${{ inputs.fedora_version }}
+          BUILD_DATE: ${{ inputs.build_date }}
+          PREVIOUS: docker://${{ steps.meta.outputs.registry }}/${{ inputs.image }}:${{ inputs.fedora_version }}
+        run: |
+          image="localhost/$IMAGE:$VERSION"
+          raw="localhost/$IMAGE:raw"
+          podman tag "$image" "$raw"
+          graphroot=$(podman info --format '{{.Store.GraphRoot}}')
+          # --rootfs drops the image config, so the labels are passed again
+          mapfile -t labels < <(podman inspect "$raw" --format '{{json .Labels}}' | jq -r '
+            del(."ostree.commit", ."ostree.final-diffid", ."rpmostree.inputhash", ."quay.expires-after")
+            | to_entries[] | "--label=\(.key)=\(.value)"')
+          podman run --rm --pull=never --privileged \
+            --mount=type=image,src="$raw",target=/rootfs \
+            --mount=type=bind,src="$graphroot",target=/run/host-container-storage,rw \
+            --mount=type=tmpfs,target=/run/rpm-ostree-storage \
+            --entrypoint /usr/bin/rpm-ostree "$raw" \
+            compose build-chunked-oci --bootc --format-version=2 --max-layers 200 \
+              --rootfs /rootfs --previous-build "$PREVIOUS" "${labels[@]}" \
+              --output "containers-storage:[overlay@/run/host-container-storage+/run/rpm-ostree-storage]$image"
+          podman tag "$image" "localhost/$IMAGE:latest" "localhost/$IMAGE:$VERSION-$BUILD_DATE"
+          podman rmi "$raw"
+          podman image prune -f
+          podman inspect "$image" --format '{{len .RootFS.Layers}} layers'
+          podman run --rm --network=none "$image" bootc container lint
+          df -h /
 
       - name: Test the image
         env:
