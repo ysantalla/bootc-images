@@ -53,7 +53,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 
 These are deliberate choices. Do not add them back without the owner asking:
 - **The Docker engine** (`moby-engine`, `docker-ce`): Podman is the engine. `podman-docker` and `docker-compose` only give it Docker's commands.
-- **libvirt / virt-manager / GNOME Boxes**: Incus handles VMs, including GUI ones (`--console=vga`).
+- **libvirt / virt-manager / GNOME Boxes**: Incus handles VMs. Showing a VM's screen needs a viewer, which the image does not have yet (section 11).
 - **Toolbx / Distrobox**: removed from `kinoite-main` on purpose; Incus handles containers.
 - **Package layering on hosts** (`rpm-ostree install`): every change goes through the image.
 - **Out-of-tree kernels in `base`.**
@@ -169,6 +169,7 @@ mise run build xps16-da16260        # builds local base first if missing
 mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2
 mise run vm-up base                 # boot the test VM, keeping its contents
 mise run vm-reset base              # erase the test VM's copy, after asking
+mise run vm-incus base              # boot that disk as an Incus VM, on a machine running the image
 mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build (the name is required)
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
@@ -336,7 +337,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 Images build, publish and verify with `cosign.pub`, and pull without credentials.
 
-**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, but its agent was not up after 60 s, so `incus exec` into a VM is unconfirmed; `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
+**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, and its agent can take over 60 s to come up (`incus exec` was confirmed later on a KDE guest); `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
 
 **Verified in a VM (`xps16-da16260`, `45.20261105`, 2026-11-05):** boots from a local disk; `bootc switch` to GHCR; no layered packages; `bootc rollback` in both directions, with the home directory kept; Flatpak install. `bootc switch --enforce-container-sigpolicy` deploys as `ostree-image-signed`, and `bootc upgrade --check` reports no error, but that was the same digest, so no new image has been accepted or refused under it yet.
 
@@ -346,6 +347,10 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `breeze-custom`, `BreezeDarkCustom` and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
 - `docker run`, and `docker compose up` and `down` with nginx, a published port and a named volume, which survives `down`.
 - Haruna opens an HEVC file from Dolphin by default and shows the picture. The owner heard its audio on 2026-11-06. Hardware decode was not checked.
+
+**Verified in a VM (local `base` build, 2026-11-06):** `incus start --console=vga` opened an empty Incus VM's UEFI screen in `spicy`, in a test build with `spice-gtk-tools`. The owner found it ugly, so it is not in the image.
+
+**Verified in a VM, nested (local `base` build, 2026-11-06):** an openSUSE Tumbleweed KDE Incus VM (`images:opensuse/tumbleweed/desktop-kde`) reached Plasma on Wayland, and `incus exec` reached it, with `spice-vdagentd` active. KRDC's nightly Flatpak (`26.11.70`) showed its screen with working input, through a temporary `socat` bridge to port 5930, since KRDC only speaks TCP or `.vv` files. The owner reports other features worked, within the limits of nesting; audio could not be tested. Nothing from KRDC is in the image.
 
 **Not tested yet:**
 - Nothing is verified on the real XPS.
@@ -366,12 +371,18 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
 - The system title bar in a real browser. A fresh headless Chrome with `--force-first-run` wrote the preference; Brave and additional profiles were not checked.
 - GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
+- Installing a system from an ISO through a VM viewer.
 - Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
+
+**Verified in a VM, nested (`xps16-da16260` guest of QEMU, 2026-11-06):** `mise run vm-incus base` imported a `base` disk and booted it as `base-test`, with IPv4, and KRDC's nightly Flatpak showed its Plasma welcome screen through the `socat` bridge. A second run left the VM as it was. `incus exec` does not work on these disks (`VM agent isn't currently running`), so use SSH or `incus console`. They have no `spice-vdagent` either, so KRDC warns about it, and clipboard and resizing should not work. Audio, and running the whole flow on the XPS, are untested.
 
 **Decided by the owner:** hosts use `:latest` (2026-11-05). A Fedora upgrade still only happens when `FEDORA_VERSION` changes here.
 
+**Also decided by the owner:** `incus-startup.service` stays disabled (2026-11-06). Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
+
+**VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
+
 **Decisions pending from the owner:**
-- Enabling `incus-startup.service`. Instances with autostart will not start at boot without it, but it starts Incus on every boot.
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Firewall on untrusted networks. The default zone accepts ports 1025-65535 on any network, which is Fedora's default. A stricter zone needs testing with KDE Connect and Network Displays.
 - Whether to use the internal camera or a USB webcam for video calls.
@@ -385,7 +396,75 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 ---
 
-## 11. References
+## 11. VM viewers
+
+Reviewed on 2026-11-06, with Incus 6.23 and Fedora 45. **The owner chose KRDC.** Unless a row says it was run, this comes from reading source code and measuring packages.
+
+The image has no viewer yet. Without one, Incus prints the socket URI and waits, while `incus exec` and the text console still work.
+
+### How Incus opens a VM's screen
+
+`incus console --type=vga` and `incus start --console=vga` run the first viewer they find, in this order: `console_spice_command` from `~/.config/incus/config.yml` (`SOCKET` becomes the full URI), `remote-viewer`, `spicy`. On Linux the viewer always gets a private Unix socket as `spice+unix://<path>`, with no password.
+
+- `remote-viewer` wins if both it and `spicy` are installed.
+- The viewer must stay in the foreground: Incus closes the socket when it exits, and kills it when the console ends.
+- Only one console per instance, unless `--force` is used.
+- Clipboard and resize need `spice-vdagent` in the guest. `incus-agent` plays no part.
+
+### Options
+
+| Option | Reaches Incus | Cost on `base` | Notes | Status |
+|---|---|---|---|---|
+| `spicy` (`spice-gtk-tools`) | Yes | 2 MiB | GTK3. No Ctrl+Alt+Del action. Run: UEFI screen | Rejected by the owner: ugly |
+| `remote-viewer` (`virt-viewer`) | Yes | 40 MiB, with libvirt libraries and no daemon | Header bar cannot be hidden in a window. Can send key combinations | Fallback for USB or Ctrl+Alt+Del |
+| KRDC 26.08 (Fedora today) | No | 4 MiB | No SPICE plugin | Wait |
+| KRDC nightly Flatpak | Through a TCP bridge | 8.4 MB, plus a 415 MB runtime | Real Plasma look. No USB or shared folders in its code. Run: see the status above | **Chosen**, once it ships |
+| Remmina | Only with a script (`unix:///path`) | 9 MiB | Separate manager window | Not worth it |
+| Field Monitor | Flatpak needs a socket permission | 81.4 MB | libadwaita | Not a fit |
+| GNOME Connections | No, TCP only | 5 MiB | | No |
+| `incus-ui-canonical` | Yes, through the API | About 4.6 MB | No Fedora package, and it targets Incus 7. Fits remote access, not daily use | Plan B |
+| `lxc/incus-ui` | Not yet | | New official UI with no instance support, and it requires Incus 7 | Wait |
+| QEMU's GTK window | No | | QEMU runs as a daemon under `incusd`, with no access to the session | Discarded |
+| VNC through `raw.qemu` | Unsupported | | Upstream does not plan VNC. Not tried | Discarded |
+| Karton, virt-manager | No | | Need the libvirt stack, a non-goal | Excluded |
+
+### Testing images on a machine running the image
+
+The owner tests branches on the XPS with Incus and KRDC, not with `vm-up`, which needs QEMU's GTK and PipeWire modules that the image does not have.
+
+```bash
+mise run vm base
+mise run vm-incus base --cpus 8 --memory 16GiB   # defaults: 4 vCPUs, 8GiB
+incus console base-test --type=vga
+incus delete -f base-test                        # needed after rebuilding the disk
+```
+
+After a rebuild, `vm-incus` refuses to start until the old VM is erased. Hardware checks still need `mise run switch-local`, since a VM cannot see the Intel GPU.
+
+### Adopting KRDC after KDE Gear 26.12
+
+KRDC's plugin is in `release/26.12` with `WITH_SPICE` on by default. Gear 26.12 tarballs are due on 2026-12-03. Fedora's `krdc.spec` has no `spice-glib` dependency yet.
+
+1. See whether Fedora ships it: `dnf5 repoquery krdc`, then look for `krdc_spiceplugin.so` in the package. If so, add `krdc` to `packages.txt`. If only Flathub has it, add `org.kde.krdc` to `flatpaks.list`.
+2. See whether upstream accepts sockets: `spice/spiceviewfactory.cpp` and `spice/spiceview.cpp` in `network/krdc`. They only used `host` and `port` on 2026-11-06, while spice-glib has a `unix-path` property.
+3. Without socket support, use this bridge as `remote-viewer` in a directory on `PATH`, with `flatpak run` replaced by `krdc` for the RPM. Its port has no password, so any local program can open the console. In the image it would go in `/usr/libexec/bootc-images/`, set through `console_spice_command`, which is per user.
+
+   ```bash
+   #!/usr/bin/env bash
+   socket="${1#spice+unix://}"
+   socat TCP-LISTEN:5930,bind=127.0.0.1,fork,reuseaddr "UNIX-CONNECT:$socket" &
+   trap "kill \$! 2>/dev/null" EXIT
+   sleep 1
+   flatpak run org.kde.krdc//master spice://127.0.0.1:5930
+   ```
+
+4. To try it before Fedora ships it, install the nightly from `https://cdn.kde.org/flatpak/krdc-nightly/krdc-nightly.flatpakrepo`, with Flathub added for the runtime.
+5. Test a guest with `images:opensuse/tumbleweed/desktop-kde`, which comes with `spice-vdagent`. Use `-c security.secureboot=false`.
+6. On the XPS, check **Grab Keys** with Alt+Tab and Meta, Ctrl+Alt+Del, audio, clipboard both ways, resizing, and sharpness at the panel's scale.
+
+KRDC's code has no USB redirection or shared folders. If those are needed, add a second viewer for that.
+
+## 12. References
 
 - bootc: <https://bootc-dev.github.io/bootc/>
 - Fedora bootc docs: <https://docs.fedoraproject.org/en-US/bootc/>
@@ -393,3 +472,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - bootc-image-builder: <https://github.com/osbuild/bootc-image-builder>
 - mise tasks: <https://mise.jdx.dev/tasks/>
 - Brave Origin on Linux: <https://brave.com/origin/linux/>
+- Incus console command: <https://github.com/lxc/incus/blob/v6.23.0/cmd/incus/console.go>
+- KRDC source: <https://invent.kde.org/network/krdc>
+- KDE Gear 26.12 schedule: <https://community.kde.org/Schedules/KDE_Gear_26.12_Schedule>
