@@ -169,6 +169,7 @@ mise run build xps16-da16260        # builds local base first if missing
 mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2
 mise run vm-up base                 # boot the test VM, keeping its contents
 mise run vm-reset base              # erase the test VM's copy, after asking
+mise run vm-incus base              # boot that disk as an Incus VM, on a machine running the image
 mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build (the name is required)
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
@@ -373,6 +374,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Installing a system from an ISO through a VM viewer.
 - Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
 
+**Verified in a VM, nested (`xps16-da16260` guest of QEMU, 2026-11-06):** `mise run vm-incus base` imported a `base` disk and booted it as `base-test`, with IPv4, and KRDC's nightly Flatpak showed its Plasma welcome screen through the `socat` bridge. A second run left the VM as it was. `incus exec` does not work on these disks (`VM agent isn't currently running`), so use SSH or `incus console`. They have no `spice-vdagent` either, so KRDC warns about it, and clipboard and resizing should not work. Audio, and running the whole flow on the XPS, are untested.
+
 **Decided by the owner:** hosts use `:latest` (2026-11-05). A Fedora upgrade still only happens when `FEDORA_VERSION` changes here.
 
 **Also decided by the owner:** `incus-startup.service` stays disabled (2026-11-06). Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
@@ -424,6 +427,19 @@ The image has no viewer yet. Without one, Incus prints the socket URI and waits,
 | QEMU's GTK window | No | | QEMU runs as a daemon under `incusd`, with no access to the session | Discarded |
 | VNC through `raw.qemu` | Unsupported | | Upstream does not plan VNC. Not tried | Discarded |
 | Karton, virt-manager | No | | Need the libvirt stack, a non-goal | Excluded |
+
+### Testing images on a machine running the image
+
+The owner tests branches on the XPS with Incus and KRDC, not with `vm-up`, which needs QEMU's GTK and PipeWire modules that the image does not have.
+
+```bash
+mise run vm base
+mise run vm-incus base --cpus 8 --memory 16GiB   # defaults: 4 vCPUs, 8GiB
+incus console base-test --type=vga
+incus delete -f base-test                        # needed after rebuilding the disk
+```
+
+After a rebuild, `vm-incus` refuses to start until the old VM is erased. Hardware checks still need `mise run switch-local`, since a VM cannot see the Intel GPU.
 
 ### Adopting KRDC after KDE Gear 26.12
 

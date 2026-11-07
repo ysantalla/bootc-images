@@ -117,6 +117,46 @@ read -r -p "Erase $dir/vm-test.qcow2 and everything in that VM? [y/N] " answer
 rm -f "$dir/vm-test.qcow2" "$dir/vm-vars.fd"
 '''
 
+[tasks.vm-incus]
+description = "Boot a built qcow2 disk as an Incus VM. Creates it only if it is missing"
+usage = '''
+arg "[image]" default="base"
+flag "--cpus <n>" help="vCPUs, only when creating the VM" default="4"
+flag "--memory <size>" help="Memory, only when creating the VM" default="8GiB"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+image="${usage_image?}"
+disk="output/$image/qcow2/disk.qcow2"
+name="$image-test"
+command -v incus >/dev/null || { echo "This needs Incus, which comes with the image" >&2; exit 1; }
+test -f "$disk" || { echo "Missing $disk. Run: mise run vm $image" >&2; exit 1; }
+built="$(stat -c %Y "$disk")"
+if ! incus info "$name" >/dev/null 2>&1; then
+  work="$(mktemp -d)"
+  trap 'rm -rf "$work"' EXIT
+  printf 'architecture: x86_64\ncreation_date: %s\nproperties:\n  description: %s test disk\n' "$built" "$image" >"$work/metadata.yaml"
+  tar -C "$work" -cf "$work/metadata.tar" metadata.yaml
+  size="$(qemu-img info --output=json "$disk" | jq -r '."virtual-size"')"
+  incus image import "$work/metadata.tar" "$disk" --alias "$name-disk"
+  # The instance keeps its own copy, so a failed or finished create never leaves the image behind
+  status=0
+  incus init "$name-disk" "$name" --vm -d "root,size=${size}B" \
+    -c "limits.cpu=${usage_cpus?}" -c "limits.memory=${usage_memory?}" \
+    -c security.secureboot=false -c "user.bootc-disk=$built" || status=$?
+  incus image delete "$name-disk"
+  [[ "$status" -eq 0 ]] || exit "$status"
+elif [[ "$(incus config get "$name" user.bootc-disk)" != "$built" ]]; then
+  echo "$disk was rebuilt, so this VM is stale. Erase it with: incus delete -f $name" >&2
+  exit 1
+fi
+if [[ "$(incus list "$name" -c s -f csv)" != "RUNNING" ]]; then
+  incus start "$name"
+fi
+echo "Screen: incus console $name --type=vga"
+'''
+
 [tasks.iso]
 description = "Installer ISO. It may erase the target disk: not for machines with data"
 usage = 'arg "[image]" default="base"'
