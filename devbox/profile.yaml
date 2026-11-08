@@ -1,0 +1,11 @@
+# DRAFT, untested. The `devbox` Incus profile, used together with `default` by every project container.
+# See docs/secrets-and-devbox.md, section 5.
+description: Dev container, one per project
+config:
+  # Podman and docker compose inside the container
+  security.nesting: "true"
+  security.syscalls.intercept.mknod: "true"
+  security.syscalls.intercept.setxattr: "true"
+  # So a project's stack cannot starve video calls on the host
+  limits.cpu: "8"
+  limits.memory: 16GiB

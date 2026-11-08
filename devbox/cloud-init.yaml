@@ -1,0 +1,27 @@
+#cloud-config
+# DRAFT, untested. Builds the `devbox` golden image once; see docs/secrets-and-devbox.md, section 5.
+# Replace the SSH key with the host's public key before building.
+users:
+  - name: dev
+    groups: wheel
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAA-REPLACE-ME xps16
+packages:
+  - git
+  - openssh-server
+  - gcc
+  - gcc-c++
+  - make
+  - python3
+  - unzip
+  - podman
+  - podman-docker
+  - docker-compose
+runcmd:
+  - systemctl enable sshd
+  # Quiet the "Emulate Docker CLI" line, as on the host
+  - touch /etc/containers/nodocker
+  - su - dev -c 'curl -fsSL https://mise.run | sh'
+  - su - dev -c 'curl -fsSL https://claude.ai/install.sh | bash'
+  - su - dev -c 'echo "eval \"\$(~/.local/bin/mise activate bash)\"" >> ~/.bashrc'

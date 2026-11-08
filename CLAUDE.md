@@ -61,6 +61,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 - **Out-of-tree kernels in `base`.**
 - **Compilers in `base`** (`gcc`, `make`, `cmake`): projects that need them run in an Incus container, because the owner wants a minimal base.
 - **`mise` in the image:** it is installed per user with `curl https://mise.run | sh`.
+- **More secrets software** (KeePassXC, 1Password, aws-vault, gitleaks): the owner wants secrets handled with what the image already ships, KWallet, `secret-tool`, OpenSSH and `ksshaskpass` (2026-11-08). See `docs/secrets-and-devbox.md`.
 
 ---
 
@@ -73,6 +74,9 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── mise.toml                          local tasks + tool versions (cosign)
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
+├── docs/
+│   └── secrets-and-devbox.md          plan for secrets, AI agents and per-project dev containers (not implemented)
+├── devbox/                            drafts for that plan: cloud-init and Incus profile of the dev image
 ├── .gitignore                         output/, bib/config.toml, cosign.key
 ├── bib/
 │   └── config.example.toml            user for test VMs built with bootc-image-builder
@@ -336,7 +340,8 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
-4. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
+4. **Secrets and per-project dev containers.** Mostly `base` and per-user setup, not this machine image. Researched on 2026-11-08, nothing implemented or tested: see `docs/secrets-and-devbox.md`, which has the decisions, the test plan for the VM and the XPS, and the repo changes to make afterwards. It also found that the `bootc-incus` zone lets instances reach every port on the host.
+5. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
 
 ### Status (2026-11-05)
 
@@ -391,9 +396,12 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
 
+**Secrets and agents, decided by the owner (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
+
 **Decisions pending from the owner:**
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Whether to use the internal camera or a USB webcam for video calls.
+- The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, and cloned or mounted code in project containers.
 
 **Known small improvements, not applied:**
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
