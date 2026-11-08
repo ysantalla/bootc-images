@@ -401,7 +401,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Decisions pending from the owner:**
 - Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Whether to use the internal camera or a USB webcam for video calls.
-- The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, and cloned or mounted code in project containers.
+- The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, which projects keep their development credentials in Parameter Store, and cloned or mounted code in project containers.
 
 **Known small improvements, not applied:**
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.

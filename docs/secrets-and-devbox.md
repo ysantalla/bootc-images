@@ -161,11 +161,77 @@ These rules do not stop a `cat` through Bash, so they are a seatbelt, not isolat
 
 ### 3.7 Passwords and two-factor
 
-- One password manager with a long passphrase, and a different password for every site. Which one the owner uses is still open (section 10).
+- One password manager, and a different password for every site. The candidate that needs no new software is Google Password Manager, already on the owner's Pixel and in Chrome, with notes per entry for extra details. The owner still has to confirm it (section 10).
 - Passkeys where offered: GitHub, Google, the AWS root user.
-- Two-factor on the email account first, since it can reset every other account.
+- Two-factor on the email account first, since it can reset every other account. For Google, that account then guards every saved password too.
 - Recovery codes kept away from the laptop.
 - The LUKS passphrase is different from the login password.
+
+### 3.8 Credentials inside projects
+
+The owner keeps service credentials in plaintext in projects today: users and passwords of email accounts and services, API keys, database passwords. Sort them by who uses them:
+
+| Kind | Where it goes | Tool already available |
+|---|---|---|
+| **The owner's logins** (mailboxes, dashboards, services opened in a browser) | The password manager (section 3.7) | Google Password Manager |
+| **What the app uses in development** (SMTP, third-party API keys, database) | AWS SSM Parameter Store, `SecureString`, one path per project and environment, such as `/immo/dev/` | `aws` CLI. Standard parameters are free, with the default `aws/ssm` KMS key |
+| **Production** | Never on the laptop | The app reads them at runtime through its own IAM role |
+| **The repo** | Only `.env.example`, with names and no values | git |
+
+**Upload each value once.** The leading space keeps the command out of the shell history, since the image's `zshrc` sets `HIST_IGNORE_SPACE`:
+
+```bash
+ aws ssm put-parameter --profile immo --type SecureString \
+   --name /immo/dev/smtp_password --value 'xxxx'
+```
+
+**Read them only when the app starts,** into that process's environment, with nothing written to disk. In the project's `mise.toml`:
+
+```toml
+[tasks.dev]
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+while IFS=$'\t' read -r name value; do
+  export "$(basename "$name" | tr 'a-z-' 'A-Z_')=$value"     # /immo/dev/smtp_password → SMTP_PASSWORD
+done < <(aws ssm get-parameters-by-path --path /immo/dev --with-decryption \
+          --query 'Parameters[].[Name,Value]' --output text)
+exec npm run start:dev        # or: exec docker compose up
+'''
+```
+
+- `docker compose` passes them on with `${SMTP_PASSWORD}` in `compose.yaml`.
+- Values containing tabs or newlines would break this loop. Check whether any real value has them.
+- Do not use mise's `exec()` template with `cache_key` for secrets: it caches the output under `MISE_CACHE_DIR`, in plaintext. Without the cache it runs on every render, which is slow and calls AWS repeatedly.
+- `get-parameters-by-path` returns at most 10 parameters per page and the CLI pages through them by default. Check that with a project that has more.
+
+**Each project container can only read its own path:**
+
+```json
+{"Effect":"Allow","Action":["ssm:GetParametersByPath","ssm:GetParameter"],
+ "Resource":"arn:aws:ssm:us-east-1:111111111111:parameter/immo/dev/*"}
+```
+
+If an agent there is tricked, the most it gets is that project's development credentials. Whether the `aws/ssm` key needs an explicit `kms:Decrypt` grant for such a narrow role is unverified.
+
+**Projects outside AWS** (a client on GitLab, for example): keep their `.env` inside their own container only, never on the host, and only with development credentials. Production stays in the client's own secret store or CI variables.
+
+**Clean up what is in plaintext today:**
+
+```bash
+# 1. Inventory
+find ~/src -name '.env*' -not -path '*/node_modules/*'
+grep -rIlE --exclude-dir={node_modules,.git,vendor} '(PASS(WORD)?|SECRET|TOKEN|API_KEY)\s*[=:]' ~/src
+
+# 2. Did any reach git? Repeat per repository
+git -C ~/src/immo log --all --oneline -S 'PASSWORD' | head
+
+# 3. Never again, in any repository: git reads this file by default
+mkdir -p ~/.config/git
+printf '.env\n.env.*\n!.env.example\n*.pem\n*.key\n' >> ~/.config/git/ignore
+```
+
+**Rotate every credential that ever reached a remote,** even if it was deleted later, since it stays in the history. Credentials that only lived on disk move to the place in the table above, and their files are deleted.
 
 ---
 
@@ -319,6 +385,11 @@ Run in a `mise run vm-up base` VM first, then on the XPS.
    - [ ] Network: confirm the container reaches host ports today, then tighten `bootc-incus` and confirm it still reaches the internet but not the host
    - [ ] Whether the container reaches the LAN and the tailnet
    - [ ] The same with `--vm`
+4. **Project credentials** (section 3.8)
+   - [ ] `put-parameter` with a leading space stays out of `~/.zsh_history`
+   - [ ] The `dev` task exports the values and the app or `docker compose` sees them, with nothing new written under the project or `~/.cache/mise`
+   - [ ] From a project container, the narrow IAM policy reads its own path, is refused another project's path, and decrypts without an explicit `kms:Decrypt` grant
+   - [ ] The inventory commands over the real `~/src`, before migrating, and `git check-ignore -v .env` in a repository afterwards
 
 ## 9. Repo changes to make after validation
 
@@ -327,14 +398,16 @@ Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 - `bootc-incus.xml`: only DHCP and DNS from `incusbr0`, if the tests in section 8 pass.
 - `environment.d`: `SSH_ASKPASS=/usr/bin/ksshaskpass`, if the session does not set it already.
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
-- A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, and `.env` files under `~/src`.
+- A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
+- A short example of the `dev` task from section 3.8 in `README.md`, so new projects copy it.
 - A `mise run devbox <name>` task (and one to rebuild the image) from the files in `devbox/`.
 - Permanent `.incus` name resolution on the host, for example a `systemd-networkd` drop-in or a NetworkManager dispatcher script for `incusbr0`.
 - `README.md`: the user-facing steps from sections 3 and 5, once tested.
 
 ## 10. Open questions for the owner
 
-- Which password manager is used today, and whether its SSH agent should replace `ssh-add -c`.
+- Which password manager is used today: Google Password Manager is the candidate that needs nothing new (section 3.7). If another one has an SSH agent, whether it should replace `ssh-add -c`.
+- Which projects are on AWS, so their development credentials can move to Parameter Store, and which need the `.env`-in-container fallback (section 3.8).
 - Whether a YubiKey or another FIDO2 key is available or worth buying (SSH, `sudo` and LUKS from one key).
 - Whether the AWS accounts (Secretsy, IMMO) can use IAM Identity Center.
 - Code in project containers: cloned inside, or mounted from the host.
