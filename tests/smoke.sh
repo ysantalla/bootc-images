@@ -151,9 +151,10 @@ case "$name" in
     done
     ;;
   xps16-da16260)
-    for pkg in libva-intel-media-driver libva-utils powertop lm_sensors igt-gpu-tools; do
+    for pkg in libva-intel-media-driver libva-utils powertop lm_sensors igt-gpu-tools kernel-tools; do
       ok "package $pkg" rpm -q "$pkg"
     done
+    ok "turbostat is on PATH" command -v turbostat
     for launcher in "${LAUNCHERS[@]}"; do
       ok "Intel flags in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" "$ENCODE"
     done

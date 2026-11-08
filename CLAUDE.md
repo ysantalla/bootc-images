@@ -49,7 +49,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`. Machines only enforce it after `bootc switch --enforce-container-sigpolicy`.
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors` and `igt-gpu-tools` to measure battery, temperature and GPU use on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
 
 ### Explicit non-goals
 
@@ -175,6 +175,7 @@ mise run vm-incus base              # boot that disk as an Incus VM, on a machin
 mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build (the name is required)
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
+mise run power --load 60            # THIS machine: profile, RAPL limits, turbostat idle and under load → output/power/
 mise run clean                      # remove output/, after asking
 ```
 
@@ -332,6 +333,7 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 1. **Verify base** in a VM and on hardware. See the status below.
+   On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
 3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
 4. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
@@ -357,6 +359,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Not tested yet:**
 - Nothing is verified on the real XPS.
+- `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
+- `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
 - A user created after the Plasma defaults shipped.
 - Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
