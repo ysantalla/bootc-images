@@ -412,6 +412,12 @@ Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 - Whether the AWS accounts (Secretsy, IMMO) can use IAM Identity Center.
 - Code in project containers: cloned inside, or mounted from the host.
 
+**Pending idea, parked by the owner (2026-11-09): end-to-end browser tests in project containers.** Headless Playwright, Cypress or Puppeteer need no display. Notes for when it is picked up, none of it tried:
+- Playwright's `install --with-deps` only supports Debian and Ubuntu, so on the Fedora `devbox` either run its official image through Podman (`docker run --rm --ipc=host -v "$PWD:/work" -w /work mcr.microsoft.com/playwright:v<version>-noble npx playwright test`, with the project's `@playwright/test` version), or install Chromium's libraries with `dnf` by hand.
+- Cypress needs `xorg-x11-server-Xvfb` when there is no display.
+- To watch tests from the host's browser: `npx playwright test --ui-host=0.0.0.0 --ui-port=8080` and `npx playwright show-report --host 0.0.0.0`. The `bootc-incus` change in section 9 only limits traffic from containers to the host, so this keeps working.
+- No `--headed`: it would need the host's Wayland socket, which section 4.2 keeps out of containers.
+
 ## 11. References
 
 - KWallet and Secret Service: <https://planet.kde.org/marco-martin-2025-04-14-towards-a-transition-from-kwallet-to-secret-service/>, KDE bugs [491280](https://bugs.kde.org/show_bug.cgi?id=491280), [504709](https://bugs.kde.org/show_bug.cgi?id=504709), [504312](https://bugs.kde.org/show_bug.cgi?id=504312), [523878](https://bugs.kde.org/show_bug.cgi?id=523878), [458069](https://bugs.kde.org/show_bug.cgi?id=458069)
