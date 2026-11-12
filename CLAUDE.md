@@ -310,13 +310,15 @@ Panther Lake is new hardware. Prefer upstream Fedora kernel and Mesa support, an
 
 Reviewed on 2026-11-04, when the image had Fedora's 7.2.15. The owner does not want a kernel swap for now, so do not propose one unprompted. Linux 7.4 was at rc1 and arrives through the daily build once Fedora ships it.
 
+Fedora's kernel moved to 7.3.3-300.fc45 in the `45.20261111` image, through the daily build, with no change here. The other rows were not checked again, so their versions are from 2026-11-04.
+
 | Option | Version seen | Notes |
 |---|---|---|
-| Fedora `updates` | 7.2.15 | Default. No extra work |
-| Fedora Koji build | 7.3.1-200.fc45 | Built by Fedora, but pinned by hand and gets no patches until bumped |
+| Fedora `updates` | 7.3.3 (2026-11-11) | Default. No extra work |
+| Fedora Koji build | 7.3.1-200.fc45 | Built by Fedora, but pinned by hand and gets no patches until bumped. Now older than the default |
 | `@kernel-vanilla/stable` COPR | 7.3.1 | Needs an owner MOK, or Secure Boot off |
 | `@kernel-vanilla/mainline` COPR | 7.4 pre-release | Too risky for the main machine |
-| `thunderbirdtr/xps-fedora` COPR | 7.2.15 `.dellptl` | Same version, with hardware patches. See below |
+| `thunderbirdtr/xps-fedora` COPR | 7.2.15 `.dellptl` | Fedora's version on 2026-11-04, with hardware patches. See below |
 
 No readable source named a 7.3 or 7.4 change for this model with the 388H. Phoronix pages could not be read directly, so the 7.4 items come from search summaries: IPU7 and IPU7.5 support in the IPU6 driver, Intelligent Bias Control v3 for Xe3, and GPU cold reset recovery.
 
@@ -352,6 +354,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `breeze-custom`, `BreezeDarkCustom` and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
 - `docker run`, and `docker compose up` and `down` with nginx, a published port and a named volume, which survives `down`.
 - Haruna opens an HEVC file from Dolphin by default and shows the picture. The owner heard its audio on 2026-11-06. Hardware decode was not checked.
+
+**Verified in a VM (`xps16-da16260`, `45.20261111`, 2026-11-11):** after `bootc upgrade`, it boots kernel 7.3.3-300.fc45 and reaches Plasma on Wayland, as shown by the owner's Info Center. Nothing else was checked on it.
 
 **Verified in a VM (local `base` build, 2026-11-06):** `incus start --console=vga` opened an empty Incus VM's UEFI screen in `spicy`, in a test build with `spice-gtk-tools`. The owner found it ugly, so it is not in the image.
 
