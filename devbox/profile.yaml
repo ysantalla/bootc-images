@@ -1,0 +1,19 @@
+# DRAFT, tested in a VM on 2026-11-21. The `devbox` Incus profile, used together with `default` by every project container.
+# See docs/secrets-and-devbox.md, section 5.
+description: Dev container, one per project
+config:
+  # Podman and docker compose inside the container
+  security.nesting: "true"
+  security.syscalls.intercept.mknod: "true"
+  security.syscalls.intercept.setxattr: "true"
+  # So a project's stack cannot starve video calls on the host
+  limits.cpu: "8"
+  limits.memory: 16GiB
+devices:
+  # Replaces the NIC from the `default` profile: project containers cannot reach each other,
+  # only the host's bridge and, through it, the internet
+  eth0:
+    type: nic
+    name: eth0
+    network: incusbr0
+    security.port_isolation: "true"
