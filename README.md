@@ -14,7 +14,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Component | How |
 |---|---|
 | KDE Plasma, codecs (ffmpeg), Podman | From `kinoite-main` |
-| Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`. `incus.socket` enabled; group and subuid set up at boot |
+| Incus | System containers and VMs (`--vm`), with QEMU and a firewalld zone for `incusbr0`: instances reach the internet, but not the host's ports. `incus.socket` enabled; group and subuid set up at boot |
 | Brave Origin | Official RPM (`brave-origin`), no Rewards/Wallet/VPN/AI. Installed in `/usr/lib/brave.com`, linked to `/opt` via `tmpfiles.d` |
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar and Qt colors are first-run preferences, so existing profiles keep their settings |
@@ -57,6 +57,7 @@ images/
       usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
       usr/lib/environment.d/           60-bootc-docker-host.conf
       usr/lib/firewalld/zones/         bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
+      usr/lib/firewalld/policies/      bootc-incus-out.xml
       usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-bootc-compose.conf
       usr/share/konsole/               bootc-images.profile

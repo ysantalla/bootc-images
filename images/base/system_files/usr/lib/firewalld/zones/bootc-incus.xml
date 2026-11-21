@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Without this, firewalld blocks DHCP and DNS on the Incus bridge and instances get no IPv4. -->
-<zone target="ACCEPT">
+<!-- Without DHCP and DNS here, instances on the Incus bridge get no IPv4. Nothing else on the host is open to them. -->
+<zone>
   <short>Incus</short>
-  <description>Traffic from the Incus bridge.</description>
+  <description>Incus instances only get DHCP and DNS from the host.</description>
   <interface name="incusbr0"/>
+  <service name="dhcp"/>
+  <service name="dhcpv6"/>
+  <service name="dns"/>
 </zone>

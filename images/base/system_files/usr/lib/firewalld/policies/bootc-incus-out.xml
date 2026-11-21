@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The zone no longer accepts everything, so forwarding out of the bridge needs its own rule. -->
+<policy target="ACCEPT">
+  <short>Incus to other networks</short>
+  <description>Lets Incus instances reach other networks through the host, but not the host itself.</description>
+  <ingress-zone name="bootc-incus"/>
+  <egress-zone name="ANY"/>
+</policy>
