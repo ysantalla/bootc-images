@@ -18,6 +18,16 @@ ok() { # ok <description> <command...>
 }
 
 not() { ! "$@"; }
+thermald_waits() { [[ "$(systemctl cat thermald.service 2>/dev/null)" == *"ExecStartPre=/usr/libexec/bootc-images/thermald-wait.sh"* ]]; }
+platform_profile_works() { # with a copy of the two handlers the XPS has
+  local dir
+  dir=$(mktemp -d)
+  mkdir "$dir/a" "$dir/b"
+  echo dell-pc >"$dir/a/name" && echo "cool quiet balanced performance" >"$dir/a/choices"
+  echo "SoC Power Slider" >"$dir/b/name" && echo "low-power balanced performance" >"$dir/b/choices"
+  PLATFORM_PROFILE_DIR=$dir /usr/libexec/bootc-images/platform-profile.sh quiet low-power &&
+    [[ "$(<"$dir/a/profile")" == quiet && "$(<"$dir/b/profile")" == low-power ]]
+}
 firewall_target() { [[ "$(firewall-offline-cmd "$1" --get-target 2>/dev/null)" == "$2" ]]; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
@@ -158,6 +168,14 @@ case "$name" in
       ok "package $pkg" rpm -q "$pkg"
     done
     ok "turbostat is on PATH" command -v turbostat
+    ok "thermald waits for its sensors" test -x /usr/libexec/bootc-images/thermald-wait.sh
+    ok "thermald drop-in is read" thermald_waits
+    for profile in powersave balanced balanced-battery performance; do
+      ok "tuned profile bootc-xps-$profile" test -x "/usr/lib/tuned/profiles/bootc-xps-$profile/script.sh"
+      ok "tuned-ppd uses bootc-xps-$profile" grep -q "=bootc-xps-$profile\$" /etc/tuned/ppd.conf
+    done
+    ok "tuned-ppd leaves our profiles alone" grep -qx 'sysfs_acpi_monitor=false' /etc/tuned/ppd.conf
+    ok "platform profiles reach each handler" platform_profile_works
     for launcher in "${LAUNCHERS[@]}"; do
       ok "Intel flags in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" "$ENCODE"
     done

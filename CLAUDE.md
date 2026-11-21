@@ -51,6 +51,10 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 
 **`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
 
+It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`), which reports both problems on an X7 358H. Neither is confirmed on this machine yet:
+- **thermald:** a drop-in runs `thermald-wait.sh`, which waits up to 30 s for RAPL, coretemp and the `TCPU` zone, because thermald otherwise gives up on Panther Lake until the next boot.
+- **Power profiles:** four `bootc-xps-*` tuned profiles call `platform-profile.sh`, which sets Dell's thermal mode (`dell-pc`) and Intel's SoC power slider separately, since the legacy `platform_profile` only offers what both share. `build.sh` points `/etc/tuned/ppd.conf` at them and turns off `sysfs_acpi_monitor`. The image has `tuned-ppd`, not power-profiles-daemon, so there is no `powerprofilesctl`.
+
 ### Explicit non-goals
 
 These are deliberate choices. Do not add them back without the owner asking:
@@ -110,15 +114,19 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           └── share/color-schemes/ BreezeDarkCustom.colors
     └── xps16-da16260/
         ├── Containerfile
-        └── build_files/
-            ├── build.sh
-            └── packages.txt
+        ├── build_files/
+        │   ├── build.sh
+        │   └── packages.txt
+        └── system_files/usr/
+            ├── libexec/bootc-images/  thermald-wait.sh, platform-profile.sh
+            ├── lib/systemd/system/thermald.service.d/ bootc-wait-sensors.conf
+            └── lib/tuned/profiles/    bootc-xps-powersave, -balanced, -balanced-battery, -performance
 ```
 
 ### Build pattern (every image follows it)
 
 1. A `ctx` stage (`FROM scratch`) holds `build_files/`. It is bind-mounted during the build, so build scripts **never end up in the image**.
-2. `system_files/` is copied to `/` in `base`. `xps16-da16260` has no `COPY` line or `chmod` yet, so the first machine script or unit (auto-boost) must add both.
+2. `system_files/` is copied to `/` in `base` and in `xps16-da16260`. Scripts keep their executable bit from git.
 3. `build.sh` runs with `/var/cache` as a cache mount and `/tmp` as tmpfs.
 4. `bootc container lint` runs last. **It must pass.** Never remove it.
 
