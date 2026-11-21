@@ -18,6 +18,7 @@ ok() { # ok <description> <command...>
 }
 
 not() { ! "$@"; }
+firewall_target() { [[ "$(firewall-offline-cmd "$1" --get-target 2>/dev/null)" == "$2" ]]; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
@@ -63,6 +64,8 @@ for pkg in incus okular haruna podman-docker docker-compose zsh yakuake fastfetc
 done
 ok "firewall defaults to bootc-laptop" grep -qx 'DefaultZone=bootc-laptop' /etc/firewalld/firewalld.conf
 ok "firewall configuration is valid" firewall-offline-cmd --check-config
+ok "Incus instances cannot reach the host's ports" firewall_target --zone=bootc-incus default
+ok "Incus instances can reach other networks" firewall_target --policy=bootc-incus-out ACCEPT
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/bootc-flatpak-overrides.conf
 
 for pkg in toolbox distrobox moby-engine docker-cli; do

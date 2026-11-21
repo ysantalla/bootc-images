@@ -29,7 +29,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 **From `kinoite-main` (upstream, not ours):** KDE Plasma, full ffmpeg codecs, Podman, Flathub, bootc.
 
 **`base` adds:**
-- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone lets instances get IPv4 and DNS.
+- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone only gives instances DHCP and DNS, so they cannot reach the host's other ports, and the `bootc-incus-out` policy lets them reach other networks. Tested in a VM on 2026-11-21 with containers only: Incus VMs, IPv6 and the tailnet are untested.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar and Qt colors on first run, in new profiles only. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
@@ -102,6 +102,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
     │           ├── lib/environment.d/ 60-bootc-docker-host.conf
     │           ├── lib/firewalld/zones/ bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
+    │           ├── lib/firewalld/policies/ bootc-incus-out.xml
     │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
     │           ├── share/containers/containers.conf.d/ 60-bootc-compose.conf
     │           ├── share/konsole/     bootc-images.profile
