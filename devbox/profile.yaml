@@ -9,3 +9,11 @@ config:
   # So a project's stack cannot starve video calls on the host
   limits.cpu: "8"
   limits.memory: 16GiB
+devices:
+  # Replaces the NIC from the `default` profile: project containers cannot reach each other,
+  # only the host's bridge and, through it, the internet
+  eth0:
+    type: nic
+    name: eth0
+    network: incusbr0
+    security.port_isolation: "true"

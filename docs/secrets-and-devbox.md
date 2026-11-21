@@ -250,6 +250,7 @@ An unprivileged container (Incus's default) sees only its own filesystem plus an
 | Risk | Measure |
 |---|---|
 | Network to the host | Make `bootc-incus` accept only DHCP and DNS from `incusbr0` instead of everything. firewalld and Incus have a history of breaking container internet when the bridge is not trusted, so test that instances still reach the internet |
+| Network to other projects | Instances on `incusbr0` reach each other directly, without passing through the host's firewall. `security.port_isolation=true` on the NIC stops that, and `devbox/profile.yaml` sets it. An instance launched without the `devbox` profile is not isolated |
 | Shared folder | Mount only the project's own folder, never `~/src`. Better: clone inside the container and edit through Zed's SSH remote. If mounted, read `git diff`, especially `.git/hooks`, `mise.toml` and `package.json`, before running anything from it on the host, and never `mise trust` an unread change |
 | Kernel | Keep containers unprivileged (never `security.privileged=true`). Use `--vm` for the most sensitive work |
 | Other bridges | Do not mount the Wayland, PipeWire, `ssh-agent`, `podman.sock` or Incus sockets into a project container |
@@ -427,6 +428,8 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
     <egress-zone name="ANY"/>
   </policy>
   ```
+
+- **Projects are isolated from each other** with `security.port_isolation: "true"` on the NIC in the `devbox` profile. Without it, two project containers opened each other's SSH. With it, neither reached the other, while internet and SSH from the host kept working. The firewall change above does not do this: it only covers traffic to the host.
 
 **Found:**
 - **A locked wallet returns nothing, silently.** After locking `kdewallet` through Secret Service, `secret-tool lookup` printed nothing and exited 0, with no prompt. With `credential_process`, the AWS CLI would get empty output instead of a request to unlock. Closing the wallet on idle (section 3.2) needs this solved first.
