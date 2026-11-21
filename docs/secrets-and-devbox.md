@@ -1,8 +1,8 @@
 # Secrets, AI agents and dev containers
 
-**Status: plan, researched on 2026-11-08. Nothing here is implemented or tested yet.** It collects what the owner and Claude worked out that day, so the work can resume once the XPS arrives (around 2026-11-24). Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
+**Status: plan, researched on 2026-11-08. Nothing here is in the image yet.** Parts of it were tested in a VM on 2026-11-21 (section 8.1). It collects what the owner and Claude worked out that day, so the work can resume once the XPS arrives (around 2026-11-24). Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
 
-Drafts that go with this document live in [`devbox/`](../devbox/). They are not used by any image, task or workflow yet.
+Drafts that go with this document live in [`devbox/`](../devbox/). They are not used by any image, task or workflow yet. The image they build was tested in a VM on 2026-11-21.
 
 ---
 
@@ -283,8 +283,10 @@ One golden image, built once and cloned per project. On the btrfs pool, a clone 
 - **Nothing else:** no zsh, Starship or editor. Zed installs its own server over SSH.
 - Compilers are a non-goal in `base` (`CLAUDE.md`, section 1), and this is the container that non-goal points to.
 - `sudo` without a password gives the agent root **inside** the container, which is unprivileged on the host.
-- `security.syscalls.intercept.mknod` and `setxattr` are the usual settings for container engines inside Incus. Check whether Podman needs them.
-- Nested rootless Podman needs the container's ID map to cover the inner user's subuid range. `setup.sh` gives Incus `root:1000000:1000000000`, which should be enough. Unverified.
+- `security.syscalls.intercept.mknod` and `setxattr` are the usual settings for container engines inside Incus. Podman worked with them; whether it works without them was not tried.
+- Nested rootless Podman needs the container's ID map to cover the inner user's subuid range. The range `setup.sh` gives Incus, `root:1000000:1000000000`, was enough.
+- `images:fedora/45/cloud` arrives without the file capabilities on `newuidmap` and `newgidmap` (`rpm -V shadow-utils` reports them), so rootless Podman fails with `newuidmap: write to uid_map failed`. `cloud-init.yaml` restores them with `setcap`.
+- `docker compose` needs the per-user `podman.socket`, which `cloud-init.yaml` enables for every user. `podman-docker` already sets `DOCKER_HOST` in login shells.
 
 ### 5.2 Files
 
@@ -391,12 +393,55 @@ Run in a `mise run vm-up base` VM first, then on the XPS.
    - [ ] From a project container, the narrow IAM policy reads its own path, is refused another project's path, and decrypts without an explicit `kms:Decrypt` grant
    - [ ] The inventory commands over the real `~/src`, before migrating, and `git check-ignore -v .env` in a repository afterwards
 
+### 8.1 Results in a VM (2026-11-21)
+
+Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 7.3.3, Incus 6.23, `kf6-kwallet` 6.31), with a Plasma session open. Nothing was run on real hardware.
+
+**Works:**
+- `ksecretd` owns `org.freedesktop.secrets`, started by PAM at login (`--pam-login`). No D-Bus service file names `org.freedesktop.secrets`. The only collection is `kdewallet`, which is also the `default` alias.
+- `secret-tool store` and `lookup` round-trip a JSON value in the shape `credential_process` expects, and the value is not readable in `~/.local/share/kwalletd/`.
+- The session already sets `SSH_AUTH_SOCK` (`/run/user/1000/ssh-agent.socket`, with `ssh-agent` running) and `SSH_ASKPASS=/usr/bin/ksshaskpass`, so the image needs no `environment.d` change.
+- `devbox` builds from the two drafts, after the two fixes in section 5.1. The published image is 722 MiB, and a project container launches from it in about 13 s on the btrfs pool, with its own SSH host keys and machine ID.
+- In a project container, as `dev`: SSH from the host by IP, `sudo` without a password, `mise` and `claude` on `PATH`, rootless `docker run`, and `docker compose up` and `down` with Postgres, a published port, a health check and a named volume.
+- `limits.cpu: 8` starts on a host with 4 CPUs.
+- **The firewall finding is real, and the fix works.** With today's zone, a container opened the host's SSH, a server bound to `0.0.0.0:8000` (through the bridge address and the host's other address) and KDE Connect. With the two files below in `/etc/firewalld`, all four were blocked, while DHCP, DNS, ping to the gateway, internet, SSH from the host into the container and internet from a nested Podman container kept working, also after restarting the container and after rebooting the host. The `devbox` image was rebuilt under these rules.
+
+  ```xml
+  <!-- zones/bootc-incus.xml -->
+  <zone>
+    <short>Incus</short>
+    <description>Incus instances only get DHCP and DNS from the host.</description>
+    <interface name="incusbr0"/>
+    <service name="dhcp"/>
+    <service name="dhcpv6"/>
+    <service name="dns"/>
+  </zone>
+  ```
+
+  ```xml
+  <!-- policies/bootc-incus-out.xml -->
+  <policy target="ACCEPT">
+    <short>Incus to other networks</short>
+    <description>Lets Incus instances reach other networks through the host, but not the host itself.</description>
+    <ingress-zone name="bootc-incus"/>
+    <egress-zone name="ANY"/>
+  </policy>
+  ```
+
+**Found:**
+- **A locked wallet returns nothing, silently.** After locking `kdewallet` through Secret Service, `secret-tool lookup` printed nothing and exited 0, with no prompt. With `credential_process`, the AWS CLI would get empty output instead of a request to unlock. Closing the wallet on idle (section 3.2) needs this solved first.
+- `<name>.incus` does not resolve on the host until the `resolvectl` step in section 5.4, which was not tried.
+- The first `incus launch images:fedora/45/cloud` waited about 7 minutes before creating the instance; later ones were immediate. IPv6 does not work in this VM (`curl -6` times out), which may be the cause. Unconfirmed.
+- cloud-init reports `Failed to set the hostname` in the build container. The clones get the right hostname.
+- A running container came back by itself after the host rebooted, with `incus-startup.service` disabled. Incus restores the last state when its daemon starts.
+
+**Not tested:** `gh`, `glab` and the AWS CLI (not installed in the VM, and they need real accounts); the `ksshaskpass` confirmation of `ssh-add -c`, which needs someone at the screen; the `kwalletrc` keys for closing the wallet; Zed's SSH remote; the Claude Code login; whether a container reaches the LAN or the tailnet (QEMU's user network has neither); an Incus VM; all of section 8, step 4.
+
 ## 9. Repo changes to make after validation
 
 Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 
-- `bootc-incus.xml`: only DHCP and DNS from `incusbr0`, if the tests in section 8 pass.
-- `environment.d`: `SSH_ASKPASS=/usr/bin/ksshaskpass`, if the session does not set it already.
+- `bootc-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `bootc-incus-out` policy so instances still reach other networks. The files tested in the VM are in section 8.1. Still to test before it ships: an Incus VM (`--vm`), IPv6, and the tailnet.
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
 - A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
 - A short example of the `dev` task from section 3.8 in `README.md`, so new projects copy it.

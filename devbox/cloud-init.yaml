@@ -1,5 +1,5 @@
 #cloud-config
-# DRAFT, untested. Builds the `devbox` golden image once; see docs/secrets-and-devbox.md, section 5.
+# DRAFT, tested in a VM on 2026-11-21. Builds the `devbox` golden image once; see docs/secrets-and-devbox.md, section 5.
 # Replace the SSH key with the host's public key before building.
 users:
   - name: dev
@@ -20,6 +20,11 @@ packages:
   - docker-compose
 runcmd:
   - systemctl enable sshd
+  # The Fedora image arrives without file capabilities on these two, and rootless Podman needs them
+  - setcap cap_setuid=ep /usr/bin/newuidmap
+  - setcap cap_setgid=ep /usr/bin/newgidmap
+  # docker compose talks to the per-user Podman socket
+  - systemctl --global enable podman.socket
   # Quiet the "Emulate Docker CLI" line, as on the host
   - touch /etc/containers/nodocker
   - su - dev -c 'curl -fsSL https://mise.run | sh'
