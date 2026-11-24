@@ -39,6 +39,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Verified in the same VM (2026-11-24):** `panel.opacity = "translucent"`, set through Plasma's scripting on the running panel, keeps the panel translucent under a maximized Konsole, where the default made it opaque in the window's color. The owner chose it over a thin line on the panel's edge. The edited layout file, run through the same scripting, made a 56 px panel with seven widgets and that opacity; no new user has started with it yet.
 
 **Not tested yet:**
+- The screen turning off after 3 minutes on AC and 2 on battery on `xps16-da16260`. `tests/smoke.sh` reads the values back as a new user would; PowerDevil acting on them was not seen. The key names come from PowerDevil's libraries in the image.
 - Nothing is verified on the real XPS.
 - `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
 - `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
