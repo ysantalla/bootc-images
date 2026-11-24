@@ -7,7 +7,7 @@ Read it fully before changing anything. `README.md` is the user-facing guide; th
 
 ## 1. Project overview
 
-`katze-images` produces personal, immutable operating system images for the owner's machines. Each image is an OCI container image that [bootc](https://bootc-dev.github.io/bootc/) deploys as a full OS: atomic updates, a read-only `/usr`, and one-command rollback.
+`katze-os` produces personal, immutable operating system images for the owner's machines. Each image is an OCI container image that [bootc](https://bootc-dev.github.io/bootc/) deploys as a full OS: atomic updates, a read-only `/usr`, and one-command rollback.
 
 - **Owner:** `ysantalla` (GitHub)
 - **Registry:** `ghcr.io/ysantalla/<image>`
@@ -163,7 +163,7 @@ Concrete rules:
 | tmpfiles.d / sysusers.d | `katze-<purpose>.conf` | `katze-brave.conf` |
 | Image tags | `latest`, `<fedora>`, `<fedora>-<YYYYMMDD>` | `45-20261201` |
 
-The project was `bootc-images` until 2026-11-23. Its `bootc-` prefix shared a namespace with upstream bootc units such as `bootc-update-ca-trust.service`, which `katze-` avoids. The repository is `katze-images`; inside the image the name is `katze`. Images keep their names on GHCR, and `ysantalla` only names the GitHub owner and registry.
+The project was `bootc-images` until 2026-11-23. Its `bootc-` prefix shared a namespace with upstream bootc units such as `bootc-update-ca-trust.service`, which `katze-` avoids. The repository is `katze-os`; inside the image the name is `katze`. Images keep their names on GHCR, and `ysantalla` only names the GitHub owner and registry.
 
 All code, comments, unit descriptions and docs are in **English**.
 

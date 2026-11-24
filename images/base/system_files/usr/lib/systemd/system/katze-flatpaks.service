@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: install the image's Flatpaks
+Description=katze-os: install the image's Flatpaks
 Wants=network-online.target
 After=network-online.target
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: check the age of the running image
+Description=katze-os: check the age of the running image
 
 [Timer]
 OnStartupSec=5min

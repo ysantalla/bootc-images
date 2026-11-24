@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: install launchers for Flatpak apps
+Description=katze-os: install launchers for Flatpak apps
 
 [Service]
 Type=oneshot

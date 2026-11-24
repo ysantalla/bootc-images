@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: Incus group and subuid/subgid
+Description=katze-os: Incus group and subuid/subgid
 After=systemd-sysusers.service
 Before=incus.service
 

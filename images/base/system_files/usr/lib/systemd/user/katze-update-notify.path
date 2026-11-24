@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: watch for a downloaded system update
+Description=katze-os: watch for a downloaded system update
 PartOf=graphical-session.target
 
 [Path]

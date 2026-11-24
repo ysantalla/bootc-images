@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: warn when the running image is old
+Description=katze-os: warn when the running image is old
 
 [Service]
 Type=oneshot

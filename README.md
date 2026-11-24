@@ -1,4 +1,4 @@
-# katze-images
+# katze-os
 
 Personal bootc images, built daily, signed with cosign and published to `ghcr.io/ysantalla`.
 
@@ -85,7 +85,7 @@ git add .
 git status                        # cosign.pub listed, cosign.key NOT listed
 git commit -m "Initial bootc images"
 
-gh repo create ysantalla/katze-images --public --source . --remote origin
+gh repo create ysantalla/katze-os --public --source . --remote origin
 gh secret set SIGNING_SECRET < cosign.key
 gh secret set COSIGN_PASSWORD        # the password you just chose
 git push -u origin main

@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: check for image updates
+Description=katze-os: check for image updates
 
 [Timer]
 # Wall-clock schedule: unlike OnUnitActiveSec it counts suspended time, and

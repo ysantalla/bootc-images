@@ -1,5 +1,5 @@
 [Unit]
-Description=katze-images: announce a downloaded system update
+Description=katze-os: announce a downloaded system update
 ConditionPathExists=/run/katze/update-pending
 After=graphical-session.target
 PartOf=graphical-session.target
