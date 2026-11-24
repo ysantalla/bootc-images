@@ -50,6 +50,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - On that image, with the policy back on the key it ships: `bootc upgrade --check` reports no changes, and with the policy pointed at another key it is refused. So the signature is checked on every pull, whatever the origin says.
 - The daily warning about unsigned updates (`image-signature.sh`) said the opposite and is removed.
 
+**Seen by the owner in the VM (2026-11-24), from a copy in the home directory:** every Katze Mono icon as the glyph alone below 32 px. He asked for it after the Trash in Dolphin's side panel and the terminal and disk usage entries of its menu stood out with their shape among Breeze's line icons ("perfecto").
+
 **Not tested yet:**
 - The `Katze` color scheme in Konsole and Yakuake, and the prompt's new colors, by eye. The files parse, and the prompt keeps its two separator characters.
 - What `--enforce-container-sigpolicy` adds on top of that, and the two-step key rotation in `README.md`.

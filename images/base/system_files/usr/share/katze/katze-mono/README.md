@@ -76,10 +76,10 @@ size corrections and `[skip]` leaves an application with its original icon.
   `aliases.toml` names them on purpose. That page draws an SVG element that has
   `opacity` in the wrong place and size, so the script uses `fill-opacity` and
   `stroke-opacity` wherever they give the same picture (`faint_layer`).
-- The icons listed under `[plain]` in `aliases.toml` (the trash, a folder) are
-  written a second time in `places/22`, for sizes below 32 px, as the glyph
-  alone in the text colour. At that size they sit among Breeze's line icons,
-  as the Trash does in Dolphin's side panel.
+- Every icon is written a second time in `apps/22`, for sizes below 32 px, as
+  the glyph alone in the text colour. At that size it sits among Breeze's line
+  icons, in a menu, in Dolphin's side panel or in a title bar, and the shape
+  was a blot there.
 - The theme is installed twice: with the image, and in the home directory by
   `katze-icons.service`. Plasma reads the files of both copies but only the
   `index.theme` of the home's, so that one also declares the directories that

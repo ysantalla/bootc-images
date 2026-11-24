@@ -79,7 +79,7 @@ home_theme_keeps_breeze_folders() {
   HOME=$home XDG_DATA_HOME=$home/data XDG_DATA_DIRS=/usr/local/share:/usr/share \
     python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 &&
     grep -q '^\[breeze/places/64\]$' "$home/data/icons/katze-mono/index.theme" &&
-    grep -q '^\[places/22\]$' "$home/data/icons/katze-mono/index.theme" &&
+    grep -q '^\[apps/22\]$' "$home/data/icons/katze-mono/index.theme" &&
     test -e /usr/share/icons/katze-mono/breeze/places/64/folder-documents.svg
 }
 # What a user with an empty home reads, with the config path Plasma's session sets
@@ -184,8 +184,10 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
     ok "$icons has $preview for System Settings' preview" test -s "/usr/share/icons/$icons/apps/scalable/$preview.svg"
     ok "$icons draws $preview without opacity" not grep -q ' opacity="' "/usr/share/icons/$icons/apps/scalable/$preview.svg"
   done
-  ok "$icons draws the Trash without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/places/22/user-trash.svg"
-  ok "$icons declares its small icons" grep -q '^\[places/22\]$' "/usr/share/icons/$icons/index.theme"
+  for small in user-trash utilities-terminal org.kde.dolphin; do
+    ok "$icons draws $small without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/apps/22/$small.svg"
+  done
+  ok "$icons declares its small icons" grep -q '^\[apps/22\]$' "/usr/share/icons/$icons/index.theme"
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
