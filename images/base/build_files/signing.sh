@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Lets machines require our signature: adds our registry to the container policy.
-# It only takes effect after `bootc switch --enforce-container-sigpolicy`, see README.
+# Requires our signature for every image from our registry: adds it, with our key, to the
+# container policy. The policy's default is to reject, so a machine running this image
+# checks that signature on every pull, with or without --enforce-container-sigpolicy.
 set -euxo pipefail
 
 KEY=/usr/share/katze/cosign.pub

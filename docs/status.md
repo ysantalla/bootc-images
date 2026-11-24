@@ -33,7 +33,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - The four Flatpaks installed, and the Slack and ONLYOFFICE launchers were copied to the user's applications.
 - `incus-admin` for the user, no layered packages, `katze-laptop` as the default zone with `incusbr0` in `katze-incus`.
 - Failed units: `mcelog.service`, as before, and the user's `grub-boot-success.service` (`grub2-set-bootflag`: "Creating tmpfile failed: Read-only file system"), which is Fedora's and not ours.
-- `rpm-ostree status --json` gives `container-image-reference` as `ostree-unverified-registry:localhost/base:latest` on this disk, the field `image-signature.sh` reads. That script was not in this build.
 - SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
 
 **Verified in the same VM (2026-11-24):** `panel.opacity = "translucent"`, set through Plasma's scripting on the running panel, keeps the panel translucent under a maximized Konsole, where the default made it opaque in the window's color. The owner chose it over a thin line on the panel's edge. The edited layout file, run through the same scripting, made a 56 px panel with seven widgets and that opacity; no new user has started with it yet.
@@ -46,10 +45,16 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Seen by the owner in the VM on the published image (2026-11-24):** Documents, Downloads, Music and the other special folders, and Network in the side panel, drawn with Katze's `folder` instead of Breeze's. The home copy of the icon theme, written at login, did not declare the directories of Breeze icons that the image's copy links (0 `breeze/places` sections against 10). Introduced with `folder` in #45; fixed in the generator.
 
+**Verified in the same VM (2026-11-24), after the signing key was rotated:**
+- A plain `bootc switch` to `ghcr.io/ysantalla/base:latest`, without `--enforce-container-sigpolicy`, was refused ("invalid signature") while the VM ran an image with the old key. With the new key downloaded to `/etc/pki/containers` and the policy pointed at it, the same switch fetched 200 layers (4.3 GB) and the VM booted `45.20261124` from the registry, with Koko, the teal schemes and the panel backgrounds in it. `mcelog.service` is the only failed unit.
+- On that image, with the policy back on the key it ships: `bootc upgrade --check` reports no changes, and with the policy pointed at another key it is refused. So the signature is checked on every pull, whatever the origin says.
+- The daily warning about unsigned updates (`image-signature.sh`) said the opposite and is removed.
+
 **Seen by the owner in the VM (2026-11-24), from a copy in the home directory:** every Katze Mono icon as the glyph alone below 32 px. He asked for it after the Trash in Dolphin's side panel and the terminal and disk usage entries of its menu stood out with their shape among Breeze's line icons ("perfecto").
 
 **Not tested yet:**
 - The `Katze` color scheme in Konsole and Yakuake, and the prompt's new colors, by eye. The files parse, and the prompt keeps its two separator characters.
+- What `--enforce-container-sigpolicy` adds on top of that, and the two-step key rotation in `README.md`.
 - The accent edge on the dark icons' shape, in a session. It was chosen from a rendering over colors sampled from the owner's screenshot, where the shape (19,73,69) was the color of the launcher's highlight (20,76,71).
 - Koko in a session: opening a picture from Dolphin, and how it looks with the Katze theme. In a container it installs, `gio mime` names it for PNG, JPEG, WebP, GIF and SVG, and Katze Mono draws its icon.
 - The teal schemes shipped in an image, for a new user, and with a custom accent on top.
@@ -70,7 +75,6 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera: sources disagree on whether it gives a picture with the stock kernel (`docs/xps16-checklist.md`).
 - Whether the Intel video flags in `xps16-da16260` are needed, or do anything: compare a real video with and without them on the XPS. Chromium's own `vaapi.md` uses `AcceleratedVideoEncoder`; the `Vaapi*` names are said to be from before Chromium 131.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
-- The warning for a machine that follows our registry without requiring signatures (`image-signature.sh`). It reads `container-image-reference` from `rpm-ostree status --json`, which was never seen on a booted machine: `tests/smoke.sh` runs it with stubs.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
 - The system title bar and Qt colors in a real browser. Fresh headless Chrome and Brave profiles with `--force-first-run` wrote both preferences; additional profiles and how the colors look were not checked.
