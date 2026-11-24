@@ -488,8 +488,9 @@ EDGE = {"dark": 1.0, "light": 0.85}
 # The glyph is the text colour outright on both: Plasma paints the accent of an icon
 # with the selection's shade, which is nearly the shape's own colour.
 SHADE = {"dark": 1.0, "light": 1.0}
-# Dark lines on a light shape look thinner than light lines on a dark one.
-LINE_SCALE = {"dark": 1.0, "light": 1.6}
+# Dark lines on a light shape look thinner than light lines on a dark one, so
+# the two widths differ to look the same.
+LINE_SCALE = {"dark": 1.35, "light": 1.6}
 
 
 def scheme_style(variant: str) -> str:
