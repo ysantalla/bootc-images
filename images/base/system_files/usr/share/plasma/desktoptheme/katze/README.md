@@ -16,6 +16,11 @@ more than the owner wanted. System Settings only offers adaptive, opaque and
 translucent: how translucent is decided here. When Breeze changes these two
 files, copy them again and change `opacity:0.85` to `opacity:0.92`.
 
+The mark on a task with several windows (`group-expander-*` in
+`widgets/tasks.svgz`) is drawn in the text color with dots in the background
+color. It was in the highlight color, which is the color of the icon's own shape
+since the icons take 40% of the accent, so it could not be told apart.
+
 To try a change without building an image, copy this folder to
 `~/.local/share/plasma/desktoptheme/katze` and run
 `plasma-apply-desktoptheme katze`.
