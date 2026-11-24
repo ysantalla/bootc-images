@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "ysantalla880919@gmail.com",
+                "Name": "Ing. Yasmany Santalla"
+            }
+        ],
+        "Category": "",
+        "Description": "Breeze with custom taskbar indicators, in the colors of the color scheme",
+        "EnabledByDefault": true,
+        "Id": "katze",
+        "License": "LGPL-2.1-or-later",
+        "Name": "Katze",
+        "Version": "1.0.0",
+        "Website": "https://github.com/ysantalla/katze-os"
+    },
+    "X-Plasma-API": "6.0"
+}

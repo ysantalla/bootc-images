@@ -51,6 +51,7 @@ machine_sees_font() {
   chmod 0777 "$home"
   [[ -n "$(runuser -u nobody -- env HOME="$home" XDG_CACHE_HOME="$home/.cache" fc-list "$1" family)" ]]
 }
+icons_parse() { python3 -c 'import sys, glob, xml.etree.ElementTree as ET; files = glob.glob(sys.argv[1] + "/apps/*/*.svg"); [ET.parse(f) for f in files]; sys.exit(not files)' "$1"; }
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -88,7 +89,7 @@ done
 for unit in bootc-fetch-apply-updates.timer rpm-ostreed-automatic.timer uupd.timer; do
   ok "not enabled $unit" not enabled "$unit"
 done
-for unit in katze-update-notify.service katze-update-notify.path katze-desktop-entries.service katze-image-age.timer podman.socket; do
+for unit in katze-update-notify.service katze-update-notify.path katze-desktop-entries.service katze-image-age.timer katze-icons.service podman.socket; do
   ok "user enabled $unit" user_enabled "$unit"
 done
 
@@ -120,13 +121,38 @@ ok "a machine can see the terminal font" machine_sees_font "MesloLGS Nerd Font"
 # A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank
 ok "terminal font has the Fedora icon" font_has "MesloLGS Nerd Font" f30a
 ok "terminal font has the prompt separator" font_has "MesloLGS Nerd Font" e0b0
-THEME=/usr/share/plasma/desktoptheme/breeze-custom
-ok "Plasma style has its id" jq -e '.KPlugin.Id == "breeze-custom"' "$THEME/metadata.json"
+THEME=/usr/share/plasma/desktoptheme/katze
+ok "Plasma style has its id" jq -e '.KPlugin.Id == "katze"' "$THEME/metadata.json"
 ok "Plasma style has its taskbar" gzip -t "$THEME/widgets/tasks.svgz"
-ok "Plasma style is the default" grep -q '^name=breeze-custom$' /etc/xdg/plasmarc
-ok "Plasma style is in the look-and-feel" grep -q '^name=breeze-custom$' /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults
-ok "color scheme is installed" grep -q '^Name=Breeze Dark Custom' /usr/share/color-schemes/BreezeDarkCustom.colors
-ok "color scheme is the default" grep -q '^ColorScheme=BreezeDarkCustom$' /etc/xdg/kdeglobals
+# With a colors file, the panel would ignore the color scheme and the accent
+ok "Plasma style follows the color scheme" not test -e "$THEME/colors"
+ok "Plasma style is the default" grep -q '^name=katze$' /etc/xdg/plasmarc
+ok "dark color scheme is installed" grep -q '^Name=Katze Dark$' /usr/share/color-schemes/KatzeDark.colors
+ok "light color scheme is installed" grep -q '^Name=Katze Light$' /usr/share/color-schemes/KatzeLight.colors
+ok "color scheme is the default" grep -q '^ColorScheme=KatzeDark$' /etc/xdg/kdeglobals
+LOOKS=/usr/share/plasma/look-and-feel
+ok "only Breeze and Katze global themes" test "$(find "$LOOKS" -mindepth 1 -maxdepth 1 -printf '%f\n' | grep -vcE '^(org\.kde\.breeze.*|katze-(dark|light))$')" = 0
+for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
+  IFS=: read -r variant scheme icons <<<"$look"
+  ok "Katze ${variant^} has its id" jq -e ".KPlugin.Id == \"katze-$variant\"" "$LOOKS/katze-$variant/metadata.json"
+  ok "Katze ${variant^} sets its colors" grep -q "^ColorScheme=$scheme\$" "$LOOKS/katze-$variant/contents/defaults"
+  ok "Katze ${variant^} sets its icons" grep -q "^Theme=$icons\$" "$LOOKS/katze-$variant/contents/defaults"
+  ok "Katze ${variant^} sets the Plasma style" grep -q '^name=katze$' "$LOOKS/katze-$variant/contents/defaults"
+  ok "Katze ${variant^} has a 56 px panel" grep -q 'panel.height = 56' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
+  ok "Katze ${variant^} has the desktop switcher" grep -q 'org.kde.plasma.pager' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
+  ok "Katze ${variant^} scales the tray icons" grep -q 'scaleIconsToFit' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
+  ok "Katze ${variant^} has a preview" test -s "$LOOKS/katze-$variant/contents/previews/preview.png"
+  ok "$icons follows the color scheme" grep -q '^FollowsColorScheme=true$' "/usr/share/icons/$icons/index.theme"
+  ok "$icons has the browser" test -s "/usr/share/icons/$icons/apps/scalable/brave-origin.svg"
+  ok "$icons has a Flatpak that is not installed yet" test -s "/usr/share/icons/$icons/apps/scalable/dev.zed.Zed.svg"
+  ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
+  # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
+  ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
+  ok "$icons has no broken links" test -z "$(find "/usr/share/icons/$icons" -xtype l -print -quit)"
+  ok "$icons is valid XML" icons_parse "/usr/share/icons/$icons"
+done
+ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
+ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
 ok "no sub-pixel text in KDE" grep -q '^XftSubPixel=none$' /etc/xdg/kdeglobals
@@ -134,9 +160,14 @@ ok "Plasma's session reads /etc/xdg first" grep -q 'XDG_CONFIG_DIRS=/etc/xdg:' /
 ok "a new user gets the interface font" kde_default kdeglobals General font Inter,11,
 ok "a new user gets the menu font" kde_default kdeglobals General menuFont Inter,11,
 ok "a new user gets no sub-pixel text" kde_default kdeglobals General XftSubPixel none
-ok "a new user gets the dark icons" kde_default kdeglobals Icons Theme breeze-dark
-ok "a new user gets the color scheme" kde_default kdeglobals General ColorScheme BreezeDarkCustom
-ok "a new user gets the Plasma style" kde_default plasmarc Theme name breeze-custom
+ok "a new user gets the Katze icons" kde_default kdeglobals Icons Theme katze-mono
+ok "a new user gets the color scheme" kde_default kdeglobals General ColorScheme KatzeDark
+ok "a new user gets the Plasma style" kde_default plasmarc Theme name katze
+ok "a new user gets the global theme" kde_default kdeglobals KDE LookAndFeelPackage katze-dark
+ok "a new user gets two virtual desktops" kde_default kwinrc Desktops Number 2
+ok "virtual desktops are stacked" kde_default kwinrc Desktops Rows 2
+ok "Dark Mode switches to Katze Dark" kde_default kdeglobals KDE DefaultDarkLookAndFeel katze-dark
+ok "Dark Mode switches back to Katze Light" kde_default kdeglobals KDE DefaultLightLookAndFeel katze-light
 ok "Slack launcher forwards links" all_exec_have /usr/share/katze/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
 ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr/libexec/katze/update-notify.sh
 ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf

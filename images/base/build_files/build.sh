@@ -21,7 +21,7 @@ dnf5 -y remove toolbox distrobox
 # zsh, Starship, Nerd Font, Konsole and Yakuake defaults
 /ctx/shell.sh
 
-# The owner's Plasma style, as the default for new users
+# Katze Dark as the look of a new user, and Katze Mono icons for the image's applications
 /ctx/plasma-theme.sh
 
 # Tailscale, from its official repo
@@ -65,6 +65,9 @@ systemctl --global enable katze-desktop-entries.service
 
 # Per-user: warns when the running image is old
 systemctl --global enable katze-image-age.timer
+
+# Per-user: Katze Mono icons for the user's own applications
+systemctl --global enable katze-icons.service
 
 # Fonts installed outside RPM are missing from the cache RPM scriptlets generate. Machines
 # cannot fix it: /usr is read-only, and all its mtimes are 0, so the cache still looks valid.
