@@ -1,12 +1,13 @@
 # XPS 16 DA16260: what to check and what is still open
 
 Tasks taken from the research of 2026-11-21 on Linux support for this model.
-`CLAUDE.md` has the plan (section 10) and the hardware context (section 9);
+`CLAUDE.md` has the roadmap (section 10) and the hardware context (section 9),
+and `xps16-plan.md` the owner's plan;
 this file is the working list for the first days with the machine.
 
 Nothing here was measured on this machine. The findings come from other
 people's reports, mostly on an X7 358H, and were not checked again after
-that date. Tick a line when it is done, and move what it found to `CLAUDE.md`.
+that date. Tick a line when it is done, and move what it found to `status.md`.
 
 ## Before installing
 
@@ -15,7 +16,7 @@ that date. Tick a line when it is done, and move what it found to `CLAUDE.md`.
 
 ## Baseline, once
 
-Add these to the first-day baseline of `CLAUDE.md` (`fwupdmgr get-devices`,
+Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 `lspci -nnk`, `dmesg`):
 
 - [ ] DMI ids, `lsusb`, and `edid-decode` of the panel.
