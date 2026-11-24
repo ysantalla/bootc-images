@@ -132,6 +132,13 @@ jobs:
           raw="localhost/$IMAGE:raw"
           podman tag "$image" "$raw"
           graphroot=$(podman info --format '{{.Store.GraphRoot}}')
+          # rpm-ostree runs from the new image, whose policy requires our signature with the
+          # key that image ships. After a key rotation the published image still carries the
+          # old key's signature and would be refused. It is only used here to keep the layer
+          # layout, so this one container reads it without checking signatures.
+          policy=$(mktemp)
+          echo '{"default":[{"type":"insecureAcceptAnything"}]}' > "$policy"
+          chmod 0644 "$policy"
           # --rootfs drops the image config, so the labels are passed again
           mapfile -t labels < <(podman inspect "$raw" --format '{{json .Labels}}' | jq -r '
             del(."ostree.commit", ."ostree.final-diffid", ."rpmostree.inputhash", ."quay.expires-after")
@@ -140,6 +147,7 @@ jobs:
             --mount=type=image,src="$raw",target=/rootfs \
             --mount=type=bind,src="$graphroot",target=/run/host-container-storage,rw \
             --mount=type=tmpfs,target=/run/rpm-ostree-storage \
+            --mount=type=bind,src="$policy",target=/etc/containers/policy.json,ro \
             --entrypoint /usr/bin/rpm-ostree "$raw" \
             compose build-chunked-oci --bootc --format-version=2 --max-layers 200 \
               --rootfs /rootfs --previous-build "$PREVIOUS" "${labels[@]}" \
