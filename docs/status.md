@@ -62,7 +62,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
 - Installing a system from an ISO through a VM viewer.
 - Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
-- Katze Light, the Dark Mode switch and its label, and switching at night, on an image. Only Katze Dark was seen on a booted image.
+- Katze Light as a whole desktop, and switching at night, on an image. The owner saw on 2026-11-24, in the test VM, that the Dark Mode switch names Katze; the icon theme's light variant was seen in System Settings.
 - Icons for Flatpaks that finish installing after the first login: `katze-icons.service` only runs at login.
 - The thermald drop-in and the `katze-xps-*` tuned profiles on real hardware. A VM has no platform-profile handlers, and thermald does not run there.
 

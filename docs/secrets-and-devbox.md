@@ -440,10 +440,36 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
 
 **Not tested:** `gh`, `glab` and the AWS CLI (not installed in the VM, and they need real accounts); the `ksshaskpass` confirmation of `ssh-add -c`, which needs someone at the screen; the `kwalletrc` keys for closing the wallet; Zed's SSH remote; the Claude Code login; whether a container reaches the LAN or the tailnet (QEMU's user network has neither); an Incus VM; all of section 8, step 4.
 
+### 8.2 Incus without `incus-admin`, in a VM (2026-11-24)
+
+The audit of 2026-11-24 found that `setup.sh` puts every `wheel` user in `incus-admin`, and that group is root without a password: it controls the Incus daemon, and a privileged container with `/` mounted is root on the host. Any program running as the owner skips `sudo` that way. Incus has a second door for this: the `incus` group and `incus-user.socket` give each user a restricted project of their own (`user-1000`). Both are in the image; the socket is disabled.
+
+Tried on `base` `45.20261124`, with the user also in `incus`, through `/run/incus/unix.socket.user`:
+
+| In the restricted project | Result |
+|---|---|
+| Launch a container, create a VM (`--vm`) | Works |
+| `security.nesting=true`, `limits.cpu`, `limits.memory`, `security.port_isolation=true` on the NIC | Allowed |
+| `security.privileged=true` | Refused: "Privileged containers are forbidden" |
+| Mount the host's `/` | Refused: "Disk source path \"/\" not allowed" |
+| Mount the user's home | Allowed: `restricted.devices.disk.paths` is the home directory |
+| `security.syscalls.intercept.mknod=true`, which `devbox/profile.yaml` sets | Refused: "Container syscall interception is forbidden" |
+| Network | No address and no internet |
+
+It closes the path to root. Two things are missing before the image can use it:
+
+- **Network.** Incus gives the project its own bridge, `incusbr-1000`, and the `katze-incus` zone only names `incusbr0`, so the new bridge falls in `katze-laptop`, which lets in neither DHCP nor DNS. The zone and both policies would have to cover `incusbr-<uid>` too.
+- **Syscall interception.** Root has to allow it once in the project (`restricted.containers.interception`), or the `devbox` profile has to work without it. Neither was tried.
+
+It also changes how the owner works: instances in the `default` project are not visible from the restricted one, the project keeps its own images and profiles, and `incus admin` needs `sudo`. `mise run vm-incus` uses the default project today.
+
+Not done yet. It touches the firewall zone, the profile and `setup.sh` together, so it belongs with the rest of this plan.
+
 ## 9. Repo changes to make after validation
 
 Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 
+- `setup.sh` and the firewall: move from `incus-admin` to the `incus` group and `incus-user.socket`, once the two gaps in section 8.2 are closed.
 - `katze-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `katze-incus-out` policy so instances still reach other networks. The files tested in the VM are in section 8.1. Still to test before it ships: an Incus VM (`--vm`), IPv6, and the tailnet.
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
 - A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
