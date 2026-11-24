@@ -79,7 +79,11 @@ size corrections and `[skip]` leaves an application with its original icon.
 - Every icon is written a second time in `apps/22`, for sizes below 32 px, as
   the glyph alone in the text colour. At that size it sits among Breeze's line
   icons, in a menu, in Dolphin's side panel or in a title bar, and the shape
-  was a blot there.
+  was a blot there. Its lines are one unit wide in that 22, like Breeze's.
+- On a screen scaled 1.5 or 2, Plasma looks for a 22 px icon first in the
+  directories declared for that scale, and if there is none it asks for a
+  44 px one, which here is the icon with the shape. So `apps/22@2x` and
+  `apps/22@3x` are declared too, as links to `apps/22`.
 - The theme is installed twice: with the image, and in the home directory by
   `katze-icons.service`. Plasma reads the files of both copies but only the
   `index.theme` of the home's, so that one also declares the directories that

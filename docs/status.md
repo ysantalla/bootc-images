@@ -52,6 +52,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Seen by the owner in the VM (2026-11-24), from a copy in the home directory:** every Katze Mono icon as the glyph alone below 32 px. He asked for it after the Trash in Dolphin's side panel and the terminal and disk usage entries of its menu stood out with their shape among Breeze's line icons ("perfecto").
 
+**Verified in the VM (2026-11-24), on its screen scaled 1.5:** with only `apps/22` (8 to 31 px), Dolphin's side panel still drew the Trash with the shape. Raising that directory's limit to 35 changed nothing and to 47 fixed it, so the panel asks for 44 px: 22 at twice the size. With `apps/22@2x` declared as a link to `apps/22` and the limit back at 31, the Trash is the glyph alone and the panel's icons keep the shape.
+
 **Not tested yet:**
 - The `Katze` color scheme in Konsole and Yakuake, and the prompt's new colors, by eye. The files parse, and the prompt keeps its two separator characters.
 - What `--enforce-container-sigpolicy` adds on top of that, and the two-step key rotation in `README.md`.

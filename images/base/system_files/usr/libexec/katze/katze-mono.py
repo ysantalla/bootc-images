@@ -65,6 +65,7 @@ GLYPH_SIZE = 40    # the glyph's box, centred
 BLEED_SCALE = 0.85 # solid brand marks fill their whole box; other glyphs keep a margin
 LINE_WIDTH = 1.25  # of drawn lines with no width of their own, close to Breeze's at this size
 SMALL = 22         # "<icon>-symbolic": the glyph alone, in the text colour
+SMALL_LINE_WIDTH = 1.0  # of its lines, in those 22 units, as in Breeze's small icons
 
 SVG_NS = "http://www.w3.org/2000/svg"
 ET.register_namespace("", SVG_NS)
@@ -546,8 +547,15 @@ def small_body(glyph: Glyph) -> str:
     included, before it looks at Breeze. Plasma rewrites this stylesheet, so the
     glyph follows the colour scheme like Breeze's own tray icons."""
     size = SMALL * (0.8 if glyph.full_bleed or not glyph.path else 1)
-    return ('<style type="text/css" id="current-color-scheme">.ColorScheme-Text{color:#fcfcfc;}</style>'
-            + drawing(glyph, "currentColor", SMALL, size, ' class="ColorScheme-Text"'))
+    # A line glyph keeps the weight of Breeze's small icons, one unit of their
+    # 22: at the width of the large icon, scaled down, it looked faint beside them.
+    global LINE_WIDTH
+    large, LINE_WIDTH = LINE_WIDTH, SMALL_LINE_WIDTH * CANVAS / SMALL
+    try:
+        body = drawing(glyph, "currentColor", SMALL, size, ' class="ColorScheme-Text"')
+    finally:
+        LINE_WIDTH = large
+    return '<style type="text/css" id="current-color-scheme">.ColorScheme-Text{color:#fcfcfc;}</style>' + body
 
 
 def svg_document(body: str, width: float, height: float) -> str:
@@ -592,6 +600,19 @@ PLAIN_SECTION = """
 Size=22
 MinSize=8
 MaxSize=31
+Context=Applications
+Type=Scalable
+"""
+# On a screen scaled 1.5 or 2, Plasma asks for a 22 px icon as 44 px unless the
+# theme has a directory declared for that scale, and 44 px is the icon with the
+# shape. These are links to the same files.
+PLAIN_SCALES = (2, 3)
+PLAIN_SCALED_SECTION = """
+[apps/22@{scale}x]
+Size=22
+MinSize=8
+MaxSize=31
+Scale={scale}
 Context=Applications
 Type=Scalable
 """
@@ -739,8 +760,11 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
             stale.rmdir()
     _, name, inherits = THEMES[args.variant]
     extra, directories = pass_through(output, written, roots, inherits.split(",")[0])
-    extra = PLAIN_SECTION + extra
-    directories = [PLAIN_DIRECTORY, *directories]
+    scaled = [f"{PLAIN_DIRECTORY}@{scale}x" for scale in PLAIN_SCALES]
+    for link in scaled:  # after pass_through, which clears every link first
+        (output / link).symlink_to(plain.name, target_is_directory=True)
+    extra = PLAIN_SECTION + "".join(PLAIN_SCALED_SECTION.format(scale=s) for s in PLAIN_SCALES) + extra
+    directories = [PLAIN_DIRECTORY, *scaled, *directories]
     more, more_directories = other_copies(output, roots, directories)
     extra += more
     directories += more_directories

@@ -188,6 +188,10 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
     ok "$icons draws $small without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/apps/22/$small.svg"
   done
   ok "$icons declares its small icons" grep -q '^\[apps/22\]$' "/usr/share/icons/$icons/index.theme"
+  for scale in 2 3; do
+    ok "$icons has its small icons for a screen scaled ${scale}x" test -s "/usr/share/icons/$icons/apps/22@${scale}x/user-trash.svg"
+    ok "$icons declares them" grep -q "^\[apps/22@${scale}x\]\$" "/usr/share/icons/$icons/index.theme"
+  done
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
