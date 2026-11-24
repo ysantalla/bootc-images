@@ -61,7 +61,7 @@ It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`
 
 These are deliberate choices. Do not add them back without the owner asking:
 - **The Docker engine** (`moby-engine`, `docker-ce`): Podman is the engine. `podman-docker` and `docker-compose` only give it Docker's commands.
-- **libvirt / virt-manager / GNOME Boxes**: Incus handles VMs. Showing a VM's screen needs a viewer, which the image does not have yet (section 11).
+- **libvirt / virt-manager / GNOME Boxes**: Incus handles VMs. Showing a VM's screen needs a viewer, which the image does not have yet (`docs/vm-viewers.md`).
 - **Toolbx / Distrobox**: removed from `kinoite-main` on purpose; Incus handles containers.
 - **Package layering on hosts** (`rpm-ostree install`): every change goes through the image.
 - **Out-of-tree kernels in `base`.**
@@ -82,6 +82,10 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
 ├── docs/
+│   ├── status.md                      what was tested and what was not, by date
+│   ├── xps16-plan.md                  the owner's plan for the XPS (not implemented)
+│   ├── xps16-checklist.md             checks to run on the XPS
+│   ├── vm-viewers.md                  VM viewer research and the KRDC plan
 │   └── secrets-and-devbox.md          plan for secrets, AI agents and per-project dev containers (not implemented)
 ├── devbox/                            drafts for that plan: cloud-init and Incus profile of the dev image
 ├── .gitignore                         output/, bib/config.toml, cosign.key
@@ -352,187 +356,39 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
-1. **Verify base** in a VM and on hardware. See the status below, and `docs/xps16-checklist.md` for the checks to run on the XPS.
+1. **Verify base** in a VM and on hardware. See `docs/status.md`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
 3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
 4. **Secrets and per-project dev containers.** Mostly `base` and per-user setup, not this machine image. Researched on 2026-11-08, nothing implemented: see `docs/secrets-and-devbox.md`, which has the decisions, the test plan for the VM and the XPS, and the repo changes to make afterwards. Tested in a VM on 2026-11-21 (its section 8.1): the keyring, the `devbox` image with rootless `docker compose`, and that the `katze-incus` zone lets instances reach every port on the host, with a tighter zone and policy that fix it.
 5. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
 
-### Status (2026-11-05)
+### Status and plans
 
-Images build, publish and verify with `cosign.pub`, and pull without credentials.
+- **What was tested and what was not:** `docs/status.md`. Read it before saying something works, and add to it when something is tested.
+- **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. None of it is implemented.
+- **Checks to run on the XPS:** `docs/xps16-checklist.md`.
+- **VM viewers,** and how to test images on a machine running the image: `docs/vm-viewers.md`.
 
-**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, and its agent can take over 60 s to come up (`incus exec` was confirmed later on a KDE guest); `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
+### Decisions by the owner
 
-**Verified in a VM (`xps16-da16260`, `45.20261105`, 2026-11-05):** boots from a local disk; `bootc switch` to GHCR; no layered packages; `bootc rollback` in both directions, with the home directory kept; Flatpak install. `bootc switch --enforce-container-sigpolicy` deploys as `ostree-image-signed`, and `bootc upgrade --check` reports no error, but that was the same digest, so no new image has been accepted or refused under it yet.
+**Image tag (2026-11-05):** hosts use `:latest`. A Fedora upgrade still only happens when `FEDORA_VERSION` changes here.
 
-**Verified in a VM (`xps16-da16260`, `45.20261106`, 2026-11-05):**
-- Enforced signatures: an image signed with the current key was accepted through both `bootc switch` and `bootc upgrade`, and an image signed with the old key was refused with a signature error, leaving the deployments unchanged.
-- MesloLGS Nerd Font in Konsole, with the prompt icons, after the `fc-cache -f` fix. `tests/smoke.sh` catches the original failure.
-- `breeze-custom`, `BreezeDarkCustom` (now `katze` and `KatzeDark`) and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
-- `docker run`, and `docker compose up` and `down` with nginx, a published port and a named volume, which survives `down`.
-- Haruna opens an HEVC file from Dolphin by default and shows the picture. The owner heard its audio on 2026-11-06. Hardware decode was not checked.
+**Incus at boot (2026-11-06):** `incus-startup.service` stays disabled. Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
 
-**Verified in a VM (`xps16-da16260`, `45.20261111`, 2026-11-11):** after `bootc upgrade`, it boots kernel 7.3.3-300.fc45 and reaches Plasma on Wayland, as shown by the owner's Info Center. Nothing else was checked on it.
+**Firewall (2026-11-07):** the default zone is `katze-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `katze-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
 
-**Verified in a VM (local `base` build, 2026-11-06):** `incus start --console=vga` opened an empty Incus VM's UEFI screen in `spicy`, in a test build with `spice-gtk-tools`. The owner found it ugly, so it is not in the image.
+**VM viewer (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See `docs/vm-viewers.md`.
 
-**Verified in a VM, nested (local `base` build, 2026-11-06):** an openSUSE Tumbleweed KDE Incus VM (`images:opensuse/tumbleweed/desktop-kde`) reached Plasma on Wayland, and `incus exec` reached it, with `spice-vdagentd` active. KRDC's nightly Flatpak (`26.11.70`) showed its screen with working input, through a temporary `socat` bridge to port 5930, since KRDC only speaks TCP or `.vv` files. The owner reports other features worked, within the limits of nesting; audio could not be tested. Nothing from KRDC is in the image.
+**Secrets and agents (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
 
-**Not tested yet:**
-- Nothing is verified on the real XPS.
-- `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
-- `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
-- `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
-- A user created after the Plasma defaults shipped.
-- Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
-- Intel hardware decode in Haruna on the XPS. `vm-up` sound was heard in YouTube and in Haruna, in the VM.
-- Installing stock Kinoite and running `bootc switch`, the path `README.md` recommends. All VM results started from a bootc-image-builder disk.
-- **Restart now** in the update notification. It now calls Plasma's `org.kde.Shutdown` `logoutAndReboot` and falls back to `systemctl reboot`; neither the call nor the prompt for unsaved work was tried in a session.
-- A published build after the action updates of 2026-11-06 (`podman-login` 2, `push-to-registry` 3, `buildah-build` 3, `cosign-installer` 4 with cosign 2.5.2): check that an enforcing machine accepts it and that layers are still reused.
-- The Slack launcher in a real session. It gained `--file-forwarding`, which `man flatpak-run` says `@@u %U @@` needs. Check that it opens `slack://` links.
-- Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
-- Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
-- On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera: sources disagree on whether it gives a picture with the stock kernel (`docs/xps16-checklist.md`).
-- Whether the Intel video flags in `xps16-da16260` are needed, or do anything: compare a real video with and without them on the XPS. Chromium's own `vaapi.md` uses `AcceleratedVideoEncoder`; the `Vaapi*` names are said to be from before Chromium 131.
-- `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
-- The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
-- Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
-- The system title bar and Qt colors in a real browser. Fresh headless Chrome and Brave profiles with `--force-first-run` wrote both preferences; additional profiles and how the colors look were not checked.
-- GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
-- Installing a system from an ISO through a VM viewer.
-- Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
-
-**Verified in a VM, nested (`xps16-da16260` guest of QEMU, 2026-11-06):** `mise run vm-incus base` imported a `base` disk and booted it as `base-test`, with IPv4, and KRDC's nightly Flatpak showed its Plasma welcome screen through the `socat` bridge. A second run left the VM as it was. `incus exec` does not work on these disks (`VM agent isn't currently running`), so use SSH or `incus console`. They have no `spice-vdagent` either, so KRDC warns about it, and clipboard and resizing should not work. Audio, and running the whole flow on the XPS, are untested.
-
-**Decided by the owner:** hosts use `:latest` (2026-11-05). A Fedora upgrade still only happens when `FEDORA_VERSION` changes here.
-
-**Also decided by the owner:** `incus-startup.service` stays disabled (2026-11-06). Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
-
-**Firewall, decided by the owner (2026-11-07):** the default zone is `katze-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `katze-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
-
-**VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
-
-**Secrets and agents, decided by the owner (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
-
-**Decisions pending from the owner:**
+**Pending:**
 - Whether to use the internal camera or a USB webcam for video calls.
 - The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, which projects keep their development credentials in Parameter Store, and cloned or mounted code in project containers.
 
-### Plan for the XPS, decided by the owner (2026-11-23)
-
-None of this is implemented or tested, and the figures are the owner's notes, not measurements.
-
-**First day, in order:**
-1. In Windows: Dell Command Update for BIOS and firmware only, note the BIOS version, and run the F12 diagnostics.
-2. In the BIOS: AHCI/NVMe storage, Secure Boot on, and custom charging between 50% and 80% (or Primarily AC).
-3. Install Kinoite (Fedora 45) on a LUKS-encrypted disk.
-4. Rebase to `base`, then to `xps16-da16260`.
-5. Record a baseline in this repo: `fwupdmgr get-devices`, `lspci -nnk`, `dmesg`.
-6. Validate s2idle suspend before touching the camera.
-
-**System:**
-- **Encryption:** LUKS, unlocked at the end with TPM and a PIN: `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <dev>`, plus `rpm-ostree kargs --append=rd.luks.options=tpm2-device=auto`.
-- **Secure Boot:** on from the start. Our own kernel modules are signed with the owner's MOK during the build.
-- **Swap:** zram only, 16 GB, in `base`: `zram-size = min(ram / 4, 16384)` and `compression-algorithm = zstd`.
-- **Hibernation:** ruled out. Suspend for breaks, power off at night.
-- **Battery:** 80% charge limit, with `battery:desk` and `battery:travel` mise tasks.
-- **Login:** Fedora 45 uses Plasma Login Manager (`plasmalogin.service`), not SDDM.
-- **Claude and suspend:** mise tasks that run it under `systemd-inhibit --what=idle` by default, and `idle:sleep:handle-lid-switch` only on purpose.
-- **OLED:** auto-hide panel, dark wallpaper, and the screen off after 2 to 3 minutes.
-- **Hardware notes:** the 388H has 4 P, 8 E and 4 LP cores. The memory gives about 153 GB/s in theory. The SSD is the weak point: it can be replaced, and no BIOS setting speeds it up.
-
-**Voice dictation, in Spanish:**
-- Voxtype built into `xps16-da16260`, with `language = "es"` and `mode = "type"`. It needs `ydotool`, and a KDE shortcut that runs `voxtype record toggle`.
-- Phase 1 runs on the CPU with the `small` model.
-- Phase 2 uses the NPU: a build with `--features openvino-whisper`, the OpenVINO GenAI SDK in `/usr/lib/openvino-genai`, and Intel's NPU driver, with `engine = "openvino"` and `device = "NPU"`.
-
-**Icons:** the Katze Mono theme. It was built on 2026-11-24 and is described in section 1; the plan it started from (Papirus glyphs, a per-user script) no longer applies.
-
-**To confirm on the machine:**
-- LVFS coverage for the DA16260.
-- Intel's NPU driver, shipped as an Ubuntu `.deb`, loading on Fedora 45.
-- The original repository of the IR driver (HritwikSinghal or acmodeu).
-- Real drain in suspend and real SSD speed.
-
-**Known small improvements, not applied:**
-- A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
-- A wrong ID in `flatpaks.list` makes `katze-flatpaks.service` retry every hour without end.
-- Nothing prunes old tags on GHCR.
-- `mise run build` reuses a stale local base.
-
 ---
 
-## 11. VM viewers
-
-Reviewed on 2026-11-06, with Incus 6.23 and Fedora 45. **The owner chose KRDC.** Unless a row says it was run, this comes from reading source code and measuring packages.
-
-The image has no viewer yet. Without one, Incus prints the socket URI and waits, while `incus exec` and the text console still work.
-
-### How Incus opens a VM's screen
-
-`incus console --type=vga` and `incus start --console=vga` run the first viewer they find, in this order: `console_spice_command` from `~/.config/incus/config.yml` (`SOCKET` becomes the full URI), `remote-viewer`, `spicy`. On Linux the viewer always gets a private Unix socket as `spice+unix://<path>`, with no password.
-
-- `remote-viewer` wins if both it and `spicy` are installed.
-- The viewer must stay in the foreground: Incus closes the socket when it exits, and kills it when the console ends.
-- Only one console per instance, unless `--force` is used.
-- Clipboard and resize need `spice-vdagent` in the guest. `incus-agent` plays no part.
-
-### Options
-
-| Option | Reaches Incus | Cost on `base` | Notes | Status |
-|---|---|---|---|---|
-| `spicy` (`spice-gtk-tools`) | Yes | 2 MiB | GTK3. No Ctrl+Alt+Del action. Run: UEFI screen | Rejected by the owner: ugly |
-| `remote-viewer` (`virt-viewer`) | Yes | 40 MiB, with libvirt libraries and no daemon | Header bar cannot be hidden in a window. Can send key combinations | Fallback for USB or Ctrl+Alt+Del |
-| KRDC 26.08 (Fedora today) | No | 4 MiB | No SPICE plugin | Wait |
-| KRDC nightly Flatpak | Through a TCP bridge | 8.4 MB, plus a 415 MB runtime | Real Plasma look. No USB or shared folders in its code. Run: see the status above | **Chosen**, once it ships |
-| Remmina | Only with a script (`unix:///path`) | 9 MiB | Separate manager window | Not worth it |
-| Field Monitor | Flatpak needs a socket permission | 81.4 MB | libadwaita | Not a fit |
-| GNOME Connections | No, TCP only | 5 MiB | | No |
-| `incus-ui-canonical` | Yes, through the API | About 4.6 MB | No Fedora package, and it targets Incus 7. Fits remote access, not daily use | Plan B |
-| `lxc/incus-ui` | Not yet | | New official UI with no instance support, and it requires Incus 7 | Wait |
-| QEMU's GTK window | No | | QEMU runs as a daemon under `incusd`, with no access to the session | Discarded |
-| VNC through `raw.qemu` | Unsupported | | Upstream does not plan VNC. Not tried | Discarded |
-| Karton, virt-manager | No | | Need the libvirt stack, a non-goal | Excluded |
-
-### Testing images on a machine running the image
-
-The owner tests branches on the XPS with Incus and KRDC, not with `vm-up`, which needs QEMU's GTK and PipeWire modules that the image does not have.
-
-```bash
-mise run vm base
-mise run vm-incus base --cpus 8 --memory 16GiB   # defaults: 4 vCPUs, 8GiB
-incus console base-test --type=vga
-incus delete -f base-test                        # needed after rebuilding the disk
-```
-
-After a rebuild, `vm-incus` refuses to start until the old VM is erased. Hardware checks still need `mise run switch-local`, since a VM cannot see the Intel GPU.
-
-### Adopting KRDC after KDE Gear 26.12
-
-KRDC's plugin is in `release/26.12` with `WITH_SPICE` on by default. Gear 26.12 tarballs are due on 2026-12-03. Fedora's `krdc.spec` has no `spice-glib` dependency yet.
-
-1. See whether Fedora ships it: `dnf5 repoquery krdc`, then look for `krdc_spiceplugin.so` in the package. If so, add `krdc` to `packages.txt`. If only Flathub has it, add `org.kde.krdc` to `flatpaks.list`.
-2. See whether upstream accepts sockets: `spice/spiceviewfactory.cpp` and `spice/spiceview.cpp` in `network/krdc`. They only used `host` and `port` on 2026-11-06, while spice-glib has a `unix-path` property.
-3. Without socket support, use this bridge as `remote-viewer` in a directory on `PATH`, with `flatpak run` replaced by `krdc` for the RPM. Its port has no password, so any local program can open the console. In the image it would go in `/usr/libexec/katze/`, set through `console_spice_command`, which is per user.
-
-   ```bash
-   #!/usr/bin/env bash
-   socket="${1#spice+unix://}"
-   socat TCP-LISTEN:5930,bind=127.0.0.1,fork,reuseaddr "UNIX-CONNECT:$socket" &
-   trap "kill \$! 2>/dev/null" EXIT
-   sleep 1
-   flatpak run org.kde.krdc//master spice://127.0.0.1:5930
-   ```
-
-4. To try it before Fedora ships it, install the nightly from `https://cdn.kde.org/flatpak/krdc-nightly/krdc-nightly.flatpakrepo`, with Flathub added for the runtime.
-5. Test a guest with `images:opensuse/tumbleweed/desktop-kde`, which comes with `spice-vdagent`. Use `-c security.secureboot=false`.
-6. On the XPS, check **Grab Keys** with Alt+Tab and Meta, Ctrl+Alt+Del, audio, clipboard both ways, resizing, and sharpness at the panel's scale.
-
-KRDC's code has no USB redirection or shared folders. If those are needed, add a second viewer for that.
-
-## 12. References
+## 11. References
 
 - bootc: <https://bootc-dev.github.io/bootc/>
 - Fedora bootc docs: <https://docs.fedoraproject.org/en-US/bootc/>
@@ -540,6 +396,3 @@ KRDC's code has no USB redirection or shared folders. If those are needed, add a
 - bootc-image-builder: <https://github.com/osbuild/bootc-image-builder>
 - mise tasks: <https://mise.jdx.dev/tasks/>
 - Brave Origin on Linux: <https://brave.com/origin/linux/>
-- Incus console command: <https://github.com/lxc/incus/blob/v6.23.0/cmd/incus/console.go>
-- KRDC source: <https://invent.kde.org/network/krdc>
-- KDE Gear 26.12 schedule: <https://community.kde.org/Schedules/KDE_Gear_26.12_Schedule>
