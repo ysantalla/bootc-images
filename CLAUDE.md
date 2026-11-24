@@ -200,6 +200,7 @@ mise run iso xps16-da16260          # installer ISO
 mise run switch-local base          # switch THIS machine to a local build (the name is required)
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
 mise run power --load 60            # THIS machine: profile, RAPL limits, turbostat idle and under load → output/power/
+mise run theme:screenshots          # previews of both themes and the README's pictures, from the running test VM
 mise run clean                      # remove output/, after asking
 ```
 

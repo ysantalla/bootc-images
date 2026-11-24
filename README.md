@@ -324,4 +324,4 @@ Rules:
 - Removing a name from `flatpaks.list` does not uninstall it from existing machines: use `flatpak uninstall`.
 - Flatpak apps don't use the host's codecs or VA-API driver; they use their runtime's (`ffmpeg-full` and the Intel VA-API extension).
 - The roadmap and the owner's decisions are in `CLAUDE.md`, and what was tested is in `docs/status.md`. What to check on the XPS first is in `docs/xps16-checklist.md`.
-- To take the screenshots again: apply each theme in a test VM (`plasma-apply-lookandfeel -a katze-dark`), capture with Spectacle, and save them in `docs/screenshots/` at 1600 px wide. `katze-mono.py --follow-accent --sheet` draws the icon sheet.
+- To take the screenshots again: `mise run theme:screenshots`, with the test VM running and its user logged in. It applies each theme there, captures the desktop and the launcher, and writes the README's pictures and both themes' previews. `katze-mono.py --follow-accent --sheet` draws the icon sheet.
