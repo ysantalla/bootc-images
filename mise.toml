@@ -250,6 +250,10 @@ elif command -v rsvg-convert >/dev/null; then
 fi
 '''
 
+[tasks."theme:screenshots"]
+description = "Take the Katze themes' previews and the README's screenshots again, from the running test VM. It changes that VM's session while it runs"
+run = "tests/theme-screenshots.sh"
+
 [tasks.clean]
 description = "Remove generated disks and every test VM, after asking"
 run = '''

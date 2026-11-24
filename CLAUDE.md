@@ -201,6 +201,7 @@ mise run switch-local base          # switch THIS machine to a local build (the 
 mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
 mise run power --load 60            # THIS machine: profile, RAPL limits, turbostat idle and under load → output/power/
 mise run icons:preview              # one picture of the icons in both themes; --set dark.tint=0.3 tries a look
+mise run theme:screenshots          # previews of both themes and the README's pictures, from the running test VM
 mise run clean                      # remove output/, after asking
 ```
 
