@@ -219,9 +219,15 @@ for type in image/png image/jpeg image/webp; do
   ok "$type opens in Koko" opens_images_with "$type" org.kde.koko.desktop
 done
 ok "Koko has its Katze icon" test -s /usr/share/icons/katze-mono/apps/scalable/org.kde.koko.svg
+# Made at build time from Breeze's. If Breeze changed and the build left it out, that is a
+# warning in the build log, not a failure here: updates must keep flowing.
+panel_is_ours_or_breezes() {
+  local file=/usr/share/plasma/desktoptheme/katze/$1/panel-background.svg
+  [[ ! -e $file ]] && return 0
+  grep -q 'opacity:0.92' "$file" && python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "$file"
+}
 for panel in widgets translucent/widgets; do
-  ok "the panel is 92% opaque ($panel)" grep -q 'opacity:0.92' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
-  ok "the panel background is valid XML ($panel)" python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
+  ok "the panel is 92% opaque, or Breeze's ($panel)" panel_is_ours_or_breezes "$panel"
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
@@ -232,6 +238,9 @@ for copy in image home; do
   ok "Plasma finds Breeze's icon for a longer name ($copy copy)" lookup_is "$copy" preferences-system-bluetooth '*breeze*/preferences-system-bluetooth.svg'
   ok "Plasma finds Katze's Trash ($copy copy)" lookup_is "$copy" user-trash '*/katze-mono/apps/scalable/user-trash.svg'
 done
+# A new application of the image with no glyph of its own shows up here: give it an alias
+ok "no application is left with its initial for an icon" test -z "$(python3 /usr/libexec/katze/katze-mono.py --report --only initial 2>/dev/null | grep '^initial ')"
+ok "no application is left with its category's icon" test -z "$(python3 /usr/libexec/katze/katze-mono.py --report --only generic 2>/dev/null | grep '^generic ')"
 ok "icon generator draws its preview" python3 /usr/libexec/katze/katze-mono.py --all-aliases --preview /tmp/katze-preview.svg
 ok "the icons' look comes from aliases.toml" grep -q '^\[look.dark\]$' /usr/share/katze/katze-mono/aliases.toml
 ok "icon generator survives odd icon names" icons_survive_odd_names
