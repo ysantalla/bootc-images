@@ -581,15 +581,16 @@ Context=Applications
 Type=Scalable
 """
 
-# Icons that are not applications (the trash, a folder) also show up small, in
-# lists made of Breeze's line icons. Below 32 px they are the glyph alone.
-PLAIN_DIRECTORY = "places/22"
+# Small, an icon sits in a menu, a side panel or a title bar, among Breeze's
+# line icons, and the shape is a blot with a glyph too small to read. Below
+# 32 px every icon is the glyph alone, in the text colour.
+PLAIN_DIRECTORY = "apps/22"
 PLAIN_SECTION = """
-[places/22]
+[apps/22]
 Size=22
 MinSize=8
 MaxSize=31
-Context=Places
+Context=Applications
 Type=Scalable
 """
 
@@ -646,7 +647,7 @@ def other_copies(output: Path, roots: list[Path], have: list[str]) -> tuple[str,
         except (configparser.Error, OSError):
             continue
         for directory in index.sections():
-            if (directory.startswith("breeze/") or directory == PLAIN_DIRECTORY) and directory not in have:
+            if directory.startswith("breeze/") and directory not in have:
                 sections.setdefault(directory, "".join(f"{k}={v}\n" for k, v in index.items(directory)))
     return "".join(f"\n[{d}]\n{body}" for d, body in sorted(sections.items())), sorted(sections)
 
@@ -697,6 +698,7 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
     icons = output / "apps/scalable"
     small = output / "apps/symbolic"
     plain = output / PLAIN_DIRECTORY
+    plain.mkdir(parents=True, exist_ok=True)
     icons.mkdir(parents=True, exist_ok=True)
     small.mkdir(parents=True, exist_ok=True)
     written: set[str] = set()
@@ -720,27 +722,23 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
             print(f"warning: no icon for {app.name}: {error}", file=sys.stderr)
             continue
         written.add(app.icon)
-        if app.icon in args.plain:
-            plain.mkdir(parents=True, exist_ok=True)
-            (plain / f"{app.icon}.svg").write_text(svg_document(small_body(glyph), SMALL, SMALL), encoding="utf-8")
+        (plain / f"{app.icon}.svg").write_text(svg_document(small_body(glyph), SMALL, SMALL), encoding="utf-8")
     # Remove icons of applications that are gone, so reruns do not pile up.
     for old in [*icons.glob("*.svg"), *small.glob("*.svg")]:
         if old.stem.removesuffix("-symbolic") not in written:
             old.unlink()
-    kept = written & args.plain
-    for old in plain.glob("*.svg") if plain.is_dir() else []:
-        if old.stem not in kept:
+    for old in plain.glob("*.svg"):
+        if old.stem not in written:
             old.unlink()
-    stale = output / "apps/small"  # an earlier layout of this theme
-    if stale.is_dir():
-        for old in stale.glob("*.svg"):
-            old.unlink()
-        stale.rmdir()
+    for stale in (output / "apps/small", output / "places/22"):  # earlier layouts of this theme
+        if stale.is_dir():
+            for old in stale.glob("*.svg"):
+                old.unlink()
+            stale.rmdir()
     _, name, inherits = THEMES[args.variant]
     extra, directories = pass_through(output, written, roots, inherits.split(",")[0])
-    if kept:
-        extra = PLAIN_SECTION + extra
-        directories = [PLAIN_DIRECTORY, *directories]
+    extra = PLAIN_SECTION + extra
+    directories = [PLAIN_DIRECTORY, *directories]
     more, more_directories = other_copies(output, roots, directories)
     extra += more
     directories += more_directories
@@ -792,7 +790,6 @@ def main() -> int:
 
     aliases: dict[str, str] = {}
     skip: set[str] = set()
-    plain: set[str] = set()
     outlined: set[str] = set()
     scales: dict[str, float] = {}
     if args.aliases.is_file():
@@ -800,11 +797,9 @@ def main() -> int:
             table = tomllib.load(f)
         aliases = table.get("aliases", {})
         skip = set(table.get("skip", {}).get("icons", []))
-        plain = set(table.get("plain", {}).get("icons", []))
         outlined = set(table.get("outline", {}).get("glyphs", []))
         scales = table.get("scale", {})
 
-    args.plain = plain
     dirs = data_dirs()
     roots = icon_roots(dirs)
     apps = visible_apps(dirs)

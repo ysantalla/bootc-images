@@ -112,12 +112,6 @@
 
 # Other
 
-# Icons that are the glyph alone below 32 px, without the shape. They are not
-# applications, and at that size they sit in lists of Breeze's line icons: the
-# Trash in Dolphin's side panel was the only one with a shape.
-[plain]
-icons = ["exec", "folder", "document", "user-trash", "user-trash-full"]
-
 # Applications left with their original icon, for any whose tray item still
 # takes the shape. Tray items that ask for "<icon>-symbolic" do not need it:
 # the theme writes that name with the glyph alone.
