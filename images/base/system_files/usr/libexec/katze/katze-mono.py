@@ -472,8 +472,8 @@ def drawing(glyph: Glyph, colour: str, canvas: float, size: float, extra: str = 
 # text, background and accent. Plasma replaces all three with the colour
 # scheme's, so one drawing serves any scheme and accent.
 FALLBACK = {
-    "dark": ("#fcfcfc", "#0b0d14", "#3daee9"),
-    "light": ("#232629", "#f4f5f7", "#3daee9"),
+    "dark": ("#fcfcfc", "#0b0d14", "#00b09a"),
+    "light": ("#232629", "#f4f5f7", "#00b09a"),
 }
 # How much accent the shape takes. On a light scheme a faint wash is lost
 # against a light panel, so it takes more and gets an edge in the accent.
