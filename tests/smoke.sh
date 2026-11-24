@@ -71,6 +71,17 @@ screen_off_after() { # screen_off_after <power state> <seconds>
     kreadconfig6 --file powerdevilrc --group "$1" --group Display --key TurnOffDisplayIdleTimeoutSec)" == "$2" ]]
 }
 opens_images_with() { [[ "$(XDG_CURRENT_DESKTOP=KDE gio mime "$1" 2>/dev/null | head -1)" == *"$2"* ]]; }
+# The user's copy of the theme, written at login, must declare what only the image's copy has,
+# or Plasma shortens "folder-documents" to this theme's "folder"
+home_theme_keeps_breeze_folders() {
+  local home
+  home=$(mktemp -d)
+  HOME=$home XDG_DATA_HOME=$home/data XDG_DATA_DIRS=/usr/local/share:/usr/share \
+    python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 &&
+    grep -q '^\[breeze/places/64\]$' "$home/data/icons/katze-mono/index.theme" &&
+    grep -q '^\[places/22\]$' "$home/data/icons/katze-mono/index.theme" &&
+    test -e /usr/share/icons/katze-mono/breeze/places/64/folder-documents.svg
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -173,6 +184,8 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
     ok "$icons has $preview for System Settings' preview" test -s "/usr/share/icons/$icons/apps/scalable/$preview.svg"
     ok "$icons draws $preview without opacity" not grep -q ' opacity="' "/usr/share/icons/$icons/apps/scalable/$preview.svg"
   done
+  ok "$icons draws the Trash without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/places/22/user-trash.svg"
+  ok "$icons declares its small icons" grep -q '^\[places/22\]$' "/usr/share/icons/$icons/index.theme"
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
@@ -190,6 +203,7 @@ for panel in widgets translucent/widgets; do
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
+ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
 ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
@@ -211,6 +225,9 @@ ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr
 ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
+ok "Konsole uses the Katze colors" grep -qx 'ColorScheme=Katze' /usr/share/konsole/katze.profile
+ok "the Katze color scheme for Konsole is there" grep -qx 'Color=17,23,24' /usr/share/konsole/Katze.colorscheme
+ok "the prompt uses the Katze color" grep -q 'fg:#00b09a' /usr/share/katze/starship.toml
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/katze.profile
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/katze/build-time
 

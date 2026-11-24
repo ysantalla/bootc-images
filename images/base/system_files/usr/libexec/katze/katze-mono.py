@@ -581,6 +581,18 @@ Context=Applications
 Type=Scalable
 """
 
+# Icons that are not applications (the trash, a folder) also show up small, in
+# lists made of Breeze's line icons. Below 32 px they are the glyph alone.
+PLAIN_DIRECTORY = "places/22"
+PLAIN_SECTION = """
+[places/22]
+Size=22
+MinSize=8
+MaxSize=31
+Context=Places
+Type=Scalable
+"""
+
 
 def pass_through(output: Path, names: set[str], roots: list[Path],
                  parent: str = "breeze-dark") -> tuple[str, list[str]]:
@@ -613,6 +625,30 @@ def pass_through(output: Path, names: set[str], roots: list[Path],
         (target / file.name).symlink_to(file.resolve())
         sections[f"breeze/{directory}"] = "".join(f"{k}={v}\n" for k, v in index.items(directory))
     return "".join(f"\n[{directory}]\n{body}" for directory, body in sorted(sections.items())), list(sorted(sections))
+
+
+def other_copies(output: Path, roots: list[Path], have: list[str]) -> tuple[str, list[str]]:
+    """This theme can be installed twice: with the image, in /usr/share/icons, and
+    in the home directory, with the user's own applications. Plasma reads the
+    files of both but only the index.theme of the first, the home's. A directory
+    that only the other copy declares, such as the Breeze icons it links or its
+    small icons, would not be searched, and "folder-documents" would be shortened
+    to this theme's "folder". Return those sections, to declare them here too."""
+    sections: dict[str, str] = {}
+    for root in roots:
+        index_file = root / output.name / "index.theme"
+        if not index_file.is_file() or index_file.resolve() == (output / "index.theme").resolve():
+            continue
+        index = configparser.RawConfigParser(strict=False, interpolation=None)
+        index.optionxform = str
+        try:
+            index.read(index_file, encoding="utf-8")
+        except (configparser.Error, OSError):
+            continue
+        for directory in index.sections():
+            if (directory.startswith("breeze/") or directory == PLAIN_DIRECTORY) and directory not in have:
+                sections.setdefault(directory, "".join(f"{k}={v}\n" for k, v in index.items(directory)))
+    return "".join(f"\n[{d}]\n{body}" for d, body in sorted(sections.items())), sorted(sections)
 
 
 # --- Commands -----------------------------------------------------------------
@@ -660,6 +696,7 @@ def write_sheet(path: Path, rows: list[tuple[App, Glyph]], args) -> None:
 def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[Path]) -> None:
     icons = output / "apps/scalable"
     small = output / "apps/symbolic"
+    plain = output / PLAIN_DIRECTORY
     icons.mkdir(parents=True, exist_ok=True)
     small.mkdir(parents=True, exist_ok=True)
     written: set[str] = set()
@@ -683,9 +720,16 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
             print(f"warning: no icon for {app.name}: {error}", file=sys.stderr)
             continue
         written.add(app.icon)
+        if app.icon in args.plain:
+            plain.mkdir(parents=True, exist_ok=True)
+            (plain / f"{app.icon}.svg").write_text(svg_document(small_body(glyph), SMALL, SMALL), encoding="utf-8")
     # Remove icons of applications that are gone, so reruns do not pile up.
     for old in [*icons.glob("*.svg"), *small.glob("*.svg")]:
         if old.stem.removesuffix("-symbolic") not in written:
+            old.unlink()
+    kept = written & args.plain
+    for old in plain.glob("*.svg") if plain.is_dir() else []:
+        if old.stem not in kept:
             old.unlink()
     stale = output / "apps/small"  # an earlier layout of this theme
     if stale.is_dir():
@@ -694,6 +738,12 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
         stale.rmdir()
     _, name, inherits = THEMES[args.variant]
     extra, directories = pass_through(output, written, roots, inherits.split(",")[0])
+    if kept:
+        extra = PLAIN_SECTION + extra
+        directories = [PLAIN_DIRECTORY, *directories]
+    more, more_directories = other_copies(output, roots, directories)
+    extra += more
+    directories += more_directories
     index = INDEX_THEME.format(name=name, inherits=inherits).replace("Directories=apps/symbolic,apps/scalable",
                                 ",".join(["Directories=apps/symbolic,apps/scalable", *directories]))
     (output / "index.theme").write_text(index + extra, encoding="utf-8")
@@ -742,6 +792,7 @@ def main() -> int:
 
     aliases: dict[str, str] = {}
     skip: set[str] = set()
+    plain: set[str] = set()
     outlined: set[str] = set()
     scales: dict[str, float] = {}
     if args.aliases.is_file():
@@ -749,9 +800,11 @@ def main() -> int:
             table = tomllib.load(f)
         aliases = table.get("aliases", {})
         skip = set(table.get("skip", {}).get("icons", []))
+        plain = set(table.get("plain", {}).get("icons", []))
         outlined = set(table.get("outline", {}).get("glyphs", []))
         scales = table.get("scale", {})
 
+    args.plain = plain
     dirs = data_dirs()
     roots = icon_roots(dirs)
     apps = visible_apps(dirs)
