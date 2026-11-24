@@ -161,6 +161,7 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
   ok "Katze ${variant^} sets its icons" grep -q "^Theme=$icons\$" "$LOOKS/katze-$variant/contents/defaults"
   ok "Katze ${variant^} sets the Plasma style" grep -q '^name=katze$' "$LOOKS/katze-$variant/contents/defaults"
   ok "Katze ${variant^} has a 56 px panel" grep -q 'panel.height = 56' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
+  ok "Katze ${variant^} has a translucent panel" grep -q '^panel.opacity = "translucent"$' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} has the desktop switcher" grep -q 'org.kde.plasma.pager' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} scales the tray icons" grep -q 'scaleIconsToFit' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} has a preview" test -s "$LOOKS/katze-$variant/contents/previews/preview.png"
