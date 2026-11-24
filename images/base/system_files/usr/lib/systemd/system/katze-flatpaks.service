@@ -1,0 +1,15 @@
+[Unit]
+Description=katze-os: install the image's Flatpaks
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/libexec/katze/flatpaks.sh
+Restart=on-failure
+RestartSec=60
+RestartSteps=5
+RestartMaxDelaySec=1h
+
+[Install]
+WantedBy=multi-user.target

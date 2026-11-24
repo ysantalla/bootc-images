@@ -3,7 +3,7 @@
 # It only takes effect after `bootc switch --enforce-container-sigpolicy`, see README.
 set -euxo pipefail
 
-KEY=/usr/share/bootc-images/cosign.pub
+KEY=/usr/share/katze/cosign.pub
 test -s "$KEY"
 
 policy=$(mktemp)
@@ -15,7 +15,7 @@ jq --arg key "$KEY" '.transports.docker["ghcr.io/ysantalla"] = [{
 install -m 0644 "$policy" /etc/containers/policy.json
 rm -f "$policy"
 
-cat > /etc/containers/registries.d/bootc-images.yaml <<'YAML'
+cat > /etc/containers/registries.d/katze.yaml <<'YAML'
 docker:
   ghcr.io/ysantalla:
     use-sigstore-attachments: true

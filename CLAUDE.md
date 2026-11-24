@@ -7,7 +7,7 @@ Read it fully before changing anything. `README.md` is the user-facing guide; th
 
 ## 1. Project overview
 
-`bootc-images` produces personal, immutable operating system images for the owner's machines. Each image is an OCI container image that [bootc](https://bootc-dev.github.io/bootc/) deploys as a full OS: atomic updates, a read-only `/usr`, and one-command rollback.
+`katze-os` produces personal, immutable operating system images for the owner's machines. Each image is an OCI container image that [bootc](https://bootc-dev.github.io/bootc/) deploys as a full OS: atomic updates, a read-only `/usr`, and one-command rollback.
 
 - **Owner:** `ysantalla` (GitHub)
 - **Registry:** `ghcr.io/ysantalla/<image>`
@@ -29,11 +29,11 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 **From `kinoite-main` (upstream, not ours):** KDE Plasma, full ffmpeg codecs, Podman, Flathub, bootc.
 
 **`base` adds:**
-- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `bootc-incus` firewalld zone only gives instances DHCP and DNS, so they cannot reach the host's other ports, and the `bootc-incus-out` policy lets them reach other networks. Tested in a VM on 2026-11-21 with containers only: Incus VMs, IPv6 and the tailnet are untested.
+- **Incus:** system containers and KVM virtual machines (`incus launch ... --vm`). The `incus` RPM does not pull in QEMU, so `packages.txt` adds it, and Incus VMs need `qemu-device-display-virtio-vga`. The `katze-incus` firewalld zone only gives instances DHCP and DNS, so they cannot reach the host's other ports, and the `katze-incus-out` policy lets them reach other networks. Tested in a VM on 2026-11-21 with containers only: Incus VMs, IPv6 and the tailnet are untested.
 - **Brave Origin:** native RPM (`brave-origin`), the stripped-down Brave without Rewards, Wallet, VPN or AI features.
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar and Qt colors on first run, in new profiles only. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
-- **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-bootc-compose.conf` silences the provider notice.
+- **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-katze-compose.conf` silences the provider notice.
 - **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme in `system_files`, moved here from `ysantalla/plasma-tips`, with Breeze's dark icons. `plasma-theme.sh` makes them the default for new users. The owner's Tela icon theme is not included.
 - **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
 - **Okular:** native RPM.
@@ -41,10 +41,10 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Office fonts:** Carlito and Caladea, with the same metrics as Calibri and Cambria. Liberation already covers Arial, Times New Roman and Courier New. Microsoft's fonts stay out because this image is public; Fedora's `mscore-fonts` is an unrelated MuseScore package.
 - **Terminal:** zsh with autosuggestions and syntax highlighting, Starship with a Powerlevel10k-style factory prompt, MesloLGS Nerd Font, Konsole and Yakuake defaults (`shell.sh`), and `fastfetch` for a system summary. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt. Its icons are Private Use characters that editors and copying can lose, so check them after editing (`grep -c $'\ue0b0'`).
 - **Tailscale:** private network between the owner's devices (`tailscale.sh`). Login is done once on each machine with `sudo tailscale up`.
-- **Firewall:** the default zone `bootc-laptop` only lets in DHCPv6, mDNS, KDE Connect and GNOME Network Displays. Trusted networks go to `FedoraWorkstation` by hand, and the tailnet is accepted.
+- **Firewall:** the default zone `katze-laptop` only lets in DHCPv6, mDNS, KDE Connect and GNOME Network Displays. Trusted networks go to `FedoraWorkstation` by hand, and the tailnet is accepted.
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
-- **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `bootc-desktop-entries.service` and Flatpak overrides through `bootc-flatpak-overrides.conf`.
-- **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `bootc-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
+- **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `katze-desktop-entries.service` and Flatpak overrides through `katze-flatpak-overrides.conf`.
+- **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `katze-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`. Machines only enforce it after `bootc switch --enforce-container-sigpolicy`.
@@ -53,7 +53,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 
 It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`), which reports both problems on an X7 358H. Neither is confirmed on this machine yet:
 - **thermald:** a drop-in runs `thermald-wait.sh`, which waits up to 30 s for RAPL, coretemp and the `TCPU` zone, because thermald otherwise gives up on Panther Lake until the next boot.
-- **Power profiles:** four `bootc-xps-*` tuned profiles call `platform-profile.sh`, which sets Dell's thermal mode (`dell-pc`) and Intel's SoC power slider separately, since the legacy `platform_profile` only offers what both share. `build.sh` points `/etc/tuned/ppd.conf` at them and turns off `sysfs_acpi_monitor`. The image has `tuned-ppd`, not power-profiles-daemon, so there is no `powerprofilesctl`.
+- **Power profiles:** four `katze-xps-*` tuned profiles call `platform-profile.sh`, which sets Dell's thermal mode (`dell-pc`) and Intel's SoC power slider separately, since the legacy `platform_profile` only offers what both share. `build.sh` points `/etc/tuned/ppd.conf` at them and turns off `sysfs_acpi_monitor`. The image has `tuned-ppd`, not power-profiles-daemon, so there is no `powerprofilesctl`.
 
 ### Explicit non-goals
 
@@ -100,16 +100,16 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/bootc-images/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
-    │           ├── lib/systemd/system/ bootc-*.service / .timer
-    │           ├── lib/systemd/user/  bootc-update-notify.*, bootc-image-age.*, bootc-desktop-entries.service
-    │           ├── lib/tmpfiles.d/    bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
-    │           ├── lib/environment.d/ 60-bootc-docker-host.conf
-    │           ├── lib/firewalld/zones/ bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
-    │           ├── lib/firewalld/policies/ bootc-incus-out.xml
-    │           ├── share/bootc-images/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
-    │           ├── share/containers/containers.conf.d/ 60-bootc-compose.conf
-    │           ├── share/konsole/     bootc-images.profile
+    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
+    │           ├── lib/systemd/system/ katze-*.service / .timer
+    │           ├── lib/systemd/user/  katze-update-notify.*, katze-image-age.*, katze-desktop-entries.service
+    │           ├── lib/tmpfiles.d/    katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
+    │           ├── lib/environment.d/ 60-katze-docker-host.conf
+    │           ├── lib/firewalld/zones/ katze-incus.xml, katze-laptop.xml, katze-tailscale.xml
+    │           ├── lib/firewalld/policies/ katze-incus-out.xml
+    │           ├── share/katze/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
+    │           ├── share/containers/containers.conf.d/ 60-katze-compose.conf
+    │           ├── share/konsole/     katze.profile
     │           ├── share/plasma/desktoptheme/ breeze-custom
     │           └── share/color-schemes/ BreezeDarkCustom.colors
     └── xps16-da16260/
@@ -118,9 +118,9 @@ These are deliberate choices. Do not add them back without the owner asking:
         │   ├── build.sh
         │   └── packages.txt
         └── system_files/usr/
-            ├── libexec/bootc-images/  thermald-wait.sh, platform-profile.sh
-            ├── lib/systemd/system/thermald.service.d/ bootc-wait-sensors.conf
-            └── lib/tuned/profiles/    bootc-xps-powersave, -balanced, -balanced-battery, -performance
+            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh
+            ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
+            └── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
 ```
 
 ### Build pattern (every image follows it)
@@ -145,8 +145,8 @@ Most bugs in bootc images come from writing to the wrong place. Follow these rul
 | `/home` | Symlink to `/var/home` | Never touch it from the image |
 
 Concrete rules:
-- **Scripts** go in `/usr/libexec/bootc-images/`. **Units** go in `/usr/lib/systemd/system/` and are enabled in `build.sh`. **Static data** goes in `/usr/share/bootc-images/`.
-- **Runtime state** goes in `/var/lib/bootc-images/`, created by the script that uses it or by `tmpfiles.d`.
+- **Scripts** go in `/usr/libexec/katze/`. **Units** go in `/usr/lib/systemd/system/` and are enabled in `build.sh`. **Static data** goes in `/usr/share/katze/`.
+- **Runtime state** goes in `/var/lib/katze/`, created by the script that uses it or by `tmpfiles.d`.
 - **Users and groups:** prefer `sysusers.d`. Groups from packages can live in `/usr/lib/group` (nss-altfiles), and those installed with `dnf5` during our build can land in the image's `/etc/group` instead, which is where `incus-admin` was. `usermod -aG` only works once the group is in `/etc/group` and `/etc/gshadow`. That is why `setup.sh` syncs `incus-admin`. Reuse that pattern for any new group.
 - **RPMs that install into `/opt`:** follow `brave.sh`. Create a real `/opt`, install, move the result to `/usr/lib/<vendor>`, restore the `/opt -> var/opt` symlink, and add an `L` line in `tmpfiles.d`.
 - **Third-party repos** added at build time must end up **disabled** (`enabled=0`). Updates arrive through the image, never from the host.
@@ -158,12 +158,12 @@ Concrete rules:
 | Thing | Convention | Example |
 |---|---|---|
 | Machine image | `<line><size>-<model>`, lowercase, from the vendor model | `xps16-da16260` |
-| Our systemd units | `bootc-<purpose>.service/.timer` | `bootc-update.timer` |
-| Our directories | `bootc-images` namespace under `/usr/libexec`, `/usr/share`, `/var/lib` | `/usr/share/bootc-images/flatpaks.list` |
-| tmpfiles.d / sysusers.d | `bootc-<purpose>.conf` | `bootc-brave.conf` |
+| Our systemd units | `katze-<purpose>.service/.timer` | `katze-update.timer` |
+| Our directories | `katze` namespace under `/usr/libexec`, `/usr/share`, `/var/lib` | `/usr/share/katze/flatpaks.list` |
+| tmpfiles.d / sysusers.d | `katze-<purpose>.conf` | `katze-brave.conf` |
 | Image tags | `latest`, `<fedora>`, `<fedora>-<YYYYMMDD>` | `45-20261201` |
 
-The `bootc-` prefix shares a namespace with upstream bootc units such as `bootc-update-ca-trust.service`, so check a new name does not collide. `ysantalla` only names the GitHub owner and registry.
+The project was `bootc-images` until 2026-11-23. Its `bootc-` prefix shared a namespace with upstream bootc units such as `bootc-update-ca-trust.service`, which `katze-` avoids. The repository is `katze-os`; inside the image the name is `katze`. Images keep their names on GHCR, and `ysantalla` only names the GitHub owner and registry.
 
 All code, comments, unit descriptions and docs are in **English**.
 
@@ -200,17 +200,17 @@ RPM fonts need nothing else. A font installed by a script must exist before the 
 
 ### Add a Flatpak
 
-Add its Flathub ID to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. `bootc-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
+Add its Flathub ID to `images/base/system_files/usr/share/katze/flatpaks.list`. `katze-flatpaks.service` installs it on the next boot whenever the list's hash changes. It only adds; it never removes.
 
-For custom launch arguments, add a `.desktop` to `usr/share/bootc-images/applications/` with `TryExec=/var/lib/flatpak/exports/bin/<id>` and `X-Bootc-Images-Managed=true`. Flatpak's exports come before `/usr/share` in `XDG_DATA_DIRS`, so `bootc-desktop-entries.service` copies it to `~/.local/share/applications` at login. Files there without the marker are the user's and are never replaced. Flatpak overrides go in `bootc-flatpak-overrides.conf`.
+For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/` with `TryExec=/var/lib/flatpak/exports/bin/<id>` and `X-Katze-Managed=true`. Flatpak's exports come before `/usr/share` in `XDG_DATA_DIRS`, so `katze-desktop-entries.service` copies it to `~/.local/share/applications` at login. Files there without the marker are the user's and are never replaced. Flatpak overrides go in `katze-flatpak-overrides.conf`.
 
 ### Add a script or service
 
-1. Script: `system_files/usr/libexec/bootc-images/<name>.sh`, using `#!/usr/bin/env bash` and `set -euo pipefail`. It must be **idempotent** if it runs on boot.
-2. Unit: `system_files/usr/lib/systemd/system/bootc-<name>.service`.
+1. Script: `system_files/usr/libexec/katze/<name>.sh`, using `#!/usr/bin/env bash` and `set -euo pipefail`. It must be **idempotent** if it runs on boot.
+2. Unit: `system_files/usr/lib/systemd/system/katze-<name>.service`.
 3. Enable it in that image's `build.sh` (`systemctl enable ...`, or `systemctl --global enable ...` for units in `lib/systemd/user`).
 4. Watch for ordering cycles: do not order a normal service `Before=` a socket unit (sockets start before `basic.target`).
-5. Do not make a long boot task `Type=oneshot` under `multi-user.target`: the boot would wait for it. `bootc-flatpaks.service` uses `Type=exec` for that reason.
+5. Do not make a long boot task `Type=oneshot` under `multi-user.target`: the boot would wait for it. `katze-flatpaks.service` uses `Type=exec` for that reason.
 
 ### Add a new machine
 
@@ -256,14 +256,14 @@ Run these before considering a change done. Never claim something was tested if 
 
 ```bash
 # Shell scripts
-shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/bootc-images/*.sh
+shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/katze/*.sh
 
 # Workflows and TOML
 python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"
 python3 -c "import tomllib; tomllib.load(open('mise.toml','rb')); tomllib.load(open('bib/config.example.toml','rb'))"
 
 # Units (on a systemd host)
-systemd-analyze verify images/base/system_files/usr/lib/systemd/system/bootc-*
+systemd-analyze verify images/base/system_files/usr/lib/systemd/system/katze-*
 
 # Real test: build, then boot it in a VM
 mise run build <image>
@@ -275,8 +275,8 @@ On a machine running the image:
 ```bash
 sudo bootc status                # current image + rollback target
 rpm-ostree status                # must show no LayeredPackages
-systemctl --failed               # nothing from bootc-*
-systemctl list-timers bootc-update.timer
+systemctl --failed               # nothing from katze-*
+systemctl list-timers katze-update.timer
 id -nG                           # includes incus-admin
 vainfo | grep iHD                # xps16-da16260 only
 ```
@@ -345,8 +345,8 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 1. **Verify base** in a VM and on hardware. See the status below.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
-2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
-3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
+2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned.
+3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
 4. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
 
 ### Status (2026-11-05)
@@ -400,17 +400,59 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Also decided by the owner:** `incus-startup.service` stays disabled (2026-11-06). Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
 
-**Firewall, decided by the owner (2026-11-07):** the default zone is `bootc-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `bootc-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
+**Firewall, decided by the owner (2026-11-07):** the default zone is `katze-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `katze-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
 
 **VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
 
 **Decisions pending from the owner:**
-- Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Whether to use the internal camera or a USB webcam for video calls.
+
+### Plan for the XPS, decided by the owner (2026-11-23)
+
+None of this is implemented or tested, and the figures are the owner's notes, not measurements.
+
+**First day, in order:**
+1. In Windows: Dell Command Update for BIOS and firmware only, note the BIOS version, and run the F12 diagnostics.
+2. In the BIOS: AHCI/NVMe storage, Secure Boot on, and custom charging between 50% and 80% (or Primarily AC).
+3. Install Kinoite (Fedora 45) on a LUKS-encrypted disk.
+4. Rebase to `base`, then to `xps16-da16260`.
+5. Record a baseline in this repo: `fwupdmgr get-devices`, `lspci -nnk`, `dmesg`.
+6. Validate s2idle suspend before touching the camera.
+
+**System:**
+- **Encryption:** LUKS, unlocked at the end with TPM and a PIN: `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <dev>`, plus `rpm-ostree kargs --append=rd.luks.options=tpm2-device=auto`.
+- **Secure Boot:** on from the start. Our own kernel modules are signed with the owner's MOK during the build.
+- **Swap:** zram only, 16 GB, in `base`: `zram-size = min(ram / 4, 16384)` and `compression-algorithm = zstd`.
+- **Hibernation:** ruled out. Suspend for breaks, power off at night.
+- **Battery:** 80% charge limit, with `battery:desk` and `battery:travel` mise tasks.
+- **Login:** Fedora 45 uses Plasma Login Manager (`plasmalogin.service`), not SDDM.
+- **Claude and suspend:** mise tasks that run it under `systemd-inhibit --what=idle` by default, and `idle:sleep:handle-lid-switch` only on purpose.
+- **OLED:** auto-hide panel, dark wallpaper, and the screen off after 2 to 3 minutes.
+- **Hardware notes:** the 388H has 4 P, 8 E and 4 LP cores. The memory gives about 153 GB/s in theory. The SSD is the weak point: it can be replaced, and no BIOS setting speeds it up.
+
+**Voice dictation, in Spanish:**
+- Voxtype built into `xps16-da16260`, with `language = "es"` and `mode = "type"`. It needs `ydotool`, and a KDE shortcut that runs `voxtype record toggle`.
+- Phase 1 runs on the CPU with the `small` model.
+- Phase 2 uses the NPU: a build with `--features openvino-whisper`, the OpenVINO GenAI SDK in `/usr/lib/openvino-genai`, and Intel's NPU driver, with `engine = "openvino"` and `device = "NPU"`.
+
+**Icons, the owner's own theme "Katze Mono":**
+- Application icons only. The tray and menus stay on Breeze, through `MinSize=32` in `index.theme`.
+- `katze-mono.py` walks the `.desktop` files and puts each glyph on a circle or squircle, writing to `~/.local/share/icons/katze-mono`: `python3 katze-mono.py --shape squircle`.
+- Glyph sources, in order: Breeze `apps/22/*-symbolic`, the app's own symbolic icon, Papirus `22x22/panel`, Breeze's generic icon for the category, the app's initial.
+- For OLED: background `#12233a`, glyph `#8ab4d8`, and no inverted style.
+- Try it first in the KDE Linux VM.
+- Breeze is LGPL and Papirus is GPL-3, so a published theme would be GPL-3 with attribution.
+
+**To confirm on the machine:**
+- LVFS coverage for the DA16260.
+- Intel's NPU driver, shipped as an Ubuntu `.deb`, loading on Fedora 45.
+- The original repository of the IR driver (HritwikSinghal or acmodeu).
+- Real drain in suspend and real SSD speed.
+- Whether Brave installs its own symbolic icon.
 
 **Known small improvements, not applied:**
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
-- A wrong ID in `flatpaks.list` makes `bootc-flatpaks.service` retry every hour without end.
+- A wrong ID in `flatpaks.list` makes `katze-flatpaks.service` retry every hour without end.
 - Nothing prunes old tags on GHCR.
 - `mise run build` reuses a stale local base.
 
@@ -467,7 +509,7 @@ KRDC's plugin is in `release/26.12` with `WITH_SPICE` on by default. Gear 26.12 
 
 1. See whether Fedora ships it: `dnf5 repoquery krdc`, then look for `krdc_spiceplugin.so` in the package. If so, add `krdc` to `packages.txt`. If only Flathub has it, add `org.kde.krdc` to `flatpaks.list`.
 2. See whether upstream accepts sockets: `spice/spiceviewfactory.cpp` and `spice/spiceview.cpp` in `network/krdc`. They only used `host` and `port` on 2026-11-06, while spice-glib has a `unix-path` property.
-3. Without socket support, use this bridge as `remote-viewer` in a directory on `PATH`, with `flatpak run` replaced by `krdc` for the RPM. Its port has no password, so any local program can open the console. In the image it would go in `/usr/libexec/bootc-images/`, set through `console_spice_command`, which is per user.
+3. Without socket support, use this bridge as `remote-viewer` in a directory on `PATH`, with `flatpak run` replaced by `krdc` for the RPM. Its port has no password, so any local program can open the console. In the image it would go in `/usr/libexec/katze/`, set through `console_spice_command`, which is per user.
 
    ```bash
    #!/usr/bin/env bash

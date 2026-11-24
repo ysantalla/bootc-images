@@ -27,13 +27,13 @@ done
 PPD=/etc/tuned/ppd.conf
 sed -i -E \
   -e 's/^sysfs_acpi_monitor=.*/sysfs_acpi_monitor=false/' \
-  -e 's/^power-saver=.*/power-saver=bootc-xps-powersave/' \
-  -e 's/^performance=.*/performance=bootc-xps-performance/' \
-  -e '/^\[profiles\]/,/^\[battery\]/ s/^balanced=.*/balanced=bootc-xps-balanced/' \
-  -e '/^\[battery\]/,$ s/^balanced=.*/balanced=bootc-xps-balanced-battery/' \
+  -e 's/^power-saver=.*/power-saver=katze-xps-powersave/' \
+  -e 's/^performance=.*/performance=katze-xps-performance/' \
+  -e '/^\[profiles\]/,/^\[battery\]/ s/^balanced=.*/balanced=katze-xps-balanced/' \
+  -e '/^\[battery\]/,$ s/^balanced=.*/balanced=katze-xps-balanced-battery/' \
   "$PPD"
-for line in sysfs_acpi_monitor=false power-saver=bootc-xps-powersave balanced=bootc-xps-balanced \
-  performance=bootc-xps-performance balanced=bootc-xps-balanced-battery; do
+for line in sysfs_acpi_monitor=false power-saver=katze-xps-powersave balanced=katze-xps-balanced \
+  performance=katze-xps-performance balanced=katze-xps-balanced-battery; do
   grep -qx "$line" "$PPD"
 done
 

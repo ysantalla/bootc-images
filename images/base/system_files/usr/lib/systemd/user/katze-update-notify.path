@@ -1,0 +1,9 @@
+[Unit]
+Description=katze-os: watch for a downloaded system update
+PartOf=graphical-session.target
+
+[Path]
+PathChanged=/run/katze/update-pending
+
+[Install]
+WantedBy=graphical-session.target

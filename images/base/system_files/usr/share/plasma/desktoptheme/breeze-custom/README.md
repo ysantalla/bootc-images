@@ -4,7 +4,7 @@ A KDE Plasma 6 desktop theme based on **Breeze Dark**, with visual modifications
 
 ## Where it lives
 
-This theme is part of the `bootc-images` base image, which installs it in `/usr/share/plasma/desktoptheme/` and makes it the default for new users. The color scheme is next to it in the image, in `/usr/share/color-schemes/BreezeDarkCustom.colors`.
+This theme is part of the `katze-os` base image, which installs it in `/usr/share/plasma/desktoptheme/` and makes it the default for new users. The color scheme is next to it in the image, in `/usr/share/color-schemes/BreezeDarkCustom.colors`.
 
 To try a change without building an image, copy this folder to `~/.local/share/plasma/desktoptheme/` and run `plasma-apply-desktoptheme breeze-custom`. The folder name is the theme ID, so keep it matching the `Id` in `metadata.json`.
 
