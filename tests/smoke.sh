@@ -91,10 +91,22 @@ icon_lookup() { # icon_lookup <image|home> <icon name>
   mkdir -p "$home/.config" "$home/rt"
   printf '[Icons]\nTheme=katze-mono\n' >"$home/.config/kdeglobals"
   if [[ $1 == home ]]; then
-    HOME=$home XDG_DATA_HOME=$home/.local/share python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 || return 1
+    # an application of the user's own, so that there is something to write
+    mkdir -p "$home/.local/share/applications"
+    printf '[Desktop Entry]\nType=Application\nName=Mine\nIcon=katze-smoke-app\n' >"$home/.local/share/applications/mine.desktop"
+    HOME=$home XDG_DATA_HOME=$home/.local/share /usr/libexec/katze/icons.sh >/dev/null 2>&1 || return 1
   fi
   HOME=$home XDG_DATA_HOME=$home/.local/share XDG_CONFIG_HOME=$home/.config XDG_RUNTIME_DIR=$home/rt \
     QT_QPA_PLATFORM=offscreen kiconfinder6 "$2" 2>/dev/null | tail -1
+}
+# With nothing of their own, a user gets no copy of the theme, and an older full copy goes away
+home_copy_is_only_whats_new() {
+  local home
+  home=$(mktemp -d)
+  HOME=$home XDG_DATA_HOME=$home/data python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 &&
+    test -s "$home/data/icons/katze-mono/apps/scalable/org.kde.dolphin.svg" &&
+    HOME=$home XDG_DATA_HOME=$home/data /usr/libexec/katze/icons.sh &&
+    [[ ! -e $home/data/icons/katze-mono && ! -e $home/data/icons/katze-mono-light ]]
 }
 # shellcheck disable=SC2053 # the third argument is a glob on purpose
 lookup_is() { [[ "$(icon_lookup "$1" "$2")" == $3 ]]; } # lookup_is <image|home> <icon name> <glob>
@@ -232,8 +244,10 @@ done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
+ok "a user's copy of the icons holds only what the image lacks" home_copy_is_only_whats_new
+ok "Plasma finds the icon of a user's own application" lookup_is home katze-smoke-app '*/.local/share/icons/katze-mono/apps/scalable/katze-smoke-app.svg'
 for copy in image home; do
-  ok "Plasma finds Katze's icon for an application ($copy copy)" lookup_is "$copy" org.kde.dolphin '*/katze-mono/apps/scalable/org.kde.dolphin.svg'
+  ok "Plasma finds Katze's icon for an application ($copy copy)" lookup_is "$copy" org.kde.dolphin '/usr/share/icons/katze-mono/apps/scalable/org.kde.dolphin.svg'
   ok "Plasma finds Breeze's icon for a special folder ($copy copy)" lookup_is "$copy" folder-documents '*breeze*/places/*/folder-documents.svg'
   ok "Plasma finds Breeze's icon for a longer name ($copy copy)" lookup_is "$copy" preferences-system-bluetooth '*breeze*/preferences-system-bluetooth.svg'
   ok "Plasma finds Katze's Trash ($copy copy)" lookup_is "$copy" user-trash '*/katze-mono/apps/scalable/user-trash.svg'

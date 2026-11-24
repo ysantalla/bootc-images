@@ -101,11 +101,13 @@ size corrections and `[skip]` leaves an application with its original icon.
   directories declared for that scale, and if there is none it asks for a
   44 px one, which here is the icon with the shape. So `apps/22@2x` and
   `apps/22@3x` are declared too, as links to `apps/22`.
-- The theme is installed twice: with the image, and in the home directory by
-  `katze-icons.service`. Plasma reads the files of both copies but only the
-  `index.theme` of the home's, so that one also declares the directories that
-  only the image's copy has (`other_copies`). Without that, the special folders
-  in Dolphin turned into this theme's `folder`.
+- The theme can be installed twice: with the image, and in the home directory
+  by `katze-icons.service`, for applications the image does not have
+  (`--only-new`). A user with none gets no second copy. Plasma reads the files
+  of both copies but only the `index.theme` of the home's, so that one also
+  declares the directories that only the image's copy has (`other_copies`).
+  Without that, the special folders in Dolphin turned into this theme's
+  `folder`.
 - Applications that draw their own tray icon (Slack sends a 22 px picture)
   cannot be themed.
 - A launcher whose `Icon=` is a file path cannot be themed either; the script
