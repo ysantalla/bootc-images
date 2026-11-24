@@ -75,6 +75,11 @@ signature_warning() { # signature_warning <image reference> <yes|no>
   PATH=$dir:$PATH /usr/libexec/katze/image-signature.sh || return 1
   if [[ $2 == yes ]]; then grep -q -- "--enforce-container-sigpolicy ghcr.io/ysantalla/base:latest" "$dir/sent"; else [[ ! -e $dir/sent ]]; fi
 }
+# PowerDevil's display timeout as a user with an empty home reads it
+screen_off_after() { # screen_off_after <power state> <seconds>
+  [[ "$(HOME=$(mktemp -d) XDG_CONFIG_DIRS=/etc/xdg:/usr/share/kde-settings/kde-profile/default/xdg \
+    kreadconfig6 --file powerdevilrc --group "$1" --group Display --key TurnOffDisplayIdleTimeoutSec)" == "$2" ]]
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -166,6 +171,7 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
   ok "Katze ${variant^} sets its icons" grep -q "^Theme=$icons\$" "$LOOKS/katze-$variant/contents/defaults"
   ok "Katze ${variant^} sets the Plasma style" grep -q '^name=katze$' "$LOOKS/katze-$variant/contents/defaults"
   ok "Katze ${variant^} has a 56 px panel" grep -q 'panel.height = 56' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
+  ok "Katze ${variant^} has a translucent panel" grep -q '^panel.opacity = "translucent"$' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} has the desktop switcher" grep -q 'org.kde.plasma.pager' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} scales the tray icons" grep -q 'scaleIconsToFit' "$LOOKS/katze-$variant/contents/layouts/org.kde.plasma.desktop-layout.js"
   ok "Katze ${variant^} has a preview" test -s "$LOOKS/katze-$variant/contents/previews/preview.png"
@@ -238,6 +244,8 @@ case "$name" in
     done
     ok "tuned-ppd leaves our profiles alone" grep -qx 'sysfs_acpi_monitor=false' /etc/tuned/ppd.conf
     ok "platform profiles reach each handler" platform_profile_works
+    ok "the screen turns off after 3 minutes on AC" screen_off_after AC 180
+    ok "the screen turns off after 2 minutes on battery" screen_off_after Battery 120
     for launcher in "${LAUNCHERS[@]}"; do
       ok "Intel flags in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" "$ENCODE"
     done
