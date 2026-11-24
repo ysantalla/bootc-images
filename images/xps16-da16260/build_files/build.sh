@@ -37,6 +37,17 @@ for line in sysfs_acpi_monitor=false power-saver=katze-xps-powersave balanced=ka
   grep -qx "$line" "$PPD"
 done
 
+# 4. OLED: the screen dims and turns off early, so a still picture does not stay lit.
+# Defaults for a new user, in /etc/xdg: System Settings > Power Management overrides them.
+display() { # display <power state> <key> <value>
+  kwriteconfig6 --file /etc/xdg/powerdevilrc --group "$1" --group Display --key "$2" "$3"
+}
+display AC DimDisplayIdleTimeoutSec 120
+display AC TurnOffDisplayIdleTimeoutSec 180
+display Battery DimDisplayIdleTimeoutSec 60
+display Battery TurnOffDisplayIdleTimeoutSec 120
+grep -q '^TurnOffDisplayIdleTimeoutSec=180$' /etc/xdg/powerdevilrc
+
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.
 

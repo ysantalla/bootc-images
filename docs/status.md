@@ -37,6 +37,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
 
 **Not tested yet:**
+- The screen turning off after 3 minutes on AC and 2 on battery on `xps16-da16260`. `tests/smoke.sh` reads the values back as a new user would; PowerDevil acting on them was not seen. The key names come from PowerDevil's libraries in the image.
 - Nothing is verified on the real XPS.
 - `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
 - `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
