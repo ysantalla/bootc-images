@@ -76,6 +76,10 @@ size corrections and `[skip]` leaves an application with its original icon.
   `aliases.toml` names them on purpose. That page draws an SVG element that has
   `opacity` in the wrong place and size, so the script uses `fill-opacity` and
   `stroke-opacity` wherever they give the same picture (`faint_layer`).
+- The icons listed under `[plain]` in `aliases.toml` (the trash, a folder) are
+  written a second time in `places/22`, for sizes below 32 px, as the glyph
+  alone in the text colour. At that size they sit among Breeze's line icons,
+  as the Trash does in Dolphin's side panel.
 - Applications that draw their own tray icon (Slack sends a 22 px picture)
   cannot be themed.
 - A launcher whose `Icon=` is a file path cannot be themed either; the script

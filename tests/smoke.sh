@@ -183,6 +183,8 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
     ok "$icons has $preview for System Settings' preview" test -s "/usr/share/icons/$icons/apps/scalable/$preview.svg"
     ok "$icons draws $preview without opacity" not grep -q ' opacity="' "/usr/share/icons/$icons/apps/scalable/$preview.svg"
   done
+  ok "$icons draws the Trash without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/places/22/user-trash.svg"
+  ok "$icons declares its small icons" grep -q '^\[places/22\]$' "/usr/share/icons/$icons/index.theme"
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
