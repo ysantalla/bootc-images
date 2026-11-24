@@ -95,7 +95,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
-│       └── reusable-build.yml         verify FROM → build → test → push to GHCR → cosign sign and verify
+│       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
 └── images/
     ├── base/
     │   ├── Containerfile
@@ -252,10 +252,12 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **One build date per run,** set by the `lint` job, so tags match across images.
 - **`main` is protected:** no force-pushes or deletion, and pull requests need `lint` and `base / build` to pass. The owner can still bypass it.
 - **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
-- **On pull requests,** nothing is pushed. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
+- **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
-- **`reusable-build.yml`** verifies the `FROM` image, builds with buildah, pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased), signs the digest with cosign using the `SIGNING_SECRET` and `COSIGN_PASSWORD` secrets, and verifies the signature with `cosign.pub`, so a bad key fails the build. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
+- **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
+- **The signing key is only in the `sign` job.** `SIGNING_SECRET` and `COSIGN_PASSWORD` are secrets of the `signing` environment, which only the `main` branch can use, so a pull request or a manual run on another branch cannot sign, even if it edits the workflow. The `build` job runs code from outside this repo (RPM scriptlets, the image's own rpm-ostree) and never sees the key. Keep both secrets out of the repository-level secrets.
+- **Only `main` publishes.** A pull request, or a manual run on another branch, builds and tests without pushing.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
 
