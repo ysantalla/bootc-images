@@ -49,7 +49,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `katze-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
-- **Signature policy:** `signing.sh` adds our registry and key to `policy.json`. Machines only enforce it after `bootc switch --enforce-container-sigpolicy`.
+- **Signature policy:** `signing.sh` adds our registry and key to `policy.json`. Machines only enforce it after `bootc switch --enforce-container-sigpolicy`. Until then, the daily user timer also warns that updates from our registry are not checked for a signature (`image-signature.sh`).
 
 **`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers.
 
@@ -111,7 +111,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
+    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, image-signature.sh, desktop-entries.sh, icons.sh, katze-mono.py
     │           ├── lib/systemd/system/ katze-*.service / .timer
     │           ├── lib/systemd/user/  katze-update-notify.*, katze-image-age.*, katze-desktop-entries.service, katze-icons.service
     │           ├── lib/tmpfiles.d/    katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
