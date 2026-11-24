@@ -65,16 +65,6 @@ icons_survive_odd_names() {
     python3 /usr/libexec/katze/katze-mono.py --output "$home/a/b/theme" &&
     [[ -s $home/a/b/theme/apps/scalable/fine.svg && -z "$(find "$home" -name 'escaped*' -o -name icon.svg)" ]]
 }
-# image-signature.sh with stubs: it warns only when our registry is followed without a signature
-signature_warning() { # signature_warning <image reference> <yes|no>
-  local dir
-  dir=$(mktemp -d)
-  printf '#!/bin/sh\necho %s\n' "'{\"deployments\":[{\"booted\":false,\"container-image-reference\":\"x\"},{\"booted\":true,\"container-image-reference\":\"$1\"}]}'" >"$dir/rpm-ostree"
-  printf '#!/bin/sh\necho "$@" >%s/sent\n' "$dir" >"$dir/notify-send"
-  chmod +x "$dir/rpm-ostree" "$dir/notify-send"
-  PATH=$dir:$PATH /usr/libexec/katze/image-signature.sh || return 1
-  if [[ $2 == yes ]]; then grep -q -- "--enforce-container-sigpolicy ghcr.io/ysantalla/base:latest" "$dir/sent"; else [[ ! -e $dir/sent ]]; fi
-}
 # PowerDevil's display timeout as a user with an empty home reads it
 screen_off_after() { # screen_off_after <power state> <seconds>
   [[ "$(HOME=$(mktemp -d) XDG_CONFIG_DIRS=/etc/xdg:/usr/share/kde-settings/kde-profile/default/xdg \
@@ -212,9 +202,6 @@ for panel in widgets translucent/widgets; do
   ok "the panel background is valid XML ($panel)" python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
-ok "warns when our registry is followed without a signature" signature_warning ostree-unverified-registry:ghcr.io/ysantalla/base:latest yes
-ok "no warning when the signature is required" signature_warning ostree-image-signed:docker://ghcr.io/ysantalla/base:latest no
-ok "no warning on a local build" signature_warning ostree-unverified-image:containers-storage:localhost/base:latest no
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
 ok "icon generator survives odd icon names" icons_survive_odd_names
@@ -253,6 +240,7 @@ for dir in /usr/lib/google/chrome /usr/lib/brave.com/brave-origin; do
 done
 
 ok "signature policy for our registry" jq -e '.transports.docker["ghcr.io/ysantalla"][0].type == "sigstoreSigned"' /etc/containers/policy.json
+ok "nothing unsigned is accepted by default" jq -e '.default == [{"type": "reject"}]' /etc/containers/policy.json
 ok "signature key is present" test -s /usr/share/katze/cosign.pub
 ok "sigstore attachments are enabled" grep -q use-sigstore-attachments /etc/containers/registries.d/katze.yaml
 

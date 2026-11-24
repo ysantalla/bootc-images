@@ -1,7 +1,6 @@
 [Unit]
-Description=katze-os: warn when the running image is old or its signature is not required
+Description=katze-os: warn when the running image is old
 
 [Service]
 Type=oneshot
 ExecStart=/usr/libexec/katze/image-age.sh
-ExecStart=/usr/libexec/katze/image-signature.sh

@@ -82,13 +82,13 @@ images/
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       browsers.sh            first-run browser preferences
-      signing.sh             signature policy for machines that opt in
+      signing.sh             signature policy: our registry only with our signature
       shell.sh               Starship, Nerd Font and terminal defaults
       plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
-      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, image-signature.sh, desktop-entries.sh, icons.sh, katze-mono.py
+      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
       usr/lib/systemd/system/          katze-* services and timer
       usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers, Katze Mono icons
       usr/lib/tmpfiles.d/              katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
@@ -198,15 +198,37 @@ In `incus admin init`, accept the defaults, but choose `btrfs` as the storage ba
 
 **Avoid `mise run iso` on a machine with data.** That installer may erase the disk without asking (not confirmed in its docs). It also includes the `bib/config.toml` user, and it is built from a local image, so you would have to run `bootc switch` afterwards for updates to work. The 40 GiB disk setting may not be accepted for ISOs; if the build rejects it, remove that block from `bib/config.toml`.
 
-### Require signed images (optional)
+### Signed images
 
-The image carries the policy and key, but a machine only enforces them after this, once per machine:
+Once a machine runs one of these images, it only accepts images from `ghcr.io/ysantalla` that carry our signature. The image's container policy rejects everything by default and names our key for our registry, and that is checked on every `bootc switch` and `bootc upgrade`, with or without a flag. Only the first switch from stock Kinoite is not checked, since its policy accepts anything.
+
+After that first switch, do it once more with the flag, which makes bootc refuse to follow an image its policy would not verify (`mise run switch <image>` does the same):
 
 ```bash
 sudo bootc switch --enforce-container-sigpolicy ghcr.io/ysantalla/xps16-da16260:latest
 ```
 
-From then on it refuses unsigned images. Tags built before the key rotation of 2026-11-05 are signed with the old key and will be refused too.
+Tags signed with an earlier key are refused: the key was rotated on 2026-11-05 and on 2026-11-24.
+
+### Rotating the signing key
+
+A machine verifies with the key inside the image it is running, so it cannot download the image that brings a new key: after a rotation, every installed machine stops updating until it is fixed by hand.
+
+With the old private key still at hand, avoid that in two steps, which were not tried here: first publish, signed with the old key, an image whose policy accepts both keys (`keyPaths` in `signing.sh`), wait until every machine has booted it, and only then sign with the new one.
+
+Without it, as on 2026-11-24, fix each machine once:
+
+```bash
+sudo curl -fsSL -o /etc/pki/containers/katze-cosign.pub https://raw.githubusercontent.com/ysantalla/katze-os/main/cosign.pub
+sudo sed -i 's#/usr/share/katze/cosign.pub#/etc/pki/containers/katze-cosign.pub#' /etc/containers/policy.json
+sudo bootc upgrade        # or bootc switch
+sudo systemctl reboot
+# after the reboot, go back to the key the image ships
+sudo sed -i 's#/etc/pki/containers/katze-cosign.pub#/usr/share/katze/cosign.pub#' /etc/containers/policy.json
+sudo rm /etc/pki/containers/katze-cosign.pub
+```
+
+Check the downloaded key against `cosign.pub` in this repository before trusting it. In CI, the new key goes in the `signing` environment's secrets, and `cosign.pub` changes in the same pull request, at the root and in `images/base/system_files/usr/share/katze/`.
 
 ## 4. Verify
 
@@ -273,7 +295,7 @@ To change the prompt, pick a [Starship preset](https://starship.rs/presets/): `s
 
 Projects that need compilers go in an Incus container, not in the image.
 
-On a machine that enforces signatures, add `--enforce-container-sigpolicy` to every manual `bootc switch`. `mise run switch <image>` already passes it. According to bootc's source, a switch without it stops enforcing.
+Add `--enforce-container-sigpolicy` to every manual `bootc switch`, as `mise run switch <image>` does. The signature is checked without it too, but the flag keeps bootc from following an image that the policy would not verify.
 
 ## Changing an image
 
