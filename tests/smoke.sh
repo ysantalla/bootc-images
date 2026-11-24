@@ -81,6 +81,17 @@ screen_off_after() { # screen_off_after <power state> <seconds>
     kreadconfig6 --file powerdevilrc --group "$1" --group Display --key TurnOffDisplayIdleTimeoutSec)" == "$2" ]]
 }
 opens_images_with() { [[ "$(XDG_CURRENT_DESKTOP=KDE gio mime "$1" 2>/dev/null | head -1)" == *"$2"* ]]; }
+# The user's copy of the theme, written at login, must declare what only the image's copy has,
+# or Plasma shortens "folder-documents" to this theme's "folder"
+home_theme_keeps_breeze_folders() {
+  local home
+  home=$(mktemp -d)
+  HOME=$home XDG_DATA_HOME=$home/data XDG_DATA_DIRS=/usr/local/share:/usr/share \
+    python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 &&
+    grep -q '^\[breeze/places/64\]$' "$home/data/icons/katze-mono/index.theme" &&
+    grep -q '^\[places/22\]$' "$home/data/icons/katze-mono/index.theme" &&
+    test -e /usr/share/icons/katze-mono/breeze/places/64/folder-documents.svg
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -205,6 +216,7 @@ ok "warns when our registry is followed without a signature" signature_warning o
 ok "no warning when the signature is required" signature_warning ostree-image-signed:docker://ghcr.io/ysantalla/base:latest no
 ok "no warning on a local build" signature_warning ostree-unverified-image:containers-storage:localhost/base:latest no
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
+ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
 ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals

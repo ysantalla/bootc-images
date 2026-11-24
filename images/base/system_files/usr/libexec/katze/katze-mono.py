@@ -627,6 +627,30 @@ def pass_through(output: Path, names: set[str], roots: list[Path],
     return "".join(f"\n[{directory}]\n{body}" for directory, body in sorted(sections.items())), list(sorted(sections))
 
 
+def other_copies(output: Path, roots: list[Path], have: list[str]) -> tuple[str, list[str]]:
+    """This theme can be installed twice: with the image, in /usr/share/icons, and
+    in the home directory, with the user's own applications. Plasma reads the
+    files of both but only the index.theme of the first, the home's. A directory
+    that only the other copy declares, such as the Breeze icons it links or its
+    small icons, would not be searched, and "folder-documents" would be shortened
+    to this theme's "folder". Return those sections, to declare them here too."""
+    sections: dict[str, str] = {}
+    for root in roots:
+        index_file = root / output.name / "index.theme"
+        if not index_file.is_file() or index_file.resolve() == (output / "index.theme").resolve():
+            continue
+        index = configparser.RawConfigParser(strict=False, interpolation=None)
+        index.optionxform = str
+        try:
+            index.read(index_file, encoding="utf-8")
+        except (configparser.Error, OSError):
+            continue
+        for directory in index.sections():
+            if (directory.startswith("breeze/") or directory == PLAIN_DIRECTORY) and directory not in have:
+                sections.setdefault(directory, "".join(f"{k}={v}\n" for k, v in index.items(directory)))
+    return "".join(f"\n[{d}]\n{body}" for d, body in sorted(sections.items())), sorted(sections)
+
+
 # --- Commands -----------------------------------------------------------------
 
 def print_report(rows: list[tuple[App, Glyph]], only: str | None, roots: list[Path], own: Path) -> None:
@@ -717,6 +741,9 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
     if kept:
         extra = PLAIN_SECTION + extra
         directories = [PLAIN_DIRECTORY, *directories]
+    more, more_directories = other_copies(output, roots, directories)
+    extra += more
+    directories += more_directories
     index = INDEX_THEME.format(name=name, inherits=inherits).replace("Directories=apps/symbolic,apps/scalable",
                                 ",".join(["Directories=apps/symbolic,apps/scalable", *directories]))
     (output / "index.theme").write_text(index + extra, encoding="utf-8")
