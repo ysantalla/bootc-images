@@ -88,7 +88,7 @@ images/
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
-      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
+      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, image-signature.sh, desktop-entries.sh, icons.sh, katze-mono.py
       usr/lib/systemd/system/          katze-* services and timer
       usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers, Katze Mono icons
       usr/lib/tmpfiles.d/              katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
