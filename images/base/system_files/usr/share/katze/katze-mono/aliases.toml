@@ -1,0 +1,122 @@
+# Katze Mono: the choices behind each icon. See README.md.
+#
+# [aliases] gives an application a glyph. The key is the application's Icon=
+# value, or its desktop file name without ".desktop" when the icon is a path
+# or several launchers share it. The value names a file in glyphs/ (without
+# ".svg") or an icon of Breeze (22 px, one colour).
+#
+# Check a name before adding it: `katze-mono.py --report` warns about any
+# alias that finds nothing.
+
+[aliases]
+# Brands: the application's own mark, from glyphs/. "-line" files are drawn
+# with lines; the others are solid and most are listed under [outline].
+"brave-origin" = "brave-line"
+"brave-origin-nightly" = "brave-line"
+"brave-browser" = "brave-line"
+"dev.zed.Zed" = "zed-line"
+"zed" = "zed-line"
+"dev.zed.Zed-Preview" = "zed-line"
+"com.slack.Slack" = "slack-line"
+"org.onlyoffice.desktopeditors" = "onlyoffice-line"
+"google-chrome" = "googlechrome-line"
+"com.getpostman.Postman" = "postman"
+"gimp" = "gimp"
+"io.dbeaver.DBeaverCommunity" = "dbeaver"
+"com.mongodb.Compass" = "mongodb"
+"us.zoom.Zoom" = "zoom-line"
+"rustdesk" = "rustdesk-line"
+"android-studio" = "androidstudio"
+"Android Studio" = "androidstudio"
+"com.obsproject.Studio" = "obsstudio"
+"com.rtosta.zapzap" = "whatsapp-line"
+"org.telegram.desktop" = "telegram-line"
+"com.bambulab.BambuStudio" = "bambulab"
+"org.vinegarhq.Vinegar" = "roblox-line"
+"htop" = "chart-bar-line"
+"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default" = "whatsapp-line"      # WhatsApp Web
+"brave-cinhimbnkkaeohfgghhklpknlkffjgod-Default" = "youtubemusic-line"  # YouTube Music
+
+# Files and documents
+"org.kde.dolphin" = "dolphin-line"
+"okular" = "graphics-viewer-document"
+"gwenview" = "view-preview"
+"ark" = "package"
+"kwrite" = "edit-rename"
+"skanpage" = "document-scan"
+"spectacle" = "aperture-line"
+"kolourpaint" = "draw-brush"
+
+# Browsers and web apps
+"brave-amhbndggdfmijhoidhgojjkjpkocaeki-Default" = "food"               # NutriAI
+
+# Communication
+"kamoso" = "camera-web"
+"dragonplayer" = "media-playback-start"
+"haruna" = "media-playback-start"
+
+# Development
+"debug-run" = "debug-run"
+
+# Remote access and networks
+"krdc" = "screen-share-line"
+"org.kde.krdc" = "screen-share-line"
+"firewall-config" = "security-high"
+
+# System
+"plasmadiscover" = "layout-grid-add-line"
+"preferences-system" = "preferences-system"
+"hwinfo" = "computer"
+"partitionmanager" = "drive-partition"
+"org.kde.isoimagewriter" = "drive-removable-media-usb"
+"org.kde.kjournaldbrowser" = "view-calendar-journal"
+"kwalletmanager" = "wallet-open"
+"kfind" = "edit-find"
+"input-remapper" = "input-keyboard"
+"im-chooser" = "input-keyboard"
+"tools-report-bug" = "tools-report-bug"
+"preferences-desktop-emoticons" = "preferences-desktop-emoticons"
+"start-here-kde-plasma" = "start-here-kde-plasma"
+"org.kde.qrca" = "view-barcode-qr"
+
+# Tools, with line glyphs from glyphs/ in place of solid ones
+"kmenuedit" = "menu-2-line"
+"utilities-system-monitor" = "activity-line"
+"accessories-calculator" = "calculator-line"
+"accessories-character-map" = "alphabet-latin-line"
+"help-browser" = "help-line"
+"filelight" = "chart-donut-line"
+"nvtop" = "cpu-line"
+"elisa" = "music-line"
+"org.gnome.NetworkDisplays" = "cast-line"
+
+# Mail and contacts
+"kaddressbook" = "view-pim-contacts"
+"kontact" = "mail-message"
+"kontact-import-wizard" = "document-import"
+"sieveeditor" = "view-filter"
+"ktnef" = "mail-attachment"
+
+# Other
+
+# Applications left with their original icon, for any whose tray item still
+# takes the shape. Tray items that ask for "<icon>-symbolic" do not need it:
+# the theme writes that name with the glyph alone.
+[skip]
+icons = []
+
+# Solid glyphs drawn as their contour, by file name without ".svg" or
+# "-symbolic", so they match the line glyphs. Marks made of many small parts
+# (Zed, htop, Inkscape) turn into a tangle and stay solid.
+[outline]
+glyphs = [
+  "postman", "gimp", "dbeaver", "mongodb", "androidstudio", "obsstudio", "bambulab", "mpv",
+  "firefox", "kate", "view-calendar-journal", "vlc", "virt-manager",
+  "org.freedesktop.GnomeAbrt", "abrt", "wallet-open", "media-playback-start", "draw-brush",
+  "security-high", "package",
+]
+
+# Size corrections for glyphs that look small next to the others, by file
+# name without ".svg". 1 is the normal size.
+[scale]
+"brave-line" = 1.15
