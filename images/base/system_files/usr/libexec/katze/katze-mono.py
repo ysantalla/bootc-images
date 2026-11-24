@@ -173,7 +173,8 @@ def find_glyph(app: App, roots: list[Path], own: Path, aliases: dict[str, str],
 
 def pick_glyph(app: App, roots: list[Path], own: Path, aliases: dict[str, str]) -> Glyph:
     icon = app.icon
-    absolute = icon.startswith("/")
+    # A path, absolute or not: a theme only answers to names
+    absolute = "/" in icon
     letter = app.name[:1].upper()
 
     # An alias matches the Icon= value or, for launchers that share one, the desktop file.
@@ -602,16 +603,23 @@ def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[P
     written: set[str] = set()
     skipped = []
     for app, glyph in rows:
-        if app.icon.startswith("/"):
-            skipped.append(app.name)  # a theme cannot replace an absolute path
+        if "/" in app.icon:
+            # A theme cannot replace a path, and a relative one ("../x") would be
+            # written outside this theme
+            skipped.append(app.name)
             continue
         if app.icon in written:
             continue  # several launchers share the icon; the first decides
         body = icon_body(glyph, args.shape, args.background, args.glyph_colour, args.follow_accent,
                          args.variant)
-        (icons / f"{app.icon}.svg").write_text(svg_document(body, CANVAS, CANVAS), encoding="utf-8")
-        (small / f"{app.icon}-symbolic.svg").write_text(svg_document(small_body(glyph), SMALL, SMALL),
-                                                        encoding="utf-8")
+        try:
+            (icons / f"{app.icon}.svg").write_text(svg_document(body, CANVAS, CANVAS), encoding="utf-8")
+            (small / f"{app.icon}-symbolic.svg").write_text(svg_document(small_body(glyph), SMALL, SMALL),
+                                                            encoding="utf-8")
+        except OSError as error:
+            # One launcher with an odd name must not cost every other icon
+            print(f"warning: no icon for {app.name}: {error}", file=sys.stderr)
+            continue
         written.add(app.icon)
     # Remove icons of applications that are gone, so reruns do not pile up.
     for old in [*icons.glob("*.svg"), *small.glob("*.svg")]:

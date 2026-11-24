@@ -52,6 +52,18 @@ machine_sees_font() {
   [[ -n "$(runuser -u nobody -- env HOME="$home" XDG_CACHE_HOME="$home/.cache" fc-list "$1" family)" ]]
 }
 icons_parse() { python3 -c 'import sys, glob, xml.etree.ElementTree as ET; files = glob.glob(sys.argv[1] + "/apps/*/*.svg"); [ET.parse(f) for f in files]; sys.exit(not files)' "$1"; }
+# A launcher whose Icon= is a relative path must not stop the generator or be written outside the theme
+icons_survive_odd_names() {
+  local home
+  home=$(mktemp -d)
+  mkdir -p "$home/data/applications"
+  printf '[Desktop Entry]\nType=Application\nName=Up\nIcon=../../../escaped\n' >"$home/data/applications/up.desktop"
+  printf '[Desktop Entry]\nType=Application\nName=Sub\nIcon=some/dir/icon\n' >"$home/data/applications/sub.desktop"
+  printf '[Desktop Entry]\nType=Application\nName=Fine\nIcon=fine\n' >"$home/data/applications/fine.desktop"
+  HOME=$home XDG_DATA_HOME=$home/data XDG_DATA_DIRS=/nonexistent \
+    python3 /usr/libexec/katze/katze-mono.py --output "$home/a/b/theme" &&
+    [[ -s $home/a/b/theme/apps/scalable/fine.svg && -z "$(find "$home" -name 'escaped*' -o -name icon.svg)" ]]
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -153,6 +165,7 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
+ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
 ok "no sub-pixel text in KDE" grep -q '^XftSubPixel=none$' /etc/xdg/kdeglobals
