@@ -330,8 +330,58 @@ def edges_only(root: ET.Element) -> None:
             el.attrib.pop("style", None)
 
 
+SHAPES = ("path", "circle", "ellipse", "rect", "line", "polygon", "polyline")
+
+
+def faint_layer(body: str, inherited: str, amount: float) -> tuple[str, str]:
+    """Return the body and the attributes that draw it at this opacity.
+
+    The plain answer is opacity on the group, but Qt draws such a group through a
+    buffer, and System Settings' icon page, which paints into a scaled viewport,
+    puts that buffer in the wrong place and size. fill-opacity and stroke-opacity
+    have no buffer, but shapes that overlap would add up. So they are used only
+    where the picture is the same: one shape with one paint, or lines that can be
+    joined into one path. Anything else keeps opacity."""
+    group = f' opacity="{amount}"'
+    try:
+        root = ET.fromstring(f'<g xmlns="{SVG_NS}">{body}</g>')
+    except ET.ParseError:
+        return body, group
+
+    def declared(el: ET.Element, key: str) -> str | None:
+        found = re.search(rf"(?:^|;)\s*{key}\s*:\s*([^;]+)", el.get("style", ""))
+        return found.group(1).strip() if found else el.get(key)
+
+    def paint(el: ET.Element, key: str, default: str) -> str:
+        found = re.search(rf' {key}="([^"]*)"', inherited)
+        return declared(el, key) or (found.group(1) if found else default)
+
+    for el in root.iter():
+        if any(declared(el, key) not in (None, "1", "1.0") for key in ("opacity", "fill-opacity", "stroke-opacity")):
+            return body, group  # it already mixes opacities of its own
+    shapes = [el for el in root.iter() if el.tag.rsplit("}", 1)[-1] in SHAPES]
+    drawn = [(el, paint(el, "fill", "black") != "none", paint(el, "stroke", "none") != "none") for el in shapes]
+    drawn = [entry for entry in drawn if entry[1] or entry[2]]
+    for el in root.iter():  # a declared 1 would override what the group sets
+        if el.get("style"):
+            el.set("style", re.sub(r"(?:^|(?<=;))\s*(?:fill-|stroke-)?opacity\s*:[^;]*;?", "", el.get("style")))
+        for key in ("opacity", "fill-opacity", "stroke-opacity"):
+            el.attrib.pop(key, None)
+    flat = f' fill-opacity="{amount}" stroke-opacity="{amount}"'
+    if len(drawn) == 1 and not (drawn[0][1] and drawn[0][2]):
+        return "".join(ET.tostring(child, encoding="unicode") for child in root), flat
+    lines = [el for el, filled, stroked in drawn if stroked and not filled]
+    plain = all(el in list(root) and el.tag.rsplit("}", 1)[-1] == "path" and set(el.attrib) <= {"d", "fill", "stroke"}
+                and el.get("d", "").lstrip().startswith("M") for el in lines)
+    if drawn and len(lines) == len(drawn) and plain:
+        # One path is stroked as one figure, so where its lines meet nothing adds up
+        return f'<path d="{escape(" ".join(el.get("d") for el in lines), quote=True)}"/>', flat
+    return body, group
+
+
 def glyph_svg(path: Path, colour: str, canvas: float, size: float, extra: str = "",
-              outline: bool = False, background: str | None = None, edges: bool = False) -> str:
+              outline: bool = False, background: str | None = None, edges: bool = False,
+              fade: float | None = None) -> str:
     root = ET.parse(path).getroot()
     box = [float(v) for v in re.split(r"[ ,]+", (root.get("viewBox") or "").strip()) if v]
     if len(box) != 4:
@@ -392,6 +442,9 @@ def glyph_svg(path: Path, colour: str, canvas: float, size: float, extra: str = 
         inherited += f' stroke-width="{LINE_WIDTH * canvas / CANVAS / scale:.3g}"'
     x = (canvas - width * scale) / 2 - min_x * scale
     y = (canvas - height * scale) / 2 - min_y * scale
+    if fade is not None:
+        body, attributes = faint_layer(body, inherited, fade)
+        extra += attributes
     return f'<g transform="translate({x:g},{y:g}) scale({scale:g})"{extra}{inherited}>{body}</g>'
 
 
@@ -404,12 +457,14 @@ def letter_svg(letter: str, colour: str, canvas: float, extra: str = "") -> str:
 
 
 def drawing(glyph: Glyph, colour: str, canvas: float, size: float, extra: str = "",
-            background: str | None = None, edges: bool = False) -> str:
+            background: str | None = None, edges: bool = False, fade: float | None = None) -> str:
     if glyph.path:
         try:
-            return glyph_svg(glyph.path, colour, canvas, size, extra, glyph.outline, background, edges)
+            return glyph_svg(glyph.path, colour, canvas, size, extra, glyph.outline, background, edges, fade)
         except (ET.ParseError, OSError) as error:
             print(f"warning: cannot read {glyph.path}: {error}", file=sys.stderr)
+    if fade is not None:
+        extra += f' fill-opacity="{fade}"'
     return letter_svg(glyph.detail[:1].upper(), colour, canvas, extra)
 
 
@@ -458,21 +513,25 @@ def icon_body(glyph: Glyph, shape: str, background: str, colour: str, accent: bo
         return drawing(glyph, "currentColor", CANVAS, size,
                        f' class="ColorScheme-{css}"{attributes}', **options)
 
-    tint = f' opacity="{TINT[variant]}"'
+    # The shape is one path, so fill-opacity and stroke-opacity give the same
+    # picture as opacity. They are used because Qt draws an element that has
+    # opacity through a buffer, and System Settings' icon page, which paints
+    # into a scaled viewport, puts that buffer in the wrong place and size.
+    # The glyph layers go through faint_layer, for the same reason.
     parts = [
         scheme_style(variant),
         shape_svg(shape, "currentColor", ' class="ColorScheme-Background"'),
-        shape_svg(shape, "currentColor", f' class="ColorScheme-Accent"{tint}'),
+        shape_svg(shape, "currentColor", f' class="ColorScheme-Accent" fill-opacity="{TINT[variant]}"'),
         layer("Accent"),
-        layer("Text", f' opacity="{SHADE[variant]}"'),
+        layer("Text", fade=SHADE[variant]),
     ]
     if on_grid:
         # The thinning strokes repeat the two coats of the shape they cover.
         parts.append(layer("Background", background="currentColor", edges=True))
-        parts.append(layer("Accent", tint, background="currentColor", edges=True))
+        parts.append(layer("Accent", background="currentColor", edges=True, fade=TINT[variant]))
     if EDGE[variant]:
         parts.append(shape_svg(shape, "none", f' class="ColorScheme-Accent" stroke="currentColor" '
-                                              f'stroke-width="1" opacity="{EDGE[variant]}"'))
+                                              f'stroke-width="1" stroke-opacity="{EDGE[variant]}"'))
     return "".join(parts)
 
 

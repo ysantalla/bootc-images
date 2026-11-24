@@ -71,6 +71,11 @@ size corrections and `[skip]` leaves an application with its original icon.
   `preferences-system`) inside this theme before it asks Breeze. For every
   icon written here that Breeze has longer names for, the theme links
   Breeze's files under `breeze/`.
+- System Settings previews an icon theme with six icons: run, folder,
+  document, trash, help and settings. The first four are not applications, so
+  `aliases.toml` names them on purpose. That page draws an SVG element that has
+  `opacity` in the wrong place and size, so the script uses `fill-opacity` and
+  `stroke-opacity` wherever they give the same picture (`faint_layer`).
 - Applications that draw their own tray icon (Slack sends a 22 px picture)
   cannot be themed.
 - A launcher whose `Icon=` is a file path cannot be themed either; the script

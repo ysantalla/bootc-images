@@ -173,6 +173,10 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
   ok "$icons follows the color scheme" grep -q '^FollowsColorScheme=true$' "/usr/share/icons/$icons/index.theme"
   ok "$icons has the browser" test -s "/usr/share/icons/$icons/apps/scalable/brave-origin.svg"
   ok "$icons has a Flatpak that is not installed yet" test -s "/usr/share/icons/$icons/apps/scalable/dev.zed.Zed.svg"
+  for preview in exec folder document user-trash help-browser preferences-system; do
+    ok "$icons has $preview for System Settings' preview" test -s "/usr/share/icons/$icons/apps/scalable/$preview.svg"
+    ok "$icons draws $preview without opacity" not grep -q ' opacity="' "/usr/share/icons/$icons/apps/scalable/$preview.svg"
+  done
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"

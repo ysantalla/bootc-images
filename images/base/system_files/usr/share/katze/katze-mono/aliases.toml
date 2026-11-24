@@ -97,6 +97,18 @@
 "sieveeditor" = "view-filter"
 "ktnef" = "mail-attachment"
 
+# Not applications: the icons System Settings draws to preview an icon theme.
+# Without them the preview of this theme shows Breeze's. "exec" and "document"
+# are the names that page tries besides "system-run" and "text-x-generic", and
+# hardly anything else asks for them, so launchers and text files keep their
+# icons. "folder" and "user-trash" have no such second name: the Trash takes the
+# shape wherever it is shown, and "user-trash-full" follows so that it matches.
+"exec" = "system-run"
+"folder" = "folder"
+"document" = "file-text-line"
+"user-trash" = "user-trash"
+"user-trash-full" = "user-trash-full"
+
 # Other
 
 # Applications left with their original icon, for any whose tray item still
