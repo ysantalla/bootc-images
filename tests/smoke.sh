@@ -80,6 +80,7 @@ screen_off_after() { # screen_off_after <power state> <seconds>
   [[ "$(HOME=$(mktemp -d) XDG_CONFIG_DIRS=/etc/xdg:/usr/share/kde-settings/kde-profile/default/xdg \
     kreadconfig6 --file powerdevilrc --group "$1" --group Display --key TurnOffDisplayIdleTimeoutSec)" == "$2" ]]
 }
+opens_images_with() { [[ "$(XDG_CURRENT_DESKTOP=KDE gio mime "$1" 2>/dev/null | head -1)" == *"$2"* ]]; }
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -188,6 +189,11 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
   ok "$icons has no broken links" test -z "$(find "/usr/share/icons/$icons" -xtype l -print -quit)"
   ok "$icons is valid XML" icons_parse "/usr/share/icons/$icons"
 done
+ok "package koko" rpm -q koko
+for type in image/png image/jpeg image/webp; do
+  ok "$type opens in Koko" opens_images_with "$type" org.kde.koko.desktop
+done
+ok "Koko has its Katze icon" test -s /usr/share/icons/katze-mono/apps/scalable/org.kde.koko.svg
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "warns when our registry is followed without a signature" signature_warning ostree-unverified-registry:ghcr.io/ysantalla/base:latest yes
 ok "no warning when the signature is required" signature_warning ostree-image-signed:docker://ghcr.io/ysantalla/base:latest no

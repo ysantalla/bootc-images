@@ -6,6 +6,14 @@ set -euxo pipefail
 mapfile -t PKGS < <(grep -vE '^\s*(#|$)' /ctx/packages.txt)
 dnf5 -y install "${PKGS[@]}"
 
+# Images open in Koko. Plasma's list of defaults names Gwenview, which is not in the image,
+# so they opened in a browser. The list is Fedora's: only the name of the viewer changes.
+MIMEAPPS=/usr/share/applications/kde-mimeapps.list
+grep -q '^image/png=org.kde.gwenview.desktop' "$MIMEAPPS"
+sed -i '/^image\//s/org\.kde\.gwenview\.desktop/org.kde.koko.desktop/' "$MIMEAPPS"
+grep -q '^image/png=org.kde.koko.desktop' "$MIMEAPPS"
+test -f /usr/share/applications/org.kde.koko.desktop
+
 # Not used here: Incus covers containers (also removes the Toolbx login message)
 dnf5 -y remove toolbox distrobox
 

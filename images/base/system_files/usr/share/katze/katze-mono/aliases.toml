@@ -93,6 +93,7 @@
 # Mail and contacts
 "kaddressbook" = "view-pim-contacts"
 "kontact" = "mail-message"
+"org.kde.koko" = "photo"
 "kontact-import-wizard" = "document-import"
 "sieveeditor" = "view-filter"
 "ktnef" = "mail-attachment"

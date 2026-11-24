@@ -43,6 +43,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - With the policy installed in `/etc/firewalld/policies` and a reload: the internet by address and by name still works, both upstream addresses are rejected, the host's ports stay closed, and a restarted container gets its address again.
 
 **Not tested yet:**
+- Koko in a session: opening a picture from Dolphin, and how it looks with the Katze theme. In a container it installs, `gio mime` names it for PNG, JPEG, WebP, GIF and SVG, and Katze Mono draws its icon.
 - The screen turning off after 3 minutes on AC and 2 on battery on `xps16-da16260`. `tests/smoke.sh` reads the values back as a new user would; PowerDevil acting on them was not seen. The key names come from PowerDevil's libraries in the image.
 - `katze-incus-private` with a real tailnet, with IPv6, with an Incus VM, and shipped in the image under `/usr/lib/firewalld`. A project that needs something on the local network from its container has no switch for it yet.
 - Nothing is verified on the real XPS.
