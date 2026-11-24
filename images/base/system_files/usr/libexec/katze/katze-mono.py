@@ -6,6 +6,7 @@ single colour on a dark shape. Everything else is inherited from Breeze.
 
   katze-mono.py --report          list the glyph source of every application
   katze-mono.py --sheet all.svg   write one picture with every icon
+  katze-mono.py --preview p.svg   both variants in Katze's colours: panel, highlight, small
   katze-mono.py --follow-accent   write the theme to ~/.local/share/icons/katze-mono
 
 Glyph sources, in order:
@@ -476,21 +477,27 @@ FALLBACK = {
     "dark": ("#fcfcfc", "#0b0d14", "#00b09a"),
     "light": ("#232629", "#f4f5f7", "#00b09a"),
 }
-# How much accent the shape takes. On a light scheme a faint wash is lost
-# against a light panel, so it takes more and gets an edge in the accent.
-# On the dark one, 0.16 left the shape hardly apart from the panel.
+# The look of each variant. These are only what is used when aliases.toml has
+# no [look] table: the values, and the reason for each, are there.
+#   TINT        how much accent the shape takes
+#   EDGE        how strong the shape's edge in the accent is
+#   SHADE       how far the glyph moves from the accent to the text colour
+#   LINE_SCALE  how wide the glyph's lines are, as a multiple of LINE_WIDTH
 TINT = {"dark": 0.4, "light": 0.6}
-# The edge keeps the shape apart from a highlight behind it: at 0.4 the dark
-# shape is the color Plasma gives a hovered or selected item.
 EDGE = {"dark": 1.0, "light": 0.85}
-# How much the glyph moves from the accent towards the text colour. A light
-# scheme needs more, or a pale accent such as yellow disappears on the shape.
-# The glyph is the text colour outright on both: Plasma paints the accent of an icon
-# with the selection's shade, which is nearly the shape's own colour.
 SHADE = {"dark": 1.0, "light": 1.0}
-# Dark lines on a light shape look thinner than light lines on a dark one, so
-# the two widths differ to look the same.
 LINE_SCALE = {"dark": 1.35, "light": 1.6}
+LOOK = {"tint": TINT, "edge": EDGE, "shade": SHADE, "line": LINE_SCALE}
+
+
+def set_look(variant: str, key: str, value) -> None:
+    if key not in LOOK or variant not in FALLBACK:
+        raise SystemExit(f"unknown look setting {variant}.{key}: use one of "
+                         + ", ".join(f"{v}.{k}" for v in FALLBACK for k in LOOK))
+    try:
+        LOOK[key][variant] = float(value)
+    except (TypeError, ValueError):
+        raise SystemExit(f"{variant}.{key} needs a number, not {value!r}") from None
 
 
 def scheme_style(variant: str) -> str:
@@ -718,6 +725,95 @@ def write_sheet(path: Path, rows: list[tuple[App, Glyph]], args) -> None:
     print(f"Wrote {path}")
 
 
+def scheme_colours(path: Path, fallback: tuple[str, str, str]) -> dict[str, str]:
+    """The colours of a KDE colour scheme that an icon and its surroundings take.
+    Plasma paints an icon's accent with the selection's background, not with the
+    accent the user picked: on a dark scheme that is a darker shade."""
+    text, background, accent = fallback
+    colours = {"Text": text, "Background": background, "Accent": accent, "View": background}
+    scheme = configparser.RawConfigParser(strict=False, interpolation=None)
+    scheme.optionxform = str
+    try:
+        scheme.read(path, encoding="utf-8")
+    except (configparser.Error, OSError):
+        return colours
+    for name, section, key in (("Text", "Colors:Window", "ForegroundNormal"),
+                               ("Background", "Colors:Window", "BackgroundNormal"),
+                               ("View", "Colors:View", "BackgroundNormal"),
+                               ("Accent", "Colors:Selection", "BackgroundNormal")):
+        value = scheme.get(section, key, fallback="")
+        parts = [part.strip() for part in value.split(",")]
+        if len(parts) >= 3 and all(part.isdigit() for part in parts[:3]):
+            colours[name] = "#%02x%02x%02x" % tuple(int(part) for part in parts[:3])
+    return colours
+
+
+def mix(a: str, b: str, amount: float) -> str:
+    one, two = (tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in (a, b))
+    return "#%02x%02x%02x" % tuple(round(x + (y - x) * amount) for x, y in zip(one, two))
+
+
+def painted(body: str, colours: dict[str, str]) -> str:
+    """An icon as Plasma would paint it: its classes replaced by the scheme's
+    colours, so that icons of two schemes can share one picture."""
+    body = re.sub(r"<style\b.*?</style>", "", body, flags=re.S)
+    for name in ("Text", "Background", "Accent"):
+        body = body.replace(f'class="ColorScheme-{name}"', f'color="{colours[name]}"')
+    return body
+
+
+PREVIEW_COLUMNS = 12
+PREVIEW_HIGHLIGHT = 0.4  # roughly what a hovered item in the launcher takes of the selection colour
+
+
+def write_preview(path: Path, apps: list[App], glyphs: Path, aliases: dict[str, str],
+                  outlined: set[str], scales: dict[str, float], skip: set[str],
+                  roots: list[Path], schemes: Path, args) -> None:
+    """One picture of both variants as Plasma paints them: large on the panel's
+    colour and on a highlight, and small on a menu's colour. Made to judge a
+    change of [look] before building anything: contrast is what went wrong."""
+    global LINE_WIDTH
+    base = LINE_WIDTH
+    large, small, gap, label = 56, 44, 14, 26
+    width = PREVIEW_COLUMNS * (large + gap) + gap
+    blocks, y = [], 0
+    for variant, scheme in (("dark", "KatzeDark.colors"), ("light", "KatzeLight.colors")):
+        colours = scheme_colours(schemes / scheme, FALLBACK[variant])
+        LINE_WIDTH = base * LINE_SCALE[variant]
+        rows = [(app, find_glyph(app, roots, glyphs, aliases, outlined, scales))
+                for app in apps if app.icon not in skip and "/" not in app.icon]
+        shown: dict[str, Glyph] = {}
+        for app, glyph in rows:
+            shown.setdefault(app.icon, glyph)
+        icons = [painted(icon_body(glyph, args.shape, args.background, args.glyph_colour, True, variant),
+                         colours) for glyph in shown.values()]
+        plain = [painted(small_body(glyph), colours) for glyph in shown.values()]
+        look = "  ".join(f"{key} {LOOK[key][variant]:g}" for key in LOOK)
+
+        def grid(items: list[str], size: float, native: float, background: str, title: str) -> None:
+            nonlocal y
+            lines = math.ceil(len(items) / PREVIEW_COLUMNS)
+            height = label + lines * (size + gap) + gap
+            cells = "".join(
+                f'<g transform="translate({gap + (i % PREVIEW_COLUMNS) * (large + gap) + (large - size) / 2:g},'
+                f'{y + label + gap / 2 + (i // PREVIEW_COLUMNS) * (size + gap):g}) scale({size / native:g})">{item}</g>'
+                for i, item in enumerate(items))
+            blocks.append(
+                f'<rect y="{y}" width="{width}" height="{height}" fill="{background}"/>'
+                f'<text x="{gap}" y="{y + 18}" font-family="sans-serif" font-size="12" '
+                f'fill="{colours["Text"]}">{escape(title)}</text>{cells}')
+            y += height
+
+        grid(icons, large, CANVAS, colours["Background"], f"Katze {variant.title()}, on the panel   ({look})")
+        grid(icons[:PREVIEW_COLUMNS], large, CANVAS,
+             mix(colours["View"], colours["Accent"], PREVIEW_HIGHLIGHT), "under the pointer, in the launcher")
+        grid(plain, small, SMALL, colours["View"], "below 32 px, in menus and side panels (shown twice the size)")
+    LINE_WIDTH = base
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(svg_document("".join(blocks), width, y), encoding="utf-8")
+    print(f"Wrote {path}")
+
+
 def write_theme(output: Path, rows: list[tuple[App, Glyph]], args, roots: list[Path]) -> None:
     icons = output / "apps/scalable"
     small = output / "apps/symbolic"
@@ -795,6 +891,15 @@ def main() -> int:
                         help="with --report, list only applications that use this source")
     parser.add_argument("--sheet", type=Path, metavar="FILE.svg",
                         help="write one picture with every icon and write no theme")
+    parser.add_argument("--preview", type=Path, metavar="FILE.svg",
+                        help="write one picture of both variants in the Katze colour schemes, on the "
+                             "panel, on a highlight and small, and write no theme")
+    parser.add_argument("--schemes", type=Path, default=here.parents[1] / "color-schemes",
+                        help="directory of KatzeDark.colors and KatzeLight.colors, for --preview "
+                             "(default: %(default)s)")
+    parser.add_argument("--set", action="append", default=[], metavar="VARIANT.KEY=VALUE", dest="look",
+                        help="override a [look] value of aliases.toml, such as dark.tint=0.3; "
+                             "keys: " + ", ".join(LOOK))
     parser.add_argument("--output", type=Path,
                         help="theme directory (default: ~/.local/share/icons/katze-mono, "
                              "or katze-mono-light for the light variant)")
@@ -826,6 +931,13 @@ def main() -> int:
         skip = set(table.get("skip", {}).get("icons", []))
         outlined = set(table.get("outline", {}).get("glyphs", []))
         scales = table.get("scale", {})
+        for variant, values in table.get("look", {}).items():
+            for key, value in values.items():
+                set_look(variant, key, value)
+    for setting in args.look:
+        name, _, value = setting.partition("=")
+        variant, _, key = name.partition(".")
+        set_look(variant, key, value)
 
     dirs = data_dirs()
     roots = icon_roots(dirs)
@@ -834,6 +946,10 @@ def main() -> int:
         seen = {app.icon for app in apps} | {app.desktop_id.removesuffix(".desktop") for app in apps}
         apps += [App(f"{name}.desktop", name, name, []) for name in aliases
                  if name not in seen and "/" not in name and " " not in name]
+    if args.preview:
+        write_preview(args.preview, apps, args.glyphs, aliases, outlined, scales, skip, roots,
+                      args.schemes, args)
+        return 0
     if args.follow_accent:
         global LINE_WIDTH
         LINE_WIDTH *= LINE_SCALE[args.variant]

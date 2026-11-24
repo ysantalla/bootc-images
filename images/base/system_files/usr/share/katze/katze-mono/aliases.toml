@@ -112,6 +112,34 @@
 
 # Other
 
+# How the icons look, per variant. Try a change with
+# `katze-mono.py --preview p.svg --set dark.tint=0.3` (`mise run icons:preview`)
+# before building: it draws both variants in the Katze colour schemes.
+#
+# tint   how much of the accent the shape takes over the background colour.
+#        Dark: at 0.16 the shape was hardly apart from the panel. Light: a faint
+#        wash is lost against a light panel.
+# edge   how strong the shape's 1 px edge in the accent is. At tint 0.4 the dark
+#        shape is the colour Plasma gives a hovered item, and without the edge it
+#        disappeared under the pointer.
+# shade  how far the glyph goes from the accent (0) to the text colour (1).
+#        Plasma paints an icon's accent with the selection's shade, nearly the
+#        shape's own colour, so the glyph is the text colour outright.
+# line   the width of the glyph's lines, as a multiple of the base width. Dark
+#        lines on a light shape look thinner than light ones on a dark shape, so
+#        the two numbers differ to look the same.
+[look.dark]
+tint = 0.4
+edge = 1.0
+shade = 1.0
+line = 1.35
+
+[look.light]
+tint = 0.6
+edge = 0.85
+shade = 1.0
+line = 1.6
+
 # Applications left with their original icon, for any whose tray item still
 # takes the shape. Tray items that ask for "<icon>-symbolic" do not need it:
 # the theme writes that name with the glyph alone.

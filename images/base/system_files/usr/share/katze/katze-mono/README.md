@@ -21,6 +21,23 @@ Run it again after installing applications. Plasma keeps icons it has already
 drawn, so log out and in, or restart `plasma-plasmashell.service`, to see a
 regenerated theme. `/usr/libexec/plasma-changeicons breeze-dark` goes back.
 
+## Changing the look
+
+How much accent the shape takes, its edge, and the colour and width of the
+glyph's lines are the `[look]` tables of `aliases.toml`, one per variant, with
+the reason for each value. To judge a change before building anything:
+
+```sh
+mise run icons:preview                        # as it is
+mise run icons:preview --set dark.tint=0.3    # with a value changed
+```
+
+It writes `output/icons/preview.svg` (and a PNG, with Inkscape): both variants
+painted with the Katze colour schemes, on the panel's colour, on the colour of a
+hovered item, and small. Every problem of contrast found so far showed up in
+one of those three: the shape lost on the panel, the shape lost under the
+pointer, the lines too faint.
+
 ## Design rules
 
 - **One shape.** A squircle (or `--shape circle`) of 60 units on a 64 unit

@@ -233,6 +233,23 @@ description = "Switch THIS machine to the published image, requiring its signatu
 usage = 'arg "<image>" help="required, so a missing name never moves a machine to base"'
 run = 'sudo bootc switch --enforce-container-sigpolicy "$KATZE_REGISTRY/${usage_image?}:latest"'
 
+[tasks."icons:preview"]
+description = "One picture of the Katze Mono icons in both themes: on the panel, under the pointer and small. Try a look with --set dark.tint=0.3"
+usage = 'arg "[options]..." help="options for katze-mono.py, such as --set light.line=1.4"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+out=output/icons
+mkdir -p "$out"
+python3 images/base/system_files/usr/libexec/katze/katze-mono.py --all-aliases --preview "$out/preview.svg" "$@"
+# The glyphs come from this machine's Breeze, so it needs Breeze installed. A PNG is easier to open
+if command -v inkscape >/dev/null; then
+  inkscape "$out/preview.svg" -o "$out/preview.png" 2>/dev/null && echo "Wrote $out/preview.png"
+elif command -v rsvg-convert >/dev/null; then
+  rsvg-convert "$out/preview.svg" -o "$out/preview.png" && echo "Wrote $out/preview.png"
+fi
+'''
+
 [tasks.clean]
 description = "Remove generated disks and every test VM, after asking"
 run = '''

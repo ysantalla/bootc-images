@@ -210,6 +210,8 @@ done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
+ok "icon generator draws its preview" python3 /usr/libexec/katze/katze-mono.py --all-aliases --preview /tmp/katze-preview.svg
+ok "the icons' look comes from aliases.toml" grep -q '^\[look.dark\]$' /usr/share/katze/katze-mono/aliases.toml
 ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
