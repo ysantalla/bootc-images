@@ -484,7 +484,9 @@ TINT = {"dark": 0.4, "light": 0.6}
 EDGE = {"dark": 1.0, "light": 0.85}
 # How much the glyph moves from the accent towards the text colour. A light
 # scheme needs more, or a pale accent such as yellow disappears on the shape.
-SHADE = {"dark": 0.25, "light": 0.8}
+# On the dark one the glyph is the text colour outright: Plasma paints the accent of an
+# icon with the selection's dark shade, which is nearly the shape's own colour.
+SHADE = {"dark": 1.0, "light": 0.8}
 # Dark lines on a light shape look thinner than light lines on a dark one.
 LINE_SCALE = {"dark": 1.0, "light": 1.3}
 
