@@ -82,6 +82,22 @@ home_theme_keeps_breeze_folders() {
     grep -q '^\[apps/22\]$' "$home/data/icons/katze-mono/index.theme" &&
     test -e /usr/share/icons/katze-mono/breeze/places/64/folder-documents.svg
 }
+# Which file Plasma's own lookup (KIconThemes) returns for an icon name, with Katze Mono as the
+# theme. "home" also writes the user's copy of the theme first, as katze-icons.service does at
+# login. Checks on files and on index.theme missed three regressions that this would have shown.
+icon_lookup() { # icon_lookup <image|home> <icon name>
+  local home
+  home=$(mktemp -d)
+  mkdir -p "$home/.config" "$home/rt"
+  printf '[Icons]\nTheme=katze-mono\n' >"$home/.config/kdeglobals"
+  if [[ $1 == home ]]; then
+    HOME=$home XDG_DATA_HOME=$home/.local/share python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 || return 1
+  fi
+  HOME=$home XDG_DATA_HOME=$home/.local/share XDG_CONFIG_HOME=$home/.config XDG_RUNTIME_DIR=$home/rt \
+    QT_QPA_PLATFORM=offscreen kiconfinder6 "$2" 2>/dev/null | tail -1
+}
+# shellcheck disable=SC2053 # the third argument is a glob on purpose
+lookup_is() { [[ "$(icon_lookup "$1" "$2")" == $3 ]]; } # lookup_is <image|home> <icon name> <glob>
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -210,6 +226,12 @@ done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
+for copy in image home; do
+  ok "Plasma finds Katze's icon for an application ($copy copy)" lookup_is "$copy" org.kde.dolphin '*/katze-mono/apps/scalable/org.kde.dolphin.svg'
+  ok "Plasma finds Breeze's icon for a special folder ($copy copy)" lookup_is "$copy" folder-documents '*breeze*/places/*/folder-documents.svg'
+  ok "Plasma finds Breeze's icon for a longer name ($copy copy)" lookup_is "$copy" preferences-system-bluetooth '*breeze*/preferences-system-bluetooth.svg'
+  ok "Plasma finds Katze's Trash ($copy copy)" lookup_is "$copy" user-trash '*/katze-mono/apps/scalable/user-trash.svg'
+done
 ok "icon generator draws its preview" python3 /usr/libexec/katze/katze-mono.py --all-aliases --preview /tmp/katze-preview.svg
 ok "the icons' look comes from aliases.toml" grep -q '^\[look.dark\]$' /usr/share/katze/katze-mono/aliases.toml
 ok "icon generator survives odd icon names" icons_survive_odd_names
