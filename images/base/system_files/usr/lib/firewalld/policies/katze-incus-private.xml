@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Runs before katze-incus-out. Instances reach the internet, not the networks this machine is on. -->
+<policy target="CONTINUE" priority="-10">
+  <short>Incus kept out of private networks</short>
+  <description>Stops Incus instances from reaching private addresses through the host: the local network, the tailnet and link-local addresses.</description>
+  <ingress-zone name="katze-incus"/>
+  <egress-zone name="ANY"/>
+  <rule family="ipv4"><destination address="10.0.0.0/8"/><reject/></rule>
+  <rule family="ipv4"><destination address="172.16.0.0/12"/><reject/></rule>
+  <rule family="ipv4"><destination address="192.168.0.0/16"/><reject/></rule>
+  <!-- Tailscale, and carrier-grade NAT -->
+  <rule family="ipv4"><destination address="100.64.0.0/10"/><reject/></rule>
+  <rule family="ipv4"><destination address="169.254.0.0/16"/><reject/></rule>
+  <!-- Unique local addresses, which include Tailscale's, and link-local -->
+  <rule family="ipv6"><destination address="fc00::/7"/><reject/></rule>
+  <rule family="ipv6"><destination address="fe80::/10"/><reject/></rule>
+</policy>

@@ -94,7 +94,7 @@ images/
       usr/lib/tmpfiles.d/              katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
       usr/lib/environment.d/           60-katze-docker-host.conf
       usr/lib/firewalld/zones/         katze-incus.xml, katze-laptop.xml, katze-tailscale.xml
-      usr/lib/firewalld/policies/      katze-incus-out.xml
+      usr/lib/firewalld/policies/      katze-incus-out.xml, katze-incus-private.xml
       usr/share/katze/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-katze-compose.conf
       usr/share/konsole/               katze.profile

@@ -28,6 +28,7 @@ platform_profile_works() { # with a copy of the two handlers the XPS has
   PLATFORM_PROFILE_DIR=$dir /usr/libexec/katze/platform-profile.sh quiet low-power &&
     [[ "$(<"$dir/a/profile")" == quiet && "$(<"$dir/b/profile")" == low-power ]]
 }
+incus_kept_out_of() { firewall-offline-cmd --policy=katze-incus-private --list-rich-rules 2>/dev/null | grep -q "destination address=\"$1\" reject"; }
 firewall_target() { [[ "$(firewall-offline-cmd "$1" --get-target 2>/dev/null)" == "$2" ]]; }
 enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
@@ -99,6 +100,10 @@ ok "firewall defaults to katze-laptop" grep -qx 'DefaultZone=katze-laptop' /etc/
 ok "firewall configuration is valid" firewall-offline-cmd --check-config
 ok "Incus instances cannot reach the host's ports" firewall_target --zone=katze-incus default
 ok "Incus instances can reach other networks" firewall_target --policy=katze-incus-out ACCEPT
+for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7; do
+  ok "Incus instances cannot reach $net" incus_kept_out_of "$net"
+done
+ok "the private networks policy runs before the one that accepts" test "$(firewall-offline-cmd --policy=katze-incus-private --get-priority)" -lt "$(firewall-offline-cmd --policy=katze-incus-out --get-priority)"
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/katze-flatpak-overrides.conf
 
 for pkg in toolbox distrobox moby-engine docker-cli; do

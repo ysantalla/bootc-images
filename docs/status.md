@@ -36,7 +36,12 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `rpm-ostree status --json` gives `container-image-reference` as `ostree-unverified-registry:localhost/base:latest` on this disk, the field `image-signature.sh` reads. That script was not in this build.
 - SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
 
+**Verified in the same VM (2026-11-24), with an Alpine container on `incusbr0`:**
+- Before `katze-incus-private`: the container reached the internet and, through the host, the VM's upstream network (10.0.2.3:53 and 10.0.2.2:631, the host machine's CUPS), but not the host's own ports.
+- With the policy installed in `/etc/firewalld/policies` and a reload: the internet by address and by name still works, both upstream addresses are rejected, the host's ports stay closed, and a restarted container gets its address again.
+
 **Not tested yet:**
+- `katze-incus-private` with a real tailnet, with IPv6, with an Incus VM, and shipped in the image under `/usr/lib/firewalld`. A project that needs something on the local network from its container has no switch for it yet.
 - Nothing is verified on the real XPS.
 - `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
 - `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
