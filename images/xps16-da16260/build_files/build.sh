@@ -21,9 +21,24 @@ for file in \
   fi
 done
 
-# Next steps for this machine go here (one at a time, once base is stable):
-#   - auto-boost (RAPL PL2 60 W on AC under load) as a systemd service in /usr
-#   - .dellptl kernel for IPU7 webcam / IR / ISH (needs initramfs + Secure Boot signing)
+# 3. Power profiles: KDE's slider picks our tuned profiles, which reach Dell's thermal modes.
+# tuned-ppd treats a change of the legacy platform_profile it did not make as a firmware hotkey
+# and switches back, which undoes power saver on this machine, so that monitor is off.
+PPD=/etc/tuned/ppd.conf
+sed -i -E \
+  -e 's/^sysfs_acpi_monitor=.*/sysfs_acpi_monitor=false/' \
+  -e 's/^power-saver=.*/power-saver=katze-xps-powersave/' \
+  -e 's/^performance=.*/performance=katze-xps-performance/' \
+  -e '/^\[profiles\]/,/^\[battery\]/ s/^balanced=.*/balanced=katze-xps-balanced/' \
+  -e '/^\[battery\]/,$ s/^balanced=.*/balanced=katze-xps-balanced-battery/' \
+  "$PPD"
+for line in sysfs_acpi_monitor=false power-saver=katze-xps-powersave balanced=katze-xps-balanced \
+  performance=katze-xps-performance balanced=katze-xps-balanced-battery; do
+  grep -qx "$line" "$PPD"
+done
+
+# Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
+# and docs/xps16-checklist.md what to check on the machine first.
 
 dnf5 clean all
 rm -rf /var/log/dnf5.log /var/lib/dnf

@@ -1,13 +1,50 @@
-# bootc-images
+# Katze OS
 
-Personal bootc images, built daily, signed with cosign and published to `ghcr.io/ysantalla`.
+A personal desktop operating system, built as code: Fedora Kinoite (KDE Plasma) turned into an immutable image, with its own look and the tools its owner works with.
+
+![Katze Dark: the desktop with the file manager and Discover open](docs/screenshots/katze-dark.jpg)
+
+Every machine runs the same image, and nothing is installed on a machine by hand. A change is a commit in this repository; GitHub Actions builds the image every day, tests it, signs it and publishes it to `ghcr.io/ysantalla`, and each machine downloads it in the background and applies it on the next restart. If an update goes wrong, one command goes back to the previous version.
+
+It is built with [bootc](https://bootc-dev.github.io/bootc/), on top of [Universal Blue](https://universal-blue.org/)'s `kinoite-main`.
+
+## What it looks like
+
+Katze comes with two global themes, **Katze Dark** (the default) and **Katze Light**. The Dark Mode switch in the panel goes from one to the other.
+
+| Katze Dark | Katze Light |
+|---|---|
+| ![The launcher in Katze Dark](docs/screenshots/katze-dark-launcher.jpg) | ![The launcher in Katze Light](docs/screenshots/katze-light-launcher.jpg) |
+
+![Katze Light: the desktop with the file manager and Discover open](docs/screenshots/katze-light.jpg)
+
+- **Katze Mono icons.** Each application gets a thin line glyph on a rounded shape, drawn for it when the image is built: the application's own mark where it has one, a line glyph for what it does otherwise. Icons and shapes take the accent color you choose in System Settings.
+- **One panel,** 56 px thick, with the virtual desktop switcher next to the tray and tray icons that scale with it.
+- **Colors that follow you.** The panel, the launcher and the icons use the color scheme and its accent, in light and in dark.
+- **Inter** for the interface, with no sub-pixel text, since OLED panels often lack RGB stripes.
+
+![Katze Mono icons for the image's applications, dark and light](docs/screenshots/katze-mono.png)
+
+## What is in it
+
+- **A full KDE Plasma desktop** with video codecs, from `kinoite-main`.
+- **Browsers:** Brave Origin and Google Chrome, as native packages.
+- **Development without touching the system:** Incus for containers and virtual machines, and `docker` and `docker compose` running on rootless Podman. Compilers and project tools live in containers, not in the image.
+- **A terminal ready to use:** zsh with suggestions and highlighting, a Starship prompt, a Nerd Font, Konsole and a drop-down Yakuake on F12.
+- **Apps:** Okular, Haruna, and Zed, Slack and ONLYOFFICE as Flatpaks.
+- **A private network** between your devices with Tailscale, and a firewall that keeps development ports closed on networks you do not trust.
+- **Updates you do not manage:** downloaded every six hours on AC power, announced on the desktop, applied when you restart, and signed.
+
+## The images
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, Docker commands on Podman, Okular, Haruna, Office fonts, Plasma style, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
-| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Everything above. Hardware-agnostic. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
+| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, fixes for thermald and Dell's power profiles, and tools to measure battery, temperature and GPU use |
 
-`base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
+Each machine gets its own image named after its model, containing only what that hardware needs.
+
+It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `CLAUDE.md` explains how it is built and what has and has not been tested, and `docs/` has the plan for the XPS.
 
 ## What base includes
 
@@ -19,7 +56,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar and Qt colors are first-run preferences, so existing profiles keep their settings |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
-| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme, with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
+| Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons that follow the accent color, and a 56 px panel. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
@@ -27,7 +64,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile, Yakuake (F12) and `fastfetch`. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
 | Tailscale | Private network between your devices. `tailscaled` is enabled; run `sudo tailscale up` once to log in |
 | Flatpaks | Zed, Slack, ONLYOFFICE and GNOME Network Displays. List in `flatpaks.list`. Slack and ONLYOFFICE get custom launchers and overrides. Zed uses KDE's window borders; to undo it, remove `/var/lib/flatpak/overrides/dev.zed.Zed` |
-| Updates | `bootc-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
+| Updates | `katze-update.timer`: downloads every ~6 h (on AC and non-metered connections only, catching up after suspend), applied on reboot. A desktop notification says when one is ready, and another warns if the running image is over 14 days old |
 
 ## Layout
 
@@ -41,34 +78,38 @@ images/
   base/
     Containerfile
     build_files/             build-time only, not shipped in the image
-      build.sh               packages, browsers, terminal, Plasma style, services, font cache
+      build.sh               packages, browsers, terminal, Katze theme, services, font cache
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       browsers.sh            first-run browser preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
-      plasma-theme.sh        makes the Plasma style, colors and fonts the default
+      plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
-      usr/libexec/bootc-images/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
-      usr/lib/systemd/system/          bootc-* services and timer
-      usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers
-      usr/lib/tmpfiles.d/              bootc-brave.conf, bootc-chrome.conf, bootc-flatpak-overrides.conf
-      usr/lib/environment.d/           60-bootc-docker-host.conf
-      usr/lib/firewalld/zones/         bootc-incus.xml, bootc-laptop.xml, bootc-tailscale.xml
-      usr/lib/firewalld/policies/      bootc-incus-out.xml
-      usr/share/bootc-images/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
-      usr/share/containers/containers.conf.d/ 60-bootc-compose.conf
-      usr/share/konsole/               bootc-images.profile
-      usr/share/plasma/desktoptheme/   breeze-custom (Plasma style)
-      usr/share/color-schemes/         BreezeDarkCustom.colors
+      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
+      usr/lib/systemd/system/          katze-* services and timer
+      usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers, Katze Mono icons
+      usr/lib/tmpfiles.d/              katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
+      usr/lib/environment.d/           60-katze-docker-host.conf
+      usr/lib/firewalld/zones/         katze-incus.xml, katze-laptop.xml, katze-tailscale.xml
+      usr/lib/firewalld/policies/      katze-incus-out.xml
+      usr/share/katze/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
+      usr/share/containers/containers.conf.d/ 60-katze-compose.conf
+      usr/share/konsole/               katze.profile
+      usr/share/plasma/desktoptheme/   katze (Plasma style)
+      usr/share/plasma/look-and-feel/  katze-dark, katze-light (global themes)
+      usr/share/color-schemes/         KatzeDark.colors, KatzeLight.colors
+      usr/share/katze/katze-mono/      choices and glyphs of the Katze Mono icons
   xps16-da16260/
     Containerfile
     build_files/
       build.sh
       packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools
 bib/config.example.toml      user for test VMs
+devbox/                      Incus profile and cloud-init for per-project dev containers
+docs/                        screenshots, the checklist for the XPS, the plan for secrets and dev containers
 mise.toml                    local tasks + cosign
 ```
 
@@ -85,13 +126,13 @@ git add .
 git status                        # cosign.pub listed, cosign.key NOT listed
 git commit -m "Initial bootc images"
 
-gh repo create ysantalla/bootc-images --public --source . --remote origin
+gh repo create ysantalla/katze-os --public --source . --remote origin
 gh secret set SIGNING_SECRET < cosign.key
 gh secret set COSIGN_PASSWORD        # the password you just chose
 git push -u origin main
 ```
 
-`cosign.key` is git-ignored. CI is the only thing that needs it, so delete it from disk once the secrets are set. If a key is lost or exposed, generate a new pair, update both secrets, and commit the new `cosign.pub` in both places it lives: the repo root and `images/base/system_files/usr/share/bootc-images/`. CI checks that they match. Machines enforcing signatures must already run an image with the new key, or they stop updating until you switch them again.
+`cosign.key` is git-ignored. CI is the only thing that needs it, so delete it from disk once the secrets are set. If a key is lost or exposed, generate a new pair, update both secrets, and commit the new `cosign.pub` in both places it lives: the repo root and `images/base/system_files/usr/share/katze/`. CI checks that they match. Machines enforcing signatures must already run an image with the new key, or they stop updating until you switch them again.
 
 The repo is public, so GitHub disables the daily schedule after 60 days without repository activity. It warns by email; re-enable the workflow if that happens.
 
@@ -121,7 +162,7 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
 - **Sound:** `vm-up` plays through the host, with no microphone input.
 - **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
-- **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `bootc-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
+- **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `katze-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
 - **On a machine already running the image:** `vm-up` does not work there. Use `mise run vm-incus <image>`, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `CLAUDE.md`, section 11. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
 - **What a VM cannot test:** it has no Intel GPU, so `vainfo` fails there on either image. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
@@ -153,7 +194,7 @@ curl https://mise.run | sh
 echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 ```
 
-In `incus admin init`, accept the defaults, but choose `btrfs` as the storage backend and create the subvolume under `/var/lib/incus` when asked: the disk is btrfs on Kinoite installs and `mise run vm` disks, so instances and snapshots become copy-on-write instead of full copies. Keep the bridge name `incusbr0`, which the `bootc-incus` firewall zone is bound to.
+In `incus admin init`, accept the defaults, but choose `btrfs` as the storage backend and create the subvolume under `/var/lib/incus` when asked: the disk is btrfs on Kinoite installs and `mise run vm` disks, so instances and snapshots become copy-on-write instead of full copies. Keep the bridge name `incusbr0`, which the `katze-incus` firewall zone is bound to.
 
 **Avoid `mise run iso` on a machine with data.** That installer may erase the disk without asking (not confirmed in its docs). It also includes the `bib/config.toml` user, and it is built from a local image, so you would have to run `bootc switch` afterwards for updates to work. The 40 GiB disk setting may not be accepted for ISOs; if the build rejects it, remove that block from `bib/config.toml`.
 
@@ -172,8 +213,8 @@ From then on it refuses unsigned images. Tags built before the key rotation of 2
 ```bash
 sudo bootc status                              # current image and rollback
 rpm-ostree status                              # no LayeredPackages
-systemctl status bootc-setup bootc-flatpaks
-systemctl list-timers bootc-update.timer
+systemctl status katze-setup katze-flatpaks
+systemctl list-timers katze-update.timer
 id -nG                                         # includes incus-admin
 incus list
 flatpak list --system
@@ -220,7 +261,7 @@ sensors                        # xps16-da16260: temperatures and fans
 sudo intel_gpu_top             # xps16-da16260: GPU and video engines, may be limited on xe
 ```
 
-When `bootc-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart. The button restarts through Plasma, so apps can ask about unsaved work.
+When `katze-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart. The button restarts through Plasma, so apps can ask about unsaved work.
 
 On any network, the firewall only lets in DHCPv6, local discovery, KDE Connect and GNOME Network Displays, so development servers and containers stay out of reach. Your devices on Tailscale can still reach them. To open the usual Fedora ports on your home network, mark it once (`nmcli connection show` lists the names):
 
@@ -237,12 +278,13 @@ On a machine that enforces signatures, add `--enforce-container-sigpolicy` to ev
 ## Changing an image
 
 - **New package:** add it to `images/<image>/build_files/packages.txt`.
-- **New Flatpak:** add it to `images/base/system_files/usr/share/bootc-images/flatpaks.list`. Installed on next boot.
-- **Custom Flatpak launcher:** add a `.desktop` with `TryExec` and `X-Bootc-Images-Managed=true` to `usr/share/bootc-images/applications/`. It is copied to `~/.local/share/applications` at login. A file there without that marker is yours and is left alone, and our copy does not follow changes the app makes to its own launcher.
+- **New Flatpak:** add it to `images/base/system_files/usr/share/katze/flatpaks.list`. Installed on next boot.
+- **Custom Flatpak launcher:** add a `.desktop` with `TryExec` and `X-Katze-Managed=true` to `usr/share/katze/applications/`. It is copied to `~/.local/share/applications` at login. A file there without that marker is yours and is left alone, and our copy does not follow changes the app makes to its own launcher.
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, add a job to `build.yml`, and add a `case` for it in `tests/smoke.sh`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
-- **Plasma style update:** edit `usr/share/plasma/desktoptheme/breeze-custom/` and `usr/share/color-schemes/` under `images/base/system_files/`. Its own `README.md` explains the taskbar file.
+- **Katze theme update:** edit `usr/share/plasma/desktoptheme/katze/`, `usr/share/plasma/look-and-feel/` and `usr/share/color-schemes/` under `images/base/system_files/`.
+- **An icon looks wrong, or a new app has none:** see `usr/share/katze/katze-mono/README.md`. `python3 images/base/system_files/usr/libexec/katze/katze-mono.py --report` shows which glyph each app gets, and `--sheet all.svg` draws them all.
 - **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:
@@ -259,4 +301,5 @@ Rules:
 - `ujust` recipes from Universal Blue that use Distrobox or Toolbx no longer work.
 - Removing a name from `flatpaks.list` does not uninstall it from existing machines: use `flatpak uninstall`.
 - Flatpak apps don't use the host's codecs or VA-API driver; they use their runtime's (`ffmpeg-full` and the Intel VA-API extension).
-- Project status, findings and planned work are in `CLAUDE.md`.
+- Project status, findings and planned work are in `CLAUDE.md`. What to check on the XPS first is in `docs/xps16-checklist.md`.
+- To take the screenshots again: apply each theme in a test VM (`plasma-apply-lookandfeel -a katze-dark`), capture with Spectacle, and save them in `docs/screenshots/` at 1600 px wide. `katze-mono.py --follow-accent --sheet` draws the icon sheet.

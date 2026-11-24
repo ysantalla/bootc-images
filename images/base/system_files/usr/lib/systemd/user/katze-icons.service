@@ -1,0 +1,9 @@
+[Unit]
+Description=katze-os: draw Katze Mono icons for this user's applications
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/katze/icons.sh
+
+[Install]
+WantedBy=default.target

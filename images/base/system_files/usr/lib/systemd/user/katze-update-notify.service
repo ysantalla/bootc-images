@@ -1,0 +1,12 @@
+[Unit]
+Description=katze-os: announce a downloaded system update
+ConditionPathExists=/run/katze/update-pending
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/katze/update-notify.sh
+
+[Install]
+WantedBy=graphical-session.target

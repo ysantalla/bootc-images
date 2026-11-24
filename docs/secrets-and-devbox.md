@@ -50,7 +50,7 @@ The plan answers with four layers:
 | Incus, unprivileged by default | `base` | Per-project isolation (section 4) |
 | Rootless Podman, no Docker daemon | `base` | A compromised container does not get root on the host |
 | No Toolbx/Distrobox | `base` | Both mount the whole home directory into the container |
-| `bootc-laptop` firewall zone, Tailscale | `base` | Nothing on untrusted networks reaches development ports |
+| `katze-laptop` firewall zone, Tailscale | `base` | Nothing on untrusted networks reaches development ports |
 | cosign signing, disabled third-party repos | `base` and CI | Supply chain of the OS itself |
 
 **Zed's Flatpak is not a sandbox here:** it can read the home directory and its agent runs commands on the host. Use Zed as the editor, and run agents in the project's container (section 6).
@@ -241,7 +241,7 @@ printf '.env\n.env.*\n!.env.example\n*.pem\n*.key\n' >> ~/.config/git/ignore
 
 An unprivileged container (Incus's default) sees only its own filesystem plus any folder mounted into it. It cannot see the host's `~/.aws`, `~/.ssh`, keyring, processes or graphical session. It still has three ways to reach the host:
 
-1. **The network, today fully open to the host.** `bootc-incus.xml` sets `target="ACCEPT"` on `incusbr0`, so a container reaches **every port on the host**: development servers, databases of other projects, anything bound to `0.0.0.0`. `bootc-laptop` does not apply, since it covers the Wi-Fi. The container probably also reaches the LAN and the tailnet through the host's NAT; untested.
+1. **The network, today fully open to the host.** `katze-incus.xml` sets `target="ACCEPT"` on `incusbr0`, so a container reaches **every port on the host**: development servers, databases of other projects, anything bound to `0.0.0.0`. `katze-laptop` does not apply, since it covers the Wi-Fi. The container probably also reaches the LAN and the tailnet through the host's NAT; untested.
 2. **A shared folder is a path back.** With `shift=true`, files the agent writes are owned by the host user. Anything the host later runs from that folder runs the agent's code: `.git/hooks/*`, `mise.toml` tasks, `package.json` scripts, a `Makefile`, Zed tasks, `.envrc`. A symlink to `~/.aws/credentials` leads nowhere inside the container, but a host tool that follows it reads the real file.
 3. **The shared kernel.** A kernel bug could allow an escape. `security.nesting=true`, needed for Podman inside, widens that surface a little. An Incus VM (`--vm`) has its own kernel, at the cost of more memory and slower shared folders (virtiofs).
 
@@ -249,7 +249,7 @@ An unprivileged container (Incus's default) sees only its own filesystem plus an
 
 | Risk | Measure |
 |---|---|
-| Network to the host | Make `bootc-incus` accept only DHCP and DNS from `incusbr0` instead of everything. firewalld and Incus have a history of breaking container internet when the bridge is not trusted, so test that instances still reach the internet |
+| Network to the host | Make `katze-incus` accept only DHCP and DNS from `incusbr0` instead of everything. firewalld and Incus have a history of breaking container internet when the bridge is not trusted, so test that instances still reach the internet |
 | Network to other projects | Instances on `incusbr0` reach each other directly, without passing through the host's firewall. `security.port_isolation=true` on the NIC stops that, and `devbox/profile.yaml` sets it. An instance launched without the `devbox` profile is not isolated |
 | Shared folder | Mount only the project's own folder, never `~/src`. Better: clone inside the container and edit through Zed's SSH remote. If mounted, read `git diff`, especially `.git/hooks`, `mise.toml` and `package.json`, before running anything from it on the host, and never `mise trust` an unread change |
 | Kernel | Keep containers unprivileged (never `security.privileged=true`). Use `--vm` for the most sensitive work |
@@ -346,7 +346,7 @@ claude auth login   # if pasting into the prompt does nothing
 |---|---|---|---|
 | Container `immo` | Account A | Fine-grained token for IMMO's repos | `immo` only |
 | Container for another project | Account B | Token for that project | That account only |
-| Host | Owner's account, for `bootc-images` and general work | The owner's full session | None, or read-only |
+| Host | Owner's account, for `katze-os` and general work | The owner's full session | None, or read-only |
 
 **On the host, if ever needed:** `CLAUDE_CONFIG_DIR` gives each account its own directory, with its own settings, history and login. Set it in the project's `mise.toml` so it switches with the folder:
 
@@ -385,7 +385,7 @@ Run in a `mise run vm-up base` VM first, then on the XPS.
    - [ ] Inside: rootless `docker compose up` with a database, as the `dev` user
    - [ ] `ssh dev@<name>.incus` from the host, and Zed's SSH remote
    - [ ] Claude Code login inside the container with the paste-code flow
-   - [ ] Network: confirm the container reaches host ports today, then tighten `bootc-incus` and confirm it still reaches the internet but not the host
+   - [ ] Network: confirm the container reaches host ports today, then tighten `katze-incus` and confirm it still reaches the internet but not the host
    - [ ] Whether the container reaches the LAN and the tailnet
    - [ ] The same with `--vm`
 4. **Project credentials** (section 3.8)
@@ -408,7 +408,7 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
 - **The firewall finding is real, and the fix works.** With today's zone, a container opened the host's SSH, a server bound to `0.0.0.0:8000` (through the bridge address and the host's other address) and KDE Connect. With the two files below in `/etc/firewalld`, all four were blocked, while DHCP, DNS, ping to the gateway, internet, SSH from the host into the container and internet from a nested Podman container kept working, also after restarting the container and after rebooting the host. The `devbox` image was rebuilt under these rules.
 
   ```xml
-  <!-- zones/bootc-incus.xml -->
+  <!-- zones/katze-incus.xml -->
   <zone>
     <short>Incus</short>
     <description>Incus instances only get DHCP and DNS from the host.</description>
@@ -420,11 +420,11 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
   ```
 
   ```xml
-  <!-- policies/bootc-incus-out.xml -->
+  <!-- policies/katze-incus-out.xml -->
   <policy target="ACCEPT">
     <short>Incus to other networks</short>
     <description>Lets Incus instances reach other networks through the host, but not the host itself.</description>
-    <ingress-zone name="bootc-incus"/>
+    <ingress-zone name="katze-incus"/>
     <egress-zone name="ANY"/>
   </policy>
   ```
@@ -444,7 +444,7 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
 
 Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 
-- `bootc-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `bootc-incus-out` policy so instances still reach other networks. The files tested in the VM are in section 8.1. Still to test before it ships: an Incus VM (`--vm`), IPv6, and the tailnet.
+- `katze-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `katze-incus-out` policy so instances still reach other networks. The files tested in the VM are in section 8.1. Still to test before it ships: an Incus VM (`--vm`), IPv6, and the tailnet.
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
 - A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
 - A short example of the `dev` task from section 3.8 in `README.md`, so new projects copy it.
@@ -463,7 +463,7 @@ Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 **Pending idea, parked by the owner (2026-11-09): end-to-end browser tests in project containers.** Headless Playwright, Cypress or Puppeteer need no display. Notes for when it is picked up, none of it tried:
 - Playwright's `install --with-deps` only supports Debian and Ubuntu, so on the Fedora `devbox` either run its official image through Podman (`docker run --rm --ipc=host -v "$PWD:/work" -w /work mcr.microsoft.com/playwright:v<version>-noble npx playwright test`, with the project's `@playwright/test` version), or install Chromium's libraries with `dnf` by hand.
 - Cypress needs `xorg-x11-server-Xvfb` when there is no display.
-- To watch tests from the host's browser: `npx playwright test --ui-host=0.0.0.0 --ui-port=8080` and `npx playwright show-report --host 0.0.0.0`. The `bootc-incus` change in section 9 only limits traffic from containers to the host, so this keeps working.
+- To watch tests from the host's browser: `npx playwright test --ui-host=0.0.0.0 --ui-port=8080` and `npx playwright show-report --host 0.0.0.0`. The `katze-incus` change in section 9 only limits traffic from containers to the host, so this keeps working.
 - No `--headed`: it would need the host's Wayland socket, which section 4.2 keeps out of containers.
 
 ## 11. References

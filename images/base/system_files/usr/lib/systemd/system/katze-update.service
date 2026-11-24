@@ -1,0 +1,13 @@
+[Unit]
+Description=katze-os: download the new image (applied on next reboot)
+Wants=network-online.target
+After=network-online.target
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+# A stalled download would otherwise block every later run until a reboot
+TimeoutStartSec=2h
+ExecCondition=/usr/libexec/katze/update-allowed.sh
+ExecStart=/usr/bin/bootc upgrade
+ExecStartPost=/usr/libexec/katze/update-state.sh

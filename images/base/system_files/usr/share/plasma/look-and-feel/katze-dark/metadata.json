@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "ysantalla880919@gmail.com",
+                "Name": "Ing. Yasmany Santalla"
+            }
+        ],
+        "Category": "",
+        "Description": "Katze Dark: the Katze Plasma style, colors and Katze Mono icons",
+        "Id": "katze-dark",
+        "License": "LGPL-2.1-or-later",
+        "Name": "Katze Dark",
+        "Version": "1.0.0",
+        "Website": "https://github.com/ysantalla/katze-os"
+    }
+}

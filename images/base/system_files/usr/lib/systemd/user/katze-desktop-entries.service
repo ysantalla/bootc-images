@@ -1,0 +1,9 @@
+[Unit]
+Description=katze-os: install launchers for Flatpak apps
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/katze/desktop-entries.sh
+
+[Install]
+WantedBy=default.target
