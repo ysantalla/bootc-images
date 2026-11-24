@@ -21,7 +21,8 @@ exists in either collection.
 
 The other `-line` files (`aperture`, `cast`, `calculator`, the `generic-*`
 category glyphs and the like) come from [Tabler Icons](https://tabler.io/icons)
-3.52.0, unchanged. Tabler Icons is MIT.
+3.52.0, unchanged. Tabler Icons is MIT. `file-text-line.svg` is Tabler's
+`file-text` as it was on the project's main branch on 2026-11-24.
 
 `dolphin-line.svg` was also drawn for this project: the folder and dolphin of
 Dolphin's own icon (`org.kde.dolphin.svg`, from KDE's Dolphin, GPL-2.0-or-later),
