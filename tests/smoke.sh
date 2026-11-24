@@ -18,14 +18,14 @@ ok() { # ok <description> <command...>
 }
 
 not() { ! "$@"; }
-thermald_waits() { [[ "$(systemctl cat thermald.service 2>/dev/null)" == *"ExecStartPre=/usr/libexec/bootc-images/thermald-wait.sh"* ]]; }
+thermald_waits() { [[ "$(systemctl cat thermald.service 2>/dev/null)" == *"ExecStartPre=/usr/libexec/katze/thermald-wait.sh"* ]]; }
 platform_profile_works() { # with a copy of the two handlers the XPS has
   local dir
   dir=$(mktemp -d)
   mkdir "$dir/a" "$dir/b"
   echo dell-pc >"$dir/a/name" && echo "cool quiet balanced performance" >"$dir/a/choices"
   echo "SoC Power Slider" >"$dir/b/name" && echo "low-power balanced performance" >"$dir/b/choices"
-  PLATFORM_PROFILE_DIR=$dir /usr/libexec/bootc-images/platform-profile.sh quiet low-power &&
+  PLATFORM_PROFILE_DIR=$dir /usr/libexec/katze/platform-profile.sh quiet low-power &&
     [[ "$(<"$dir/a/profile")" == quiet && "$(<"$dir/b/profile")" == low-power ]]
 }
 firewall_target() { [[ "$(firewall-offline-cmd "$1" --get-target 2>/dev/null)" == "$2" ]]; }
@@ -33,14 +33,14 @@ enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
 zsh_is_clean() { [[ -z "$(HOME=$(mktemp -d) TERM=dumb zsh -ic exit 2>&1)" ]]; }
-# Only our units: upstream's bootc-* complain here. Read once: with pipefail, `verify | grep -q` misreads a match
+# Only our units: upstream's complain here. Read once: with pipefail, `verify | grep -q` misreads a match
 units_are_valid() {
   local out
   command -v systemd-analyze >/dev/null || return 1
-  out=$(cd /usr/lib/systemd/system && systemd-analyze verify bootc-flatpaks.service bootc-setup.service bootc-update.service bootc-update.timer 2>&1)
-  ! grep -qE 'bootc-(flatpaks|setup|update)\.' <<<"$out"
+  out=$(cd /usr/lib/systemd/system && systemd-analyze verify katze-flatpaks.service katze-setup.service katze-update.service katze-update.timer 2>&1)
+  ! grep -qE 'katze-(flatpaks|setup|update)\.' <<<"$out"
 }
-user_units_are_valid() { local out; command -v systemd-analyze >/dev/null || return 1; out=$(systemd-analyze --user verify /usr/lib/systemd/user/bootc-* 2>&1); ! grep -q bootc- <<<"$out"; }
+user_units_are_valid() { local out; command -v systemd-analyze >/dev/null || return 1; out=$(systemd-analyze --user verify /usr/lib/systemd/user/katze-* 2>&1); ! grep -q katze- <<<"$out"; }
 podman_docker() { [[ "$(docker --version 2>&1)" == "podman version"* ]]; }
 has_decoder() { grep -qE "^ [A-Z.]{6} $1 " <<<"$DECODERS"; }
 # As on a real machine: mtimes of 0 and a user who cannot rewrite the image's font cache
@@ -72,23 +72,23 @@ ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 for pkg in incus okular haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq; do
   ok "package $pkg" rpm -q "$pkg"
 done
-ok "firewall defaults to bootc-laptop" grep -qx 'DefaultZone=bootc-laptop' /etc/firewalld/firewalld.conf
+ok "firewall defaults to katze-laptop" grep -qx 'DefaultZone=katze-laptop' /etc/firewalld/firewalld.conf
 ok "firewall configuration is valid" firewall-offline-cmd --check-config
-ok "Incus instances cannot reach the host's ports" firewall_target --zone=bootc-incus default
-ok "Incus instances can reach other networks" firewall_target --policy=bootc-incus-out ACCEPT
-ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/bootc-flatpak-overrides.conf
+ok "Incus instances cannot reach the host's ports" firewall_target --zone=katze-incus default
+ok "Incus instances can reach other networks" firewall_target --policy=katze-incus-out ACCEPT
+ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/katze-flatpak-overrides.conf
 
 for pkg in toolbox distrobox moby-engine docker-cli; do
   ok "package $pkg is absent" not rpm -q "$pkg"
 done
 
-for unit in incus.socket tailscaled.service bootc-setup.service bootc-flatpaks.service bootc-update.timer; do
+for unit in incus.socket tailscaled.service katze-setup.service katze-flatpaks.service katze-update.timer; do
   ok "enabled $unit" enabled "$unit"
 done
 for unit in bootc-fetch-apply-updates.timer rpm-ostreed-automatic.timer uupd.timer; do
   ok "not enabled $unit" not enabled "$unit"
 done
-for unit in bootc-update-notify.service bootc-update-notify.path bootc-desktop-entries.service bootc-image-age.timer podman.socket; do
+for unit in katze-update-notify.service katze-update-notify.path katze-desktop-entries.service katze-image-age.timer podman.socket; do
   ok "user enabled $unit" user_enabled "$unit"
 done
 
@@ -97,7 +97,7 @@ for repo in google-chrome brave-browser tailscale; do
 done
 
 ok "/opt links to var/opt" test "$(readlink /opt)" = var/opt
-for script in /usr/libexec/bootc-images/*.sh; do
+for script in /usr/libexec/katze/*.sh; do
   ok "executable $script" test -x "$script"
 done
 # Read once: with pipefail, `ffmpeg | grep -q` fails when grep stops reading early
@@ -110,11 +110,11 @@ ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins
 ok "docker compose runs without the provider notice" compose_is_quiet
 ok "starship runs" starship --version
 ok "zsh starts without errors" zsh_is_clean
-ok "Konsole opens our profile" grep -qx 'DefaultProfile=bootc-images.profile' /etc/xdg/konsolerc
+ok "Konsole opens our profile" grep -qx 'DefaultProfile=katze.profile' /etc/xdg/konsolerc
 ok "Yakuake starts with the session" test -f /etc/xdg/autostart/org.kde.yakuake.desktop
 ok "our system units are valid" units_are_valid
 ok "our user units are valid" user_units_are_valid
-ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/bootc-images/starship.toml
+ok "factory prompt keeps its icons" grep -q $'\xee\x82\xb0' /usr/share/katze/starship.toml
 # Must run before the fc-list and fc-match calls below, which can rewrite the cache as root
 ok "a machine can see the terminal font" machine_sees_font "MesloLGS Nerd Font"
 # A Tibetan font also defines U+F30A, so an unusable terminal font shows a wrong icon instead of a blank
@@ -137,13 +137,13 @@ ok "a new user gets no sub-pixel text" kde_default kdeglobals General XftSubPixe
 ok "a new user gets the dark icons" kde_default kdeglobals Icons Theme breeze-dark
 ok "a new user gets the color scheme" kde_default kdeglobals General ColorScheme BreezeDarkCustom
 ok "a new user gets the Plasma style" kde_default plasmarc Theme name breeze-custom
-ok "Slack launcher forwards links" all_exec_have /usr/share/bootc-images/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
-ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr/libexec/bootc-images/update-notify.sh
+ok "Slack launcher forwards links" all_exec_have /usr/share/katze/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
+ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr/libexec/katze/update-notify.sh
 ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
-ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/bootc-images.profile
-ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/bootc-images/build-time
+ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/katze.profile
+ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/katze/build-time
 
 for launcher in "${LAUNCHERS[@]}"; do
   ok "no Wayland flag in $launcher" no_exec_has "/usr/share/applications/$launcher.desktop" --ozone-platform
@@ -154,8 +154,8 @@ for dir in /usr/lib/google/chrome /usr/lib/brave.com/brave-origin; do
 done
 
 ok "signature policy for our registry" jq -e '.transports.docker["ghcr.io/ysantalla"][0].type == "sigstoreSigned"' /etc/containers/policy.json
-ok "signature key is present" test -s /usr/share/bootc-images/cosign.pub
-ok "sigstore attachments are enabled" grep -q use-sigstore-attachments /etc/containers/registries.d/bootc-images.yaml
+ok "signature key is present" test -s /usr/share/katze/cosign.pub
+ok "sigstore attachments are enabled" grep -q use-sigstore-attachments /etc/containers/registries.d/katze.yaml
 
 case "$name" in
   base)
@@ -168,11 +168,11 @@ case "$name" in
       ok "package $pkg" rpm -q "$pkg"
     done
     ok "turbostat is on PATH" command -v turbostat
-    ok "thermald waits for its sensors" test -x /usr/libexec/bootc-images/thermald-wait.sh
+    ok "thermald waits for its sensors" test -x /usr/libexec/katze/thermald-wait.sh
     ok "thermald drop-in is read" thermald_waits
     for profile in powersave balanced balanced-battery performance; do
-      ok "tuned profile bootc-xps-$profile" test -x "/usr/lib/tuned/profiles/bootc-xps-$profile/script.sh"
-      ok "tuned-ppd uses bootc-xps-$profile" grep -q "=bootc-xps-$profile\$" /etc/tuned/ppd.conf
+      ok "tuned profile katze-xps-$profile" test -x "/usr/lib/tuned/profiles/katze-xps-$profile/script.sh"
+      ok "tuned-ppd uses katze-xps-$profile" grep -q "=katze-xps-$profile\$" /etc/tuned/ppd.conf
     done
     ok "tuned-ppd leaves our profiles alone" grep -qx 'sysfs_acpi_monitor=false' /etc/tuned/ppd.conf
     ok "platform profiles reach each handler" platform_profile_works

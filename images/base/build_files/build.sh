@@ -31,23 +31,23 @@ dnf5 -y remove toolbox distrobox
 /ctx/signing.sh
 
 # 3. Make our scripts executable
-chmod 0755 /usr/libexec/bootc-images/*.sh
+chmod 0755 /usr/libexec/katze/*.sh
 
 # 4. Exactly one updater: ours (avoid two timers fighting each other)
 systemctl disable rpm-ostreed-automatic.timer 2>/dev/null || true
 systemctl disable uupd.timer 2>/dev/null || true
 
 # Firewall: unknown networks get the strict zone; trusted ones are set to FedoraWorkstation by hand
-sed -i 's/^DefaultZone=.*/DefaultZone=bootc-laptop/' /etc/firewalld/firewalld.conf
-grep -qx 'DefaultZone=bootc-laptop' /etc/firewalld/firewalld.conf
+sed -i 's/^DefaultZone=.*/DefaultZone=katze-laptop/' /etc/firewalld/firewalld.conf
+grep -qx 'DefaultZone=katze-laptop' /etc/firewalld/firewalld.conf
 
 # 5. Services
 systemctl enable \
   incus.socket \
   tailscaled.service \
-  bootc-setup.service \
-  bootc-flatpaks.service \
-  bootc-update.timer
+  katze-setup.service \
+  katze-flatpaks.service \
+  katze-update.timer
 
 # Per-user: the API socket that `docker compose` talks to
 systemctl --global enable podman.socket
@@ -57,21 +57,21 @@ touch /etc/containers/nodocker
 
 # Per-user: announces a downloaded update at login and when one arrives
 systemctl --global enable \
-  bootc-update-notify.service \
-  bootc-update-notify.path
+  katze-update-notify.service \
+  katze-update-notify.path
 
 # Per-user: installs the launchers for Flatpak apps at login
-systemctl --global enable bootc-desktop-entries.service
+systemctl --global enable katze-desktop-entries.service
 
 # Per-user: warns when the running image is old
-systemctl --global enable bootc-image-age.timer
+systemctl --global enable katze-image-age.timer
 
 # Fonts installed outside RPM are missing from the cache RPM scriptlets generate. Machines
 # cannot fix it: /usr is read-only, and all its mtimes are 0, so the cache still looks valid.
 fc-cache -f
 
 # Read by image-age.sh
-date -u +%s > /usr/share/bootc-images/build-time
+date -u +%s > /usr/share/katze/build-time
 
 dnf5 clean all
 rm -rf /var/log/dnf5.log /var/lib/dnf

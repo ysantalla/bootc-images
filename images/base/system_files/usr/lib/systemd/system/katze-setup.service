@@ -1,0 +1,11 @@
+[Unit]
+Description=katze-images: Incus group and subuid/subgid
+After=systemd-sysusers.service
+Before=incus.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/katze/setup.sh
+
+[Install]
+WantedBy=multi-user.target

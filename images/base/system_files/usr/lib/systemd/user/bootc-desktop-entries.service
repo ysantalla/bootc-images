@@ -1,9 +1,0 @@
-[Unit]
-Description=bootc-images: install launchers for Flatpak apps
-
-[Service]
-Type=oneshot
-ExecStart=/usr/libexec/bootc-images/desktop-entries.sh
-
-[Install]
-WantedBy=default.target
