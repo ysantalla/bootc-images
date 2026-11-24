@@ -10,11 +10,12 @@ are. Without it, one style serves the light and the dark scheme, and the icons
 drawn in the panel follow the accent.
 
 `widgets/panel-background.svg` and `translucent/widgets/panel-background.svg`
-are Breeze's (Plasma 6.8.3), with the panel's fill at 92% instead of 85%. The
-Katze layouts keep the panel translucent, and at 85% the wallpaper colored it
-more than the owner wanted. System Settings only offers adaptive, opaque and
-translucent: how translucent is decided here. When Breeze changes these two
-files, copy them again and change `opacity:0.85` to `opacity:0.92`.
+are not in this folder: `plasma-theme.sh` makes them at build time from the
+Breeze of that build, with the panel's fill at 92% instead of 85%. The Katze
+layouts keep the panel translucent, and at 85% the wallpaper colored it more
+than the owner wanted. System Settings only offers adaptive, opaque and
+translucent: how translucent is decided here. If Breeze stops using that
+value, the build prints a warning and the panel keeps Breeze's look.
 
 The mark on a task with several windows (`group-expander-*` in
 `widgets/tasks.svgz`) is drawn in the text color with dots in the background

@@ -36,6 +36,23 @@ test -f "/usr/share/color-schemes/$COLOR_SCHEME.colors"
 test -f "/usr/share/plasma/look-and-feel/$LIGHT_THEME/metadata.json"
 printf '[Theme]\nname=%s\n' "$THEME_ID" > /etc/xdg/plasmarc
 
+# The panel is Breeze's, 92% opaque instead of 85%: the layouts keep it translucent, and at
+# 85% the wallpaper colored it more than the owner wanted. Made here from the Breeze of this
+# build, so it follows Breeze's changes. If Breeze stops using that value, the panel keeps
+# Breeze's look and the build says so, rather than failing and holding every update back.
+PANEL_FROM=opacity:0.85
+PANEL_TO=opacity:0.92
+for part in widgets translucent/widgets; do
+  breeze=/usr/share/plasma/desktoptheme/default/$part/panel-background.svgz
+  # grep -c, not -q: with pipefail, grep leaving early would fail the pipe
+  if zcat "$breeze" | grep -c "$PANEL_FROM" > /dev/null; then
+    mkdir -p "/usr/share/plasma/desktoptheme/$THEME_ID/$part"
+    zcat "$breeze" | sed "s/$PANEL_FROM/$PANEL_TO/g" > "/usr/share/plasma/desktoptheme/$THEME_ID/$part/panel-background.svg"
+  else
+    echo "::warning title=Katze panel::Breeze's $part/panel-background has no $PANEL_FROM any more. The panel keeps Breeze's opacity until plasma-theme.sh is adapted."
+  fi
+done
+
 # Two virtual desktops, one above the other, so the switcher in the panel has something to show
 kwriteconfig6 --file /etc/xdg/kwinrc --group Desktops --key Number 2
 kwriteconfig6 --file /etc/xdg/kwinrc --group Desktops --key Rows 2

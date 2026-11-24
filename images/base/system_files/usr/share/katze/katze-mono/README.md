@@ -21,6 +21,23 @@ Run it again after installing applications. Plasma keeps icons it has already
 drawn, so log out and in, or restart `plasma-plasmashell.service`, to see a
 regenerated theme. `/usr/libexec/plasma-changeicons breeze-dark` goes back.
 
+## Changing the look
+
+How much accent the shape takes, its edge, and the colour and width of the
+glyph's lines are the `[look]` tables of `aliases.toml`, one per variant, with
+the reason for each value. To judge a change before building anything:
+
+```sh
+mise run icons:preview                        # as it is
+mise run icons:preview --set dark.tint=0.3    # with a value changed
+```
+
+It writes `output/icons/preview.svg` (and a PNG, with Inkscape): both variants
+painted with the Katze colour schemes, on the panel's colour, on the colour of a
+hovered item, and small. Every problem of contrast found so far showed up in
+one of those three: the shape lost on the panel, the shape lost under the
+pointer, the lines too faint.
+
 ## Design rules
 
 - **One shape.** A squircle (or `--shape circle`) of 60 units on a 64 unit
@@ -79,12 +96,18 @@ size corrections and `[skip]` leaves an application with its original icon.
 - Every icon is written a second time in `apps/22`, for sizes below 32 px, as
   the glyph alone in the text colour. At that size it sits among Breeze's line
   icons, in a menu, in Dolphin's side panel or in a title bar, and the shape
-  was a blot there.
-- The theme is installed twice: with the image, and in the home directory by
-  `katze-icons.service`. Plasma reads the files of both copies but only the
-  `index.theme` of the home's, so that one also declares the directories that
-  only the image's copy has (`other_copies`). Without that, the special folders
-  in Dolphin turned into this theme's `folder`.
+  was a blot there. Its lines are one unit wide in that 22, like Breeze's.
+- On a screen scaled 1.5 or 2, Plasma looks for a 22 px icon first in the
+  directories declared for that scale, and if there is none it asks for a
+  44 px one, which here is the icon with the shape. So `apps/22@2x` and
+  `apps/22@3x` are declared too, as links to `apps/22`.
+- The theme can be installed twice: with the image, and in the home directory
+  by `katze-icons.service`, for applications the image does not have
+  (`--only-new`). A user with none gets no second copy. Plasma reads the files
+  of both copies but only the `index.theme` of the home's, so that one also
+  declares the directories that only the image's copy has (`other_copies`).
+  Without that, the special folders in Dolphin turned into this theme's
+  `folder`.
 - Applications that draw their own tray icon (Slack sends a 22 px picture)
   cannot be themed.
 - A launcher whose `Icon=` is a file path cannot be themed either; the script

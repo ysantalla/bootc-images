@@ -82,6 +82,34 @@ home_theme_keeps_breeze_folders() {
     grep -q '^\[apps/22\]$' "$home/data/icons/katze-mono/index.theme" &&
     test -e /usr/share/icons/katze-mono/breeze/places/64/folder-documents.svg
 }
+# Which file Plasma's own lookup (KIconThemes) returns for an icon name, with Katze Mono as the
+# theme. "home" also writes the user's copy of the theme first, as katze-icons.service does at
+# login. Checks on files and on index.theme missed three regressions that this would have shown.
+icon_lookup() { # icon_lookup <image|home> <icon name>
+  local home
+  home=$(mktemp -d)
+  mkdir -p "$home/.config" "$home/rt"
+  printf '[Icons]\nTheme=katze-mono\n' >"$home/.config/kdeglobals"
+  if [[ $1 == home ]]; then
+    # an application of the user's own, so that there is something to write
+    mkdir -p "$home/.local/share/applications"
+    printf '[Desktop Entry]\nType=Application\nName=Mine\nIcon=katze-smoke-app\n' >"$home/.local/share/applications/mine.desktop"
+    HOME=$home XDG_DATA_HOME=$home/.local/share /usr/libexec/katze/icons.sh >/dev/null 2>&1 || return 1
+  fi
+  HOME=$home XDG_DATA_HOME=$home/.local/share XDG_CONFIG_HOME=$home/.config XDG_RUNTIME_DIR=$home/rt \
+    QT_QPA_PLATFORM=offscreen kiconfinder6 "$2" 2>/dev/null | tail -1
+}
+# With nothing of their own, a user gets no copy of the theme, and an older full copy goes away
+home_copy_is_only_whats_new() {
+  local home
+  home=$(mktemp -d)
+  HOME=$home XDG_DATA_HOME=$home/data python3 /usr/libexec/katze/katze-mono.py --follow-accent >/dev/null 2>&1 &&
+    test -s "$home/data/icons/katze-mono/apps/scalable/org.kde.dolphin.svg" &&
+    HOME=$home XDG_DATA_HOME=$home/data /usr/libexec/katze/icons.sh &&
+    [[ ! -e $home/data/icons/katze-mono && ! -e $home/data/icons/katze-mono-light ]]
+}
+# shellcheck disable=SC2053 # the third argument is a glob on purpose
+lookup_is() { [[ "$(icon_lookup "$1" "$2")" == $3 ]]; } # lookup_is <image|home> <icon name> <glob>
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -188,6 +216,10 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
     ok "$icons draws $small without the shape when small" grep -q 'ColorScheme-Text' "/usr/share/icons/$icons/apps/22/$small.svg"
   done
   ok "$icons declares its small icons" grep -q '^\[apps/22\]$' "/usr/share/icons/$icons/index.theme"
+  for scale in 2 3; do
+    ok "$icons has its small icons for a screen scaled ${scale}x" test -s "/usr/share/icons/$icons/apps/22@${scale}x/user-trash.svg"
+    ok "$icons declares them" grep -q "^\[apps/22@${scale}x\]\$" "/usr/share/icons/$icons/index.theme"
+  done
   ok "$icons has the tray names" test -s "/usr/share/icons/$icons/apps/symbolic/yakuake-symbolic.svg"
   # An icon named preferences-system would otherwise replace every preferences-system-* of Breeze
   ok "$icons keeps Breeze's longer names" test -e "/usr/share/icons/$icons/breeze/preferences/32/preferences-system-bluetooth.svg"
@@ -199,13 +231,32 @@ for type in image/png image/jpeg image/webp; do
   ok "$type opens in Koko" opens_images_with "$type" org.kde.koko.desktop
 done
 ok "Koko has its Katze icon" test -s /usr/share/icons/katze-mono/apps/scalable/org.kde.koko.svg
+# Made at build time from Breeze's. If Breeze changed and the build left it out, that is a
+# warning in the build log, not a failure here: updates must keep flowing.
+panel_is_ours_or_breezes() {
+  local file=/usr/share/plasma/desktoptheme/katze/$1/panel-background.svg
+  [[ ! -e $file ]] && return 0
+  grep -q 'opacity:0.92' "$file" && python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "$file"
+}
 for panel in widgets translucent/widgets; do
-  ok "the panel is 92% opaque ($panel)" grep -q 'opacity:0.92' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
-  ok "the panel background is valid XML ($panel)" python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
+  ok "the panel is 92% opaque, or Breeze's ($panel)" panel_is_ours_or_breezes "$panel"
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
+ok "a user's copy of the icons holds only what the image lacks" home_copy_is_only_whats_new
+ok "Plasma finds the icon of a user's own application" lookup_is home katze-smoke-app '*/.local/share/icons/katze-mono/apps/scalable/katze-smoke-app.svg'
+for copy in image home; do
+  ok "Plasma finds Katze's icon for an application ($copy copy)" lookup_is "$copy" org.kde.dolphin '/usr/share/icons/katze-mono/apps/scalable/org.kde.dolphin.svg'
+  ok "Plasma finds Breeze's icon for a special folder ($copy copy)" lookup_is "$copy" folder-documents '*breeze*/places/*/folder-documents.svg'
+  ok "Plasma finds Breeze's icon for a longer name ($copy copy)" lookup_is "$copy" preferences-system-bluetooth '*breeze*/preferences-system-bluetooth.svg'
+  ok "Plasma finds Katze's Trash ($copy copy)" lookup_is "$copy" user-trash '*/katze-mono/apps/scalable/user-trash.svg'
+done
+# A new application of the image with no glyph of its own shows up here: give it an alias
+ok "no application is left with its initial for an icon" test -z "$(python3 /usr/libexec/katze/katze-mono.py --report --only initial 2>/dev/null | grep '^initial ')"
+ok "no application is left with its category's icon" test -z "$(python3 /usr/libexec/katze/katze-mono.py --report --only generic 2>/dev/null | grep '^generic ')"
+ok "icon generator draws its preview" python3 /usr/libexec/katze/katze-mono.py --all-aliases --preview /tmp/katze-preview.svg
+ok "the icons' look comes from aliases.toml" grep -q '^\[look.dark\]$' /usr/share/katze/katze-mono/aliases.toml
 ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
 ok "interface font is the default" grep -q '^font=Inter,11,' /etc/xdg/kdeglobals
