@@ -37,9 +37,8 @@ for line in sysfs_acpi_monitor=false power-saver=katze-xps-powersave balanced=ka
   grep -qx "$line" "$PPD"
 done
 
-# Next steps for this machine go here (one at a time, once base is stable):
-#   - auto-boost (RAPL PL2 60 W on AC under load) as a systemd service in /usr
-#   - .dellptl kernel for IPU7 webcam / IR / ISH (needs initramfs + Secure Boot signing)
+# Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
+# and docs/xps16-checklist.md what to check on the machine first.
 
 dnf5 clean all
 rm -rf /var/log/dnf5.log /var/lib/dnf

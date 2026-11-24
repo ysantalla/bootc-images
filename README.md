@@ -1,13 +1,50 @@
-# katze-os
+# Katze OS
 
-Personal bootc images, built daily, signed with cosign and published to `ghcr.io/ysantalla`.
+A personal desktop operating system, built as code: Fedora Kinoite (KDE Plasma) turned into an immutable image, with its own look and the tools its owner works with.
+
+![Katze Dark: the desktop with the file manager and Discover open](docs/screenshots/katze-dark.jpg)
+
+Every machine runs the same image, and nothing is installed on a machine by hand. A change is a commit in this repository; GitHub Actions builds the image every day, tests it, signs it and publishes it to `ghcr.io/ysantalla`, and each machine downloads it in the background and applies it on the next restart. If an update goes wrong, one command goes back to the previous version.
+
+It is built with [bootc](https://bootc-dev.github.io/bootc/), on top of [Universal Blue](https://universal-blue.org/)'s `kinoite-main`.
+
+## What it looks like
+
+Katze comes with two global themes, **Katze Dark** (the default) and **Katze Light**. The Dark Mode switch in the panel goes from one to the other.
+
+| Katze Dark | Katze Light |
+|---|---|
+| ![The launcher in Katze Dark](docs/screenshots/katze-dark-launcher.jpg) | ![The launcher in Katze Light](docs/screenshots/katze-light-launcher.jpg) |
+
+![Katze Light: the desktop with the file manager and Discover open](docs/screenshots/katze-light.jpg)
+
+- **Katze Mono icons.** Each application gets a thin line glyph on a rounded shape, drawn for it when the image is built: the application's own mark where it has one, a line glyph for what it does otherwise. Icons and shapes take the accent color you choose in System Settings.
+- **One panel,** 56 px thick, with the virtual desktop switcher next to the tray and tray icons that scale with it.
+- **Colors that follow you.** The panel, the launcher and the icons use the color scheme and its accent, in light and in dark.
+- **Inter** for the interface, with no sub-pixel text, since OLED panels often lack RGB stripes.
+
+![Katze Mono icons for the image's applications, dark and light](docs/screenshots/katze-mono.png)
+
+## What is in it
+
+- **A full KDE Plasma desktop** with video codecs, from `kinoite-main`.
+- **Browsers:** Brave Origin and Google Chrome, as native packages.
+- **Development without touching the system:** Incus for containers and virtual machines, and `docker` and `docker compose` running on rootless Podman. Compilers and project tools live in containers, not in the image.
+- **A terminal ready to use:** zsh with suggestions and highlighting, a Starship prompt, a Nerd Font, Konsole and a drop-down Yakuake on F12.
+- **Apps:** Okular, Haruna, and Zed, Slack and ONLYOFFICE as Flatpaks.
+- **A private network** between your devices with Tailscale, and a firewall that keeps development ports closed on networks you do not trust.
+- **Updates you do not manage:** downloaded every six hours on AC power, announced on the desktop, applied when you restart, and signed.
+
+## The images
 
 | Image | FROM | What it adds |
 |---|---|---|
-| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Incus, Brave Origin, Google Chrome, Docker commands on Podman, Okular, Haruna, Office fonts, Plasma style, terminal setup, Tailscale, Flatpaks, auto-updates with a desktop notification. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
-| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, and tools to measure battery, temperature and GPU use |
+| `base` | `ghcr.io/ublue-os/kinoite-main:45` | Everything above. Hardware-agnostic. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
+| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, fixes for thermald and Dell's power profiles, and tools to measure battery, temperature and GPU use |
 
-`base` is hardware-agnostic. Each machine gets its own image named after its model, containing only what that hardware needs.
+Each machine gets its own image named after its model, containing only what that hardware needs.
+
+It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `CLAUDE.md` explains how it is built and what has and has not been tested, and `docs/` has the plan for the XPS.
 
 ## What base includes
 
@@ -19,7 +56,7 @@ Personal bootc images, built daily, signed with cosign and published to `ghcr.io
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar and Qt colors are first-run preferences, so existing profiles keep their settings |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
-| Plasma style | `breeze-custom` and the `BreezeDarkCustom` color scheme, with custom taskbar indicators and dark icons, as the default for new users. Settings already in `~/.config` keep their choice |
+| Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons that follow the accent color, and a 56 px panel. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
@@ -41,19 +78,19 @@ images/
   base/
     Containerfile
     build_files/             build-time only, not shipped in the image
-      build.sh               packages, browsers, terminal, Plasma style, services, font cache
+      build.sh               packages, browsers, terminal, Katze theme, services, font cache
       brave.sh               Brave Origin + /opt workaround
       chrome.sh              Google Chrome + /opt workaround
       browsers.sh            first-run browser preferences
       signing.sh             signature policy for machines that opt in
       shell.sh               Starship, Nerd Font and terminal defaults
-      plasma-theme.sh        makes the Plasma style, colors and fonts the default
+      plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
       tailscale.sh           Tailscale from its official repo
       packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
-      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
+      usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
       usr/lib/systemd/system/          katze-* services and timer
-      usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers
+      usr/lib/systemd/user/            update notification, old image warning, Flatpak launchers, Katze Mono icons
       usr/lib/tmpfiles.d/              katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
       usr/lib/environment.d/           60-katze-docker-host.conf
       usr/lib/firewalld/zones/         katze-incus.xml, katze-laptop.xml, katze-tailscale.xml
@@ -61,14 +98,18 @@ images/
       usr/share/katze/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-katze-compose.conf
       usr/share/konsole/               katze.profile
-      usr/share/plasma/desktoptheme/   breeze-custom (Plasma style)
-      usr/share/color-schemes/         BreezeDarkCustom.colors
+      usr/share/plasma/desktoptheme/   katze (Plasma style)
+      usr/share/plasma/look-and-feel/  katze-dark, katze-light (global themes)
+      usr/share/color-schemes/         KatzeDark.colors, KatzeLight.colors
+      usr/share/katze/katze-mono/      choices and glyphs of the Katze Mono icons
   xps16-da16260/
     Containerfile
     build_files/
       build.sh
       packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools
 bib/config.example.toml      user for test VMs
+devbox/                      Incus profile and cloud-init for per-project dev containers
+docs/                        screenshots, the checklist for the XPS, the plan for secrets and dev containers
 mise.toml                    local tasks + cosign
 ```
 
@@ -242,7 +283,8 @@ On a machine that enforces signatures, add `--enforce-container-sigpolicy` to ev
 - **Script or service:** put it under `system_files/usr/...` and enable it in `build.sh`.
 - **New machine:** copy `images/xps16-da16260` to `images/<model>`, adjust it, add a job to `build.yml`, and add a `case` for it in `tests/smoke.sh`.
 - **Fedora upgrade:** change `FEDORA_VERSION` in both Containerfiles, `build.yml` and `mise.toml`.
-- **Plasma style update:** edit `usr/share/plasma/desktoptheme/breeze-custom/` and `usr/share/color-schemes/` under `images/base/system_files/`. Its own `README.md` explains the taskbar file.
+- **Katze theme update:** edit `usr/share/plasma/desktoptheme/katze/`, `usr/share/plasma/look-and-feel/` and `usr/share/color-schemes/` under `images/base/system_files/`.
+- **An icon looks wrong, or a new app has none:** see `usr/share/katze/katze-mono/README.md`. `python3 images/base/system_files/usr/libexec/katze/katze-mono.py --report` shows which glyph each app gets, and `--sheet all.svg` draws them all.
 - **Starship or Nerd Font upgrade:** change the version and sha256 in `images/base/build_files/shell.sh`. They do not update by themselves.
 
 Rules:
@@ -259,4 +301,5 @@ Rules:
 - `ujust` recipes from Universal Blue that use Distrobox or Toolbx no longer work.
 - Removing a name from `flatpaks.list` does not uninstall it from existing machines: use `flatpak uninstall`.
 - Flatpak apps don't use the host's codecs or VA-API driver; they use their runtime's (`ffmpeg-full` and the Intel VA-API extension).
-- Project status, findings and planned work are in `CLAUDE.md`.
+- Project status, findings and planned work are in `CLAUDE.md`. What to check on the XPS first is in `docs/xps16-checklist.md`.
+- To take the screenshots again: apply each theme in a test VM (`plasma-apply-lookandfeel -a katze-dark`), capture with Spectacle, and save them in `docs/screenshots/` at 1600 px wide. `katze-mono.py --follow-accent --sheet` draws the icon sheet.

@@ -1,4 +1,5 @@
 {
+    "KPackageStructure": "Plasma/LookAndFeel",
     "KPlugin": {
         "Authors": [
             {
@@ -7,13 +8,11 @@
             }
         ],
         "Category": "",
-        "Description": "Customized Breeze Dark theme with modified taskbar indicators",
-        "EnabledByDefault": true,
-        "Id": "breeze-custom",
+        "Description": "Katze Light: the Katze Plasma style, colors and Katze Mono icons",
+        "Id": "katze-light",
         "License": "LGPL-2.1-or-later",
-        "Name": "Breeze Dark Custom",
-        "Version": "1.1.0",
+        "Name": "Katze Light",
+        "Version": "1.0.0",
         "Website": "https://github.com/ysantalla/katze-os"
-    },
-    "X-Plasma-API": "6.0"
+    }
 }
