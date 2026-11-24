@@ -128,7 +128,7 @@ no_exec_has() { [[ -f "$1" ]] && ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
 LAUNCHERS=(google-chrome com.google.Chrome brave-origin com.brave.Origin)
 ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 
-for pkg in incus okular haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq; do
+for pkg in incus okular kcalc haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq; do
   ok "package $pkg" rpm -q "$pkg"
 done
 ok "firewall defaults to katze-laptop" grep -qx 'DefaultZone=katze-laptop' /etc/firewalld/firewalld.conf
