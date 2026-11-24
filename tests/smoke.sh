@@ -64,6 +64,16 @@ icons_survive_odd_names() {
     python3 /usr/libexec/katze/katze-mono.py --output "$home/a/b/theme" &&
     [[ -s $home/a/b/theme/apps/scalable/fine.svg && -z "$(find "$home" -name 'escaped*' -o -name icon.svg)" ]]
 }
+# image-signature.sh with stubs: it warns only when our registry is followed without a signature
+signature_warning() { # signature_warning <image reference> <yes|no>
+  local dir
+  dir=$(mktemp -d)
+  printf '#!/bin/sh\necho %s\n' "'{\"deployments\":[{\"booted\":false,\"container-image-reference\":\"x\"},{\"booted\":true,\"container-image-reference\":\"$1\"}]}'" >"$dir/rpm-ostree"
+  printf '#!/bin/sh\necho "$@" >%s/sent\n' "$dir" >"$dir/notify-send"
+  chmod +x "$dir/rpm-ostree" "$dir/notify-send"
+  PATH=$dir:$PATH /usr/libexec/katze/image-signature.sh || return 1
+  if [[ $2 == yes ]]; then grep -q -- "--enforce-container-sigpolicy ghcr.io/ysantalla/base:latest" "$dir/sent"; else [[ ! -e $dir/sent ]]; fi
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -164,6 +174,9 @@ for look in dark:KatzeDark:katze-mono light:KatzeLight:katze-mono-light; do
   ok "$icons is valid XML" icons_parse "/usr/share/icons/$icons"
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
+ok "warns when our registry is followed without a signature" signature_warning ostree-unverified-registry:ghcr.io/ysantalla/base:latest yes
+ok "no warning when the signature is required" signature_warning ostree-image-signed:docker://ghcr.io/ysantalla/base:latest no
+ok "no warning on a local build" signature_warning ostree-unverified-image:containers-storage:localhost/base:latest no
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "icon generator survives odd icon names" icons_survive_odd_names
 ok "a machine can see the interface font" machine_sees_font Inter
