@@ -479,7 +479,9 @@ FALLBACK = {
 # against a light panel, so it takes more and gets an edge in the accent.
 # On the dark one, 0.16 left the shape hardly apart from the panel.
 TINT = {"dark": 0.4, "light": 0.6}
-EDGE = {"dark": 0.0, "light": 0.85}
+# The edge keeps the shape apart from a highlight behind it: at 0.4 the dark
+# shape is the color Plasma gives a hovered or selected item.
+EDGE = {"dark": 1.0, "light": 0.85}
 # How much the glyph moves from the accent towards the text colour. A light
 # scheme needs more, or a pale accent such as yellow disappears on the shape.
 SHADE = {"dark": 0.25, "light": 0.8}
