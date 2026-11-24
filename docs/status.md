@@ -45,6 +45,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Verified in the same VM (2026-11-24):** the teal color schemes, installed in the user's home with no custom accent: Katze Dark gives a selection of 5,129,115 with white text, Katze Light 76,199,184 with black text, and panel, launcher, Dolphin, Discover and the icons follow them. The owner then chose a panel 92% opaque (over 85%, 89% and 96%) and 40% of accent in the dark icons' shape (over 16% and 28%), looking at them under a maximized Dolphin. The theme's previews and the README pictures were taken from that session, with all of it.
 
 **Not tested yet:**
+- Koko in a session: opening a picture from Dolphin, and how it looks with the Katze theme. In a container it installs, `gio mime` names it for PNG, JPEG, WebP, GIF and SVG, and Katze Mono draws its icon.
 - The teal schemes shipped in an image, for a new user, and with a custom accent on top.
 - The screen turning off after 3 minutes on AC and 2 on battery on `xps16-da16260`. `tests/smoke.sh` reads the values back as a new user would; PowerDevil acting on them was not seen. The key names come from PowerDevil's libraries in the image.
 - `katze-incus-private` with a real tailnet, with IPv6, with an Incus VM, and shipped in the image under `/usr/lib/firewalld`. A project that needs something on the local network from its container has no switch for it yet.

@@ -14,6 +14,9 @@ fastfetch
 # PDF and document viewer
 okular
 
+# Image viewer: the one KDE proposes as Gwenview's successor. build.sh makes it the default for images
+koko
+
 # Video player. Native, so it uses the image's full ffmpeg and the machine's VA-API driver
 haruna
 
