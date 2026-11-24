@@ -25,12 +25,22 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 
 **Verified in a VM, nested (`xps16-da16260` guest of QEMU, 2026-11-06):** `mise run vm-incus base` imported a `base` disk and booted it as `base-test`, with IPv4, and KRDC's nightly Flatpak showed its Plasma welcome screen through the `socat` bridge. A second run left the VM as it was. `incus exec` does not work on these disks (`VM agent isn't currently running`), so use SSH or `incus console`. They have no `spice-vdagent` either, so KRDC warns about it, and clipboard and resizing should not work. Audio, and running the whole flow on the XPS, are untested.
 
+**Verified in a VM (local `base` build of `main`, `45.20261124`, 2026-11-24), on a new disk and a user created by the first-boot wizard:**
+- `plasma-setup` ran to its end with Fedora's theme folders removed, and the user reached Plasma.
+- The new user got Katze Dark without choosing it: global theme `katze-dark`, scheme `KatzeDark`, Plasma style `katze`, icons `katze-mono`, Inter 11 and no sub-pixel text, read from the session with its own `XDG_CONFIG_DIRS`.
+- One panel, 56 px thick, with the virtual desktop switcher next to the tray and `scaleIconsToFit`. KWin reports two virtual desktops in two rows.
+- `katze-icons.service` ran at login (1.3 s of CPU) and wrote both themes to the home directory. It ran before `katze-flatpaks.service` finished, four minutes into the first boot.
+- The four Flatpaks installed, and the Slack and ONLYOFFICE launchers were copied to the user's applications.
+- `incus-admin` for the user, no layered packages, `katze-laptop` as the default zone with `incusbr0` in `katze-incus`.
+- Failed units: `mcelog.service`, as before, and the user's `grub-boot-success.service` (`grub2-set-bootflag`: "Creating tmpfile failed: Read-only file system"), which is Fedora's and not ours.
+- `rpm-ostree status --json` gives `container-image-reference` as `ostree-unverified-registry:localhost/base:latest` on this disk, the field `image-signature.sh` reads. That script was not in this build.
+- SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
+
 **Not tested yet:**
 - Nothing is verified on the real XPS.
 - `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
 - `incus admin init` with a btrfs pool, as `README.md` now says, instead of `--minimal`'s `dir` pool. The prompts it describes come from Incus's interactive init, not from a run.
 - `docker compose` on the owner's real projects, which use profiles, health checks and builds. Rootless Podman can behave differently from Docker on low ports, bind mount permissions and SELinux labels.
-- A user created after the Plasma defaults shipped.
 - Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
 - Intel hardware decode in Haruna on the XPS. `vm-up` sound was heard in YouTube and in Haruna, in the VM.
 - Installing stock Kinoite and running `bootc switch`, the path `README.md` recommends. All VM results started from a bootc-image-builder disk.
@@ -49,7 +59,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - GNOME Network Displays on KDE with real Wi-Fi and a real display. Some Samsung TVs are reported to need `dnsmasq`, which is not in the image.
 - Installing a system from an ISO through a VM viewer.
 - Opening a `.rar` in Ark. `unar` is the backend, since neither `rar` nor `unrar` is in the image.
-- Booting an image with the Katze theme: a new user getting Katze Dark with its 56 px panel, two virtual desktops created from `/etc/xdg/kwinrc`, `katze-icons.service` at login, and the first-boot wizard (`plasma-setup`) without Fedora's theme folders. CI built it and ran `tests/smoke.sh` on 2026-11-24; the themes were only seen in a VM with the files installed for its user.
+- Katze Light, the Dark Mode switch and its label, and switching at night, on an image. Only Katze Dark was seen on a booted image.
+- Icons for Flatpaks that finish installing after the first login: `katze-icons.service` only runs at login.
 - The thermald drop-in and the `katze-xps-*` tuned profiles on real hardware. A VM has no platform-profile handlers, and thermald does not run there.
 
 ## Known small improvements, not applied
