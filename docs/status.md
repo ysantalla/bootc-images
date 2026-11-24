@@ -36,6 +36,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - `rpm-ostree status --json` gives `container-image-reference` as `ostree-unverified-registry:localhost/base:latest` on this disk, the field `image-signature.sh` reads. That script was not in this build.
 - SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
 
+**Verified in the same VM (2026-11-24):** `panel.opacity = "translucent"`, set through Plasma's scripting on the running panel, keeps the panel translucent under a maximized Konsole, where the default made it opaque in the window's color. The owner chose it over a thin line on the panel's edge. The edited layout file, run through the same scripting, made a 56 px panel with seven widgets and that opacity; no new user has started with it yet.
+
 **Not tested yet:**
 - Nothing is verified on the real XPS.
 - `mise run power` with `sudo` and real RAPL. Only its load was run on its own: interrupting it leaves no `yes` running once `--load` seconds pass.
