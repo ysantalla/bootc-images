@@ -47,10 +47,11 @@ jobs:
       build_date: ${{ needs.lint.outputs.date }}
       from_image: ghcr.io/ublue-os/kinoite-main
       from_key: .github/keys/ublue-os.pub
-      push: ${{ github.event_name != 'pull_request' }}
+      # Only main publishes: a pull request, or a manual run on another branch, builds and tests.
+      push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
       rechunk: true
-      # A pull request publishes nothing, so machine images build FROM this local base.
-      machine_image: ${{ github.event_name == 'pull_request' && 'xps16-da16260' || '' }}
+      # A run that publishes nothing builds machine images FROM this local base.
+      machine_image: ${{ (github.event_name == 'pull_request' || github.ref != 'refs/heads/main') && 'xps16-da16260' || '' }}
     secrets:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
       COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
@@ -58,7 +59,7 @@ jobs:
   # Builds FROM the base just pushed, so it waits for it.
   xps16-da16260:
     needs: [lint, base]
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/reusable-build.yml
     permissions:
       contents: read

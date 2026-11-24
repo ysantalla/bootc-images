@@ -37,6 +37,8 @@ on:
         required: false
         type: string
         default: ""
+    # Normally empty: the `sign` job reads both from the `signing` environment, which only
+    # the main branch can use. A value passed here is only used if that environment has none.
     secrets:
       SIGNING_SECRET:
         required: false
@@ -44,11 +46,15 @@ on:
         required: false
 
 jobs:
+  # Runs code from outside this repository (RPM scriptlets, the image's own rpm-ostree),
+  # so it never sees the signing key.
   build:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
     steps:
       - name: Free disk space on the runner
         run: |
@@ -178,9 +184,9 @@ jobs:
           VERSION: ${{ inputs.fedora_version }}
         run: podman run --rm --network=none -v "$PWD/tests:/tests:ro" "localhost/$IMAGE:$VERSION" bash /tests/smoke.sh "$IMAGE"
 
-      # Only the staging tag is pushed here. Machines follow latest, which moves
-      # to this digest only after its signature is verified, so a failed signing
-      # leaves them on the previous signed image.
+      # Only the staging tag is pushed here. Machines follow latest, which the `sign`
+      # job moves to this digest only after its signature is verified, so a failed
+      # signing leaves them on the previous signed image.
       - name: Tag for staging
         if: inputs.push
         env:
@@ -197,31 +203,53 @@ jobs:
           tags: staging
           registry: ${{ steps.meta.outputs.registry }}
 
+  # Only this job gets the signing key, and it runs nothing from the image: it signs the
+  # digest the build pushed, and moves the tags machines follow.
+  sign:
+    needs: build
+    if: inputs.push
+    runs-on: ubuntu-24.04
+    environment: signing
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REPO: ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}
+      DIGEST: ${{ needs.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Pinned for the same reason as in the build job
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v2.5.2
+
       - name: Sign with cosign and verify the result
-        if: inputs.push
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
-          REF: ${{ steps.meta.outputs.registry }}/${{ inputs.image }}@${{ steps.push.outputs.digest }}
         run: |
+          [[ "$DIGEST" == sha256:* ]]
           echo "$GHCR_TOKEN" | cosign login ghcr.io -u "$GHCR_USER" --password-stdin
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY "$REF"
-          cosign verify --key cosign.pub "$REF" > /dev/null
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY "${REPO,,}@$DIGEST"
+          cosign verify --key cosign.pub "${REPO,,}@$DIGEST" > /dev/null
 
       # --preserve-digests keeps the signed manifest, so every tag carries the signature
       - name: Move the published tags to the signed image
-        if: inputs.push
         env:
-          REPO: ${{ steps.meta.outputs.registry }}/${{ inputs.image }}
-          DIGEST: ${{ steps.push.outputs.digest }}
-          TAGS: ${{ steps.build.outputs.tags }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/auth.json
+          TAGS: latest ${{ inputs.fedora_version }} ${{ inputs.fedora_version }}-${{ inputs.build_date }}
         run: |
+          repo=${REPO,,}
+          echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "$GHCR_USER" --password-stdin
           for tag in $TAGS; do
-            skopeo copy --preserve-digests "docker://$REPO@$DIGEST" "docker://$REPO:$tag"
+            skopeo copy --preserve-digests "docker://$repo@$DIGEST" "docker://$repo:$tag"
           done
           for tag in $TAGS; do
-            test "$(skopeo inspect --format '{{.Digest}}' "docker://$REPO:$tag")" = "$DIGEST"
+            test "$(skopeo inspect --format '{{.Digest}}' "docker://$repo:$tag")" = "$DIGEST"
           done
-          cosign verify --key cosign.pub "$REPO:latest" > /dev/null
+          cosign verify --key cosign.pub "$repo:latest" > /dev/null
