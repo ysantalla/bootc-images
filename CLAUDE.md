@@ -345,8 +345,8 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 1. **Verify base** in a VM and on hardware. See the status below.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
-2. **auto-boost service.** A systemd daemon in `/usr` that sets RAPL PL2 to 60 W on AC power when CPU load is above 40%, and returns to 34 W plus the `balanced` profile otherwise. It polls every 10 s, through `/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw` and `powerprofilesctl`.
-3. **`.dellptl` kernel** for the IPU7 webcam, IR face unlock and Intel ISH. This requires regenerating the initramfs (`dracut`) and signing for Secure Boot with an owner-enrolled MOK in CI. **Ask before starting.**
+2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned.
+3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
 4. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
 
 ### Status (2026-11-05)
@@ -405,8 +405,50 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **VM viewer, decided by the owner (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See section 11.
 
 **Decisions pending from the owner:**
-- Secure Boot on the XPS, which decides whether `.dellptl` needs MOK signing in CI.
 - Whether to use the internal camera or a USB webcam for video calls.
+
+### Plan for the XPS, decided by the owner (2026-11-23)
+
+None of this is implemented or tested, and the figures are the owner's notes, not measurements.
+
+**First day, in order:**
+1. In Windows: Dell Command Update for BIOS and firmware only, note the BIOS version, and run the F12 diagnostics.
+2. In the BIOS: AHCI/NVMe storage, Secure Boot on, and custom charging between 50% and 80% (or Primarily AC).
+3. Install Kinoite (Fedora 45) on a LUKS-encrypted disk.
+4. Rebase to `base`, then to `xps16-da16260`.
+5. Record a baseline in this repo: `fwupdmgr get-devices`, `lspci -nnk`, `dmesg`.
+6. Validate s2idle suspend before touching the camera.
+
+**System:**
+- **Encryption:** LUKS, unlocked at the end with TPM and a PIN: `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <dev>`, plus `rpm-ostree kargs --append=rd.luks.options=tpm2-device=auto`.
+- **Secure Boot:** on from the start. Our own kernel modules are signed with the owner's MOK during the build.
+- **Swap:** zram only, 16 GB, in `base`: `zram-size = min(ram / 4, 16384)` and `compression-algorithm = zstd`.
+- **Hibernation:** ruled out. Suspend for breaks, power off at night.
+- **Battery:** 80% charge limit, with `battery:desk` and `battery:travel` mise tasks.
+- **Login:** Fedora 45 uses Plasma Login Manager (`plasmalogin.service`), not SDDM.
+- **Claude and suspend:** mise tasks that run it under `systemd-inhibit --what=idle` by default, and `idle:sleep:handle-lid-switch` only on purpose.
+- **OLED:** auto-hide panel, dark wallpaper, and the screen off after 2 to 3 minutes.
+- **Hardware notes:** the 388H has 4 P, 8 E and 4 LP cores. The memory gives about 153 GB/s in theory. The SSD is the weak point: it can be replaced, and no BIOS setting speeds it up.
+
+**Voice dictation, in Spanish:**
+- Voxtype built into `xps16-da16260`, with `language = "es"` and `mode = "type"`. It needs `ydotool`, and a KDE shortcut that runs `voxtype record toggle`.
+- Phase 1 runs on the CPU with the `small` model.
+- Phase 2 uses the NPU: a build with `--features openvino-whisper`, the OpenVINO GenAI SDK in `/usr/lib/openvino-genai`, and Intel's NPU driver, with `engine = "openvino"` and `device = "NPU"`.
+
+**Icons, the owner's own theme "Katze Mono":**
+- Application icons only. The tray and menus stay on Breeze, through `MinSize=32` in `index.theme`.
+- `katze-mono.py` walks the `.desktop` files and puts each glyph on a circle or squircle, writing to `~/.local/share/icons/katze-mono`: `python3 katze-mono.py --shape squircle`.
+- Glyph sources, in order: Breeze `apps/22/*-symbolic`, the app's own symbolic icon, Papirus `22x22/panel`, Breeze's generic icon for the category, the app's initial.
+- For OLED: background `#12233a`, glyph `#8ab4d8`, and no inverted style.
+- Try it first in the KDE Linux VM.
+- Breeze is LGPL and Papirus is GPL-3, so a published theme would be GPL-3 with attribution.
+
+**To confirm on the machine:**
+- LVFS coverage for the DA16260.
+- Intel's NPU driver, shipped as an Ubuntu `.deb`, loading on Fedora 45.
+- The original repository of the IR driver (HritwikSinghal or acmodeu).
+- Real drain in suspend and real SSD speed.
+- Whether Brave installs its own symbolic icon.
 
 **Known small improvements, not applied:**
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
