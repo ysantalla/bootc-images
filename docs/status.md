@@ -42,7 +42,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - Before `katze-incus-private`: the container reached the internet and, through the host, the VM's upstream network (10.0.2.3:53 and 10.0.2.2:631, the host machine's CUPS), but not the host's own ports.
 - With the policy installed in `/etc/firewalld/policies` and a reload: the internet by address and by name still works, both upstream addresses are rejected, the host's ports stay closed, and a restarted container gets its address again.
 
-**Verified in the same VM (2026-11-24):** the teal color schemes, installed in the user's home with no custom accent: Katze Dark gives a selection of 5,129,115 with white text, Katze Light 76,199,184 with black text, and panel, launcher, Dolphin, Discover and the icons follow them. The theme's previews and the README pictures were taken from that session.
+**Verified in the same VM (2026-11-24):** the teal color schemes, installed in the user's home with no custom accent: Katze Dark gives a selection of 5,129,115 with white text, Katze Light 76,199,184 with black text, and panel, launcher, Dolphin, Discover and the icons follow them. The owner then chose a panel 92% opaque (over 85%, 89% and 96%) and 40% of accent in the dark icons' shape (over 16% and 28%), looking at them under a maximized Dolphin. The theme's previews and the README pictures were taken from that session, with all of it.
 
 **Not tested yet:**
 - The teal schemes shipped in an image, for a new user, and with a custom accent on top.
