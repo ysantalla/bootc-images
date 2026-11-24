@@ -34,7 +34,9 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Google Chrome:** native RPM (`google-chrome-stable`), used for video calls. Same `/opt` handling as Brave (`chrome.sh`).
 - **Browser defaults** (`browsers.sh`): `initial_preferences` asks for the system title bar and Qt colors on first run, in new profiles only. Both browsers chose Wayland without any flag in a VM (Chrome and Brave on `45.20261106`), so the image sets none.
 - **Docker commands:** `podman-docker` makes `docker` run Podman, and `docker compose` runs the real Compose through the per-user `podman.socket`. `DOCKER_HOST` points graphical sessions at that socket (`environment.d`). `60-katze-compose.conf` silences the provider notice.
-- **Plasma style:** `breeze-custom` and the `BreezeDarkCustom` color scheme in `system_files`, moved here from `ysantalla/plasma-tips`, with Breeze's dark icons. `plasma-theme.sh` makes them the default for new users. The owner's Tela icon theme is not included.
+- **Katze theme:** two global themes, Katze Dark and Katze Light, in `system_files`. Each sets a color scheme (`KatzeDark`, `KatzeLight`), the `katze` Plasma style, a Katze Mono icon theme and a desktop layout: one panel, 56 px thick, with the virtual desktop switcher next to the tray and tray icons that scale with the panel. `plasma-theme.sh` also gives a new user two virtual desktops, one above the other, since Plasma hides the switcher with only one. `plasma-theme.sh` makes Katze Dark the default for new users and removes Fedora's global themes (their package stays, since `plasma-workspace` requires it), so only Breeze's and Katze's are offered. The Dark Mode switch in the panel, and switching at night, go between the two (`DefaultDarkLookAndFeel`, `DefaultLightLookAndFeel`). The layout only reaches a new user, or someone who applies the theme with its desktop layout. Applying a global theme clears a custom accent color.
+- **`katze` Plasma style:** Breeze with the owner's taskbar indicators, moved here from `ysantalla/plasma-tips` (it was `breeze-custom`). It has no `colors` file on purpose: with one, the panel and the launcher keep those colors whatever the scheme and accent are.
+- **Katze Mono icons:** `katze-mono.py` draws one icon per application, a thin line glyph on a rounded shape, painted by the color scheme and the accent. `plasma-theme.sh` runs it at build time for the image's applications and for every alias, which covers Flatpaks that are not installed yet, into `/usr/share/icons/katze-mono` and `katze-mono-light`. `katze-icons.service` runs it at login for the user's own applications, into the same themes in the home directory. Choices are in `usr/share/katze/katze-mono/aliases.toml`, and its `README.md` has the design rules and what was learned about Plasma: tray names, shortened names, colors. A panel that is already running keeps the icons it has drawn until `plasma-plasmashell.service` restarts. The owner's Tela icon theme is not included.
 - **Interface fonts:** Inter 11 in `/etc/xdg/kdeglobals`, with no sub-pixel text in KDE or fontconfig, since OLED panels often lack RGB stripes (`plasma-theme.sh`). Noto stays the system sans-serif.
 - **Okular:** native RPM.
 - **Haruna:** native RPM. It plays through `mpv-libs` and the full ffmpeg, both from negativo17 via `kinoite-main`. `yt-dlp` comes as a weak dependency.
@@ -65,6 +67,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 - **Out-of-tree kernels in `base`.**
 - **Compilers in `base`** (`gcc`, `make`, `cmake`): projects that need them run in an Incus container, because the owner wants a minimal base.
 - **`mise` in the image:** it is installed per user with `curl https://mise.run | sh`.
+- **Kernels, packages or modules from third-party projects** (xps-fedora's `.dellptl`, Omarchy's patches): they are references to audit. What is needed is ported by hand and built here.
 - **More secrets software** (KeePassXC, 1Password, aws-vault, gitleaks): the owner wants secrets handled with what the image already ships, KWallet, `secret-tool`, OpenSSH and `ksshaskpass` (2026-11-08). See `docs/secrets-and-devbox.md`.
 
 ---
@@ -93,20 +96,20 @@ These are deliberate choices. Do not add them back without the owner asking:
     ├── base/
     │   ├── Containerfile
     │   ├── build_files/               build-time only, NOT shipped in the image
-    │   │   ├── build.sh               entry point: packages, browsers, terminal, Plasma style, services, font cache
+    │   │   ├── build.sh               entry point: packages, browsers, terminal, Katze theme, services, font cache
     │   │   ├── brave.sh               Brave Origin install + /opt workaround
     │   │   ├── chrome.sh              Google Chrome install + /opt workaround
     │   │   ├── browsers.sh            first-run browser preferences
     │   │   ├── signing.sh             signature policy for machines that opt in
     │   │   ├── shell.sh               Starship, Nerd Font (pinned, sha256) and terminal defaults
-    │   │   ├── plasma-theme.sh        makes the Plasma style, colors and fonts the default
+    │   │   ├── plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
     │   │   ├── tailscale.sh           Tailscale from its official repo
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh
+    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
     │           ├── lib/systemd/system/ katze-*.service / .timer
-    │           ├── lib/systemd/user/  katze-update-notify.*, katze-image-age.*, katze-desktop-entries.service
+    │           ├── lib/systemd/user/  katze-update-notify.*, katze-image-age.*, katze-desktop-entries.service, katze-icons.service
     │           ├── lib/tmpfiles.d/    katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
     │           ├── lib/environment.d/ 60-katze-docker-host.conf
     │           ├── lib/firewalld/zones/ katze-incus.xml, katze-laptop.xml, katze-tailscale.xml
@@ -114,8 +117,10 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── share/katze/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
     │           ├── share/containers/containers.conf.d/ 60-katze-compose.conf
     │           ├── share/konsole/     katze.profile
-    │           ├── share/plasma/desktoptheme/ breeze-custom
-    │           └── share/color-schemes/ BreezeDarkCustom.colors
+    │           ├── share/katze/katze-mono/ aliases.toml, glyphs/, README.md
+    │           ├── share/plasma/desktoptheme/ katze
+    │           ├── share/plasma/look-and-feel/ katze-dark, katze-light
+    │           └── share/color-schemes/ KatzeDark.colors, KatzeLight.colors
     └── xps16-da16260/
         ├── Containerfile
         ├── build_files/
@@ -331,15 +336,15 @@ Fedora's kernel moved to 7.3.3-300.fc45 in the `45.20261111` image, through the 
 | Fedora Koji build | 7.3.1-200.fc45 | Built by Fedora, but pinned by hand and gets no patches until bumped. Now older than the default |
 | `@kernel-vanilla/stable` COPR | 7.3.1 | Needs an owner MOK, or Secure Boot off |
 | `@kernel-vanilla/mainline` COPR | 7.4 pre-release | Too risky for the main machine |
-| `thunderbirdtr/xps-fedora` COPR | 7.2.15 `.dellptl` | Fedora's version on 2026-11-04, with hardware patches. See below |
+| `thunderbirdtr/xps-fedora` COPR | 7.2.15 `.dellptl` | Ruled out by the owner on 2026-11-23. Still on 7.2.15 on 2026-11-21. See below |
 
-No readable source named a 7.3 or 7.4 change for this model with the 388H. Phoronix pages could not be read directly, so the 7.4 items come from search summaries: IPU7 and IPU7.5 support in the IPU6 driver, Intelligent Bias Control v3 for Xe3, and GPU cold reset recovery.
+The research of 2026-11-21 found two upstream commits that name the DA16260 (a Panel Replay quirk, in 7.2 and later, and a fix in 7.4); nothing names the 388H. It also found the 7.4 items below in commits of v7.4-rc3, and Fedora 45 on 7.3.4. Links and the checks that follow from them are in `docs/xps16-checklist.md`. The 7.4 items: IPU7 and IPU7.5 support in the IPU6 driver, Intelligent Bias Control v3 for Xe3, and GPU cold reset recovery.
 
 ### `xps-fedora` (`.dellptl`)
 
 The project documents this model and board with an X7 358H, not the 388H, so confirm its findings on this machine first. It reports, on stock Fedora: VRR not detected, PSR glitches and link errors, RGB camera with raw nodes only, and no IR camera driver. Audio, Wi-Fi, Bluetooth, touchpad and keyboard light work. It is a small project, apparently with one maintainer.
 
-It targets a Fedora install using `dnf`, signing kernels and modules locally with an akmods key, which does not fit a read-only `/usr`. If it is needed, reuse it in stages, in this image only: the kernel first (VRR, PSR, IR sensor), then the thermal fix from `dell-xps-ptl-config`, and the camera last, since that needs an IPU7 module built in the image and closed Intel libraries. The build must fail if no `.dellptl` kernel matches the expected version. Review `dell-xps-ptl-config` before starting auto-boost, since it also ships power profiles.
+It targets a Fedora install using `dnf`, signing kernels and modules locally with an akmods key, which does not fit a read-only `/usr`. The owner decided against its `.dellptl` kernel on 2026-11-23 (section 10): it is a reference to audit, and anything needed from it is ported by hand and built in this repo. The thermal and power fixes in section 1 came from its `dell-xps-ptl-config`.
 
 ---
 
@@ -347,9 +352,9 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
-1. **Verify base** in a VM and on hardware. See the status below.
+1. **Verify base** in a VM and on hardware. See the status below, and `docs/xps16-checklist.md` for the checks to run on the XPS.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
-2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned.
+2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
 3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
 4. **Secrets and per-project dev containers.** Mostly `base` and per-user setup, not this machine image. Researched on 2026-11-08, nothing implemented: see `docs/secrets-and-devbox.md`, which has the decisions, the test plan for the VM and the XPS, and the repo changes to make afterwards. Tested in a VM on 2026-11-21 (its section 8.1): the keyring, the `devbox` image with rootless `docker compose`, and that the `katze-incus` zone lets instances reach every port on the host, with a tighter zone and policy that fix it.
 5. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
@@ -365,7 +370,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Verified in a VM (`xps16-da16260`, `45.20261106`, 2026-11-05):**
 - Enforced signatures: an image signed with the current key was accepted through both `bootc switch` and `bootc upgrade`, and an image signed with the old key was refused with a signature error, leaving the deployments unchanged.
 - MesloLGS Nerd Font in Konsole, with the prompt icons, after the `fc-cache -f` fix. `tests/smoke.sh` catches the original failure.
-- `breeze-custom`, `BreezeDarkCustom` and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
+- `breeze-custom`, `BreezeDarkCustom` (now `katze` and `KatzeDark`) and dark icons without choosing them, on a user who first logged in on an older image. Taskbar indicators follow the accent color.
 - `docker run`, and `docker compose up` and `down` with nginx, a published port and a named volume, which survives `down`.
 - Haruna opens an HEVC file from Dolphin by default and shows the picture. The owner heard its audio on 2026-11-06. Hardware decode was not checked.
 
@@ -389,8 +394,8 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 - The Slack launcher in a real session. It gained `--file-forwarding`, which `man flatpak-run` says `@@u %U @@` needs. Check that it opens `slack://` links.
 - Zed's taskbar icon was missing once in a VM and later appeared, cause unknown.
 - Microsoft fonts in `~/.local/share/fonts` as seen by the ONLYOFFICE Flatpak.
-- On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera, which probably does not work with the stock kernel.
-- Whether the Intel video flags in `xps16-da16260` are needed, or do anything: compare a real video with and without them on the XPS. `AcceleratedVideoEncoder` may not be the current name, since other sources use `VaapiVideoEncoder`.
+- On the XPS: VRR and display glitches (`kscreen-doctor -o`), Intel encode and decode in Chrome (steps in `README.md`), Wayland screen sharing in a real call, temperature, battery and suspend, and the internal camera: sources disagree on whether it gives a picture with the stock kernel (`docs/xps16-checklist.md`).
+- Whether the Intel video flags in `xps16-da16260` are needed, or do anything: compare a real video with and without them on the XPS. Chromium's own `vaapi.md` uses `AcceleratedVideoEncoder`; the `Vaapi*` names are said to be from before Chromium 131.
 - `mcelog.service` failed in the VM, probably because it is a VM. Check it on the XPS.
 - The metered check and the old image warning on a real session. Their scripts were only exercised in a container, with stubs.
 - Flatpak launchers on a real session: Slack and ONLYOFFICE arguments, and `TryExec` hiding an app that is not installed. The copy logic and overrides were only exercised in a container.
@@ -443,20 +448,13 @@ None of this is implemented or tested, and the figures are the owner's notes, no
 - Phase 1 runs on the CPU with the `small` model.
 - Phase 2 uses the NPU: a build with `--features openvino-whisper`, the OpenVINO GenAI SDK in `/usr/lib/openvino-genai`, and Intel's NPU driver, with `engine = "openvino"` and `device = "NPU"`.
 
-**Icons, the owner's own theme "Katze Mono":**
-- Application icons only. The tray and menus stay on Breeze, through `MinSize=32` in `index.theme`.
-- `katze-mono.py` walks the `.desktop` files and puts each glyph on a circle or squircle, writing to `~/.local/share/icons/katze-mono`: `python3 katze-mono.py --shape squircle`.
-- Glyph sources, in order: Breeze `apps/22/*-symbolic`, the app's own symbolic icon, Papirus `22x22/panel`, Breeze's generic icon for the category, the app's initial.
-- For OLED: background `#12233a`, glyph `#8ab4d8`, and no inverted style.
-- Try it first in the KDE Linux VM.
-- Breeze is LGPL and Papirus is GPL-3, so a published theme would be GPL-3 with attribution.
+**Icons:** the Katze Mono theme. It was built on 2026-11-24 and is described in section 1; the plan it started from (Papirus glyphs, a per-user script) no longer applies.
 
 **To confirm on the machine:**
 - LVFS coverage for the DA16260.
 - Intel's NPU driver, shipped as an Ubuntu `.deb`, loading on Fedora 45.
 - The original repository of the IR driver (HritwikSinghal or acmodeu).
 - Real drain in suspend and real SSD speed.
-- Whether Brave installs its own symbolic icon.
 
 **Known small improvements, not applied:**
 - A second update staged while the first notification is still open is not announced, because `notify-send` is still waiting. The restart applies the newest one anyway.
