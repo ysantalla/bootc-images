@@ -161,7 +161,7 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 - **Sharp text on a host with fractional scaling:** `vm-up` sets `GDK_BACKEND=x11 GDK_SCALE=1` so the host does not rescale QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match.
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
 - **Sound:** `vm-up` plays through the host, with no microphone input.
-- **Copying files and text:** run `sudo systemctl enable --now sshd` in the VM, then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
+- **Copying files and text:** run `sudo systemctl enable --now sshd` and `sudo firewall-cmd --add-service=ssh` in the VM (the default firewall zone does not let SSH in, and the second command lasts until the VM restarts), then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `katze-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
 - **On a machine already running the image:** `vm-up` does not work there. Use `mise run vm-incus <image>`, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `docs/vm-viewers.md`. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
