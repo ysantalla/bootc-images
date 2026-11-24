@@ -47,6 +47,7 @@ Images build, publish and verify with `cosign.pub`, and pull without credentials
 **Seen by the owner in the VM on the published image (2026-11-24):** Documents, Downloads, Music and the other special folders, and Network in the side panel, drawn with Katze's `folder` instead of Breeze's. The home copy of the icon theme, written at login, did not declare the directories of Breeze icons that the image's copy links (0 `breeze/places` sections against 10). Introduced with `folder` in #45; fixed in the generator.
 
 **Not tested yet:**
+- The `Katze` color scheme in Konsole and Yakuake, and the prompt's new colors, by eye. The files parse, and the prompt keeps its two separator characters.
 - The accent edge on the dark icons' shape, in a session. It was chosen from a rendering over colors sampled from the owner's screenshot, where the shape (19,73,69) was the color of the launcher's highlight (20,76,71).
 - Koko in a session: opening a picture from Dolphin, and how it looks with the Katze theme. In a container it installs, `gio mime` names it for PNG, JPEG, WebP, GIF and SVG, and Katze Mono draws its icon.
 - The teal schemes shipped in an image, for a new user, and with a custom accent on top.
