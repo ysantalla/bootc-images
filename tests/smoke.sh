@@ -224,6 +224,9 @@ ok "update notification restarts through Plasma" grep -q 'org.kde.Shutdown' /usr
 ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-rgb-for-kde.conf
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
+ok "Konsole uses the Katze colors" grep -qx 'ColorScheme=Katze' /usr/share/konsole/katze.profile
+ok "the Katze color scheme for Konsole is there" grep -qx 'Color=17,23,24' /usr/share/konsole/Katze.colorscheme
+ok "the prompt uses the Katze color" grep -q 'fg:#00b09a' /usr/share/katze/starship.toml
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/katze.profile
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/katze/build-time
 
