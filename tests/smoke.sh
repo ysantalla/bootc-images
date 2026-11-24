@@ -194,6 +194,10 @@ for type in image/png image/jpeg image/webp; do
   ok "$type opens in Koko" opens_images_with "$type" org.kde.koko.desktop
 done
 ok "Koko has its Katze icon" test -s /usr/share/icons/katze-mono/apps/scalable/org.kde.koko.svg
+for panel in widgets translucent/widgets; do
+  ok "the panel is 92% opaque ($panel)" grep -q 'opacity:0.92' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
+  ok "the panel background is valid XML ($panel)" python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "/usr/share/plasma/desktoptheme/katze/$panel/panel-background.svg"
+done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
 ok "warns when our registry is followed without a signature" signature_warning ostree-unverified-registry:ghcr.io/ysantalla/base:latest yes
 ok "no warning when the signature is required" signature_warning ostree-image-signed:docker://ghcr.io/ysantalla/base:latest no
