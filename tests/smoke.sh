@@ -215,6 +215,8 @@ ok "Plasma style has its taskbar" gzip -t "$THEME/widgets/tasks.svgz"
 ok "Plasma style follows the color scheme" not test -e "$THEME/colors"
 ok "Plasma style is the default" grep -q '^name=katze$' /etc/xdg/plasmarc
 ok "dark color scheme is installed" grep -q '^Name=Katze Dark$' /usr/share/color-schemes/KatzeDark.colors
+# Plasma writes black here when the accent is lighter than #34AAE8
+ok "dark selection has white text" test "$(sed -n '/^\[Colors:Selection\]$/,/^$/s/^ForegroundNormal=//p' /usr/share/color-schemes/KatzeDark.colors)" = 255,255,255
 ok "light color scheme is installed" grep -q '^Name=Katze Light$' /usr/share/color-schemes/KatzeLight.colors
 ok "color scheme is the default" grep -q '^ColorScheme=KatzeDark$' /etc/xdg/kdeglobals
 LOOKS=/usr/share/plasma/look-and-feel
@@ -297,6 +299,11 @@ ok "a new user gets the Plasma style" kde_default plasmarc Theme name katze
 ok "a new user gets the global theme" kde_default kdeglobals KDE LookAndFeelPackage katze-dark
 ok "a new user gets two virtual desktops" kde_default kwinrc Desktops Number 2
 ok "virtual desktops are stacked" kde_default kwinrc Desktops Rows 2
+# These checks run as root, which would read a file users cannot
+ok "users can read the Breeze defaults" test "$(stat -c %a /etc/xdg/breezerc)" = 644
+ok "windows have no outline" kde_default breezerc Common OutlineEnabled false
+ok "windows have a medium shadow" kde_default breezerc Common ShadowSize ShadowMedium
+ok "menus are translucent" kde_default breezerc Style MenuOpacity 79
 ok "Dark Mode switches to Katze Dark" kde_default kdeglobals KDE DefaultDarkLookAndFeel katze-dark
 ok "Dark Mode switches back to Katze Light" kde_default kdeglobals KDE DefaultLightLookAndFeel katze-light
 ok "Slack launcher forwards links" all_exec_have /usr/share/katze/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
@@ -305,8 +312,8 @@ ok "no sub-pixel text in fontconfig" not test -e /etc/fonts/conf.d/10-sub-pixel-
 ok "Calibri documents use Carlito" font_for Calibri Carlito
 ok "Cambria documents use Caladea" font_for Cambria Caladea
 ok "Konsole uses the Katze colors" grep -qx 'ColorScheme=Katze' /usr/share/konsole/katze.profile
-ok "the Katze color scheme for Konsole is there" grep -qx 'Color=17,23,24' /usr/share/konsole/Katze.colorscheme
-ok "the prompt uses the Katze color" grep -q 'fg:#00b09a' /usr/share/katze/starship.toml
+ok "the Katze color scheme for Konsole is there" grep -qx 'Color=17,23,27' /usr/share/konsole/Katze.colorscheme
+ok "the prompt uses the Katze color" grep -q 'fg:#34aae8' /usr/share/katze/starship.toml
 ok "Konsole uses the terminal font" grep -q '^Font=MesloLGS Nerd Font,' /usr/share/konsole/katze.profile
 ok "build time is recorded" grep -qE '^[0-9]+$' /usr/share/katze/build-time
 
