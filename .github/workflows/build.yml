@@ -74,10 +74,25 @@ jobs:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
       COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
-  # Builds FROM the base just pushed, so it waits for it.
-  xps16-da16260:
+  # The XPS's infrared camera driver, for the kernel of the base just pushed. On a pull request
+  # it is only compiled, against the published base.
+  module:
     needs: [lint, base]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: needs.lint.outputs.docs_only != 'true'
+    uses: ./.github/workflows/module.yml
+    permissions:
+      contents: read
+    with:
+      fedora_version: "45"
+      sign: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    secrets:
+      MODULE_KEY: ${{ secrets.MODULE_KEY }}
+      MODULE_KEY_PASSWORD: ${{ secrets.MODULE_KEY_PASSWORD }}
+
+  # Builds FROM the base just pushed, so it waits for it. Also runs when the module failed.
+  xps16-da16260:
+    needs: [lint, base, module]
+    if: ${{ !cancelled() && needs.base.result == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/reusable-build.yml
     permissions:
       contents: read
@@ -89,6 +104,7 @@ jobs:
       from_image: ghcr.io/ysantalla/base
       from_key: cosign.pub
       push: true
+      module: ${{ needs.module.result == 'success' && 'hm1092' || '' }}
     secrets:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
       COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}

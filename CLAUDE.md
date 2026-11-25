@@ -55,11 +55,15 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready, which lists up to five of the changes the new image brings: CI writes the last commits that touch `images/` to `/usr/share/katze/changelog`, and `update-changes.sh` shows the ones the running image does not have. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`, whose default, from Universal Blue, is to reject. So a machine running the image checks our signature on every pull from `ghcr.io/ysantalla`, with or without `--enforce-container-sigpolicy`: on 2026-11-24 a plain `bootc switch` and a plain `bootc upgrade` were both refused when the key did not match. Only the first switch from stock Kinoite, whose own policy accepts anything, is not checked. `mise run switch` still passes the flag, which makes bootc refuse an origin whose policy would accept unsigned images (from bootc's documentation, not tried). **A key rotation therefore locks out every installed machine**: see `README.md`, "Rotating the signing key".
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers, and makes the screen dim and turn off early for the OLED panel: off after 3 minutes on AC and 2 on battery, as PowerDevil defaults in `/etc/xdg/powerdevilrc` that a user can change.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video and camera flags to the browser launchers, and makes the screen dim and turn off early for the OLED panel: off after 3 minutes on AC and 2 on battery, as PowerDevil defaults in `/etc/xdg/powerdevilrc` that a user can change.
 
 It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`), which reports both problems on an X7 358H. Neither is confirmed on this machine yet:
 - **thermald:** a drop-in runs `thermald-wait.sh`, which waits up to 30 s for RAPL, coretemp and the `TCPU` zone, because thermald otherwise gives up on Panther Lake until the next boot.
 - **Power profiles:** four `katze-xps-*` tuned profiles call `platform-profile.sh`, which sets Dell's thermal mode (`dell-pc`) and Intel's SoC power slider separately, since the legacy `platform_profile` only offers what both share. `build.sh` points `/etc/tuned/ppd.conf` at them and turns off `sysfs_acpi_monitor`. The image has `tuned-ppd`, not power-profiles-daemon, so there is no `powerprofilesctl`.
+
+And the internal camera: `camera.py` (`katze-camera.service`, a user service) opens it through libcamera at 1440p, in a child process, since 1080p and less use a sensor mode that does not work and abort libcamera. It turns the picture over, scales it to 1080p and offers it as one PipeWire camera, on only while an application uses it and off before a suspend. `60-katze-camera.conf` takes libcamera and the raw IPU7 nodes out of WirePlumber, where the abort restarted the sound, and the browser launchers get `WebRtcPipeWireCamera`. It needs no kernel module and no closed Intel library, unlike xps-fedora and Omarchy.
+
+And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself: there is no reader yet, and any program of the user could watch that camera, which has no light. `sudo modprobe hm1092` loads it.
 
 ### Explicit non-goals
 
@@ -98,9 +102,11 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── .github/
 │   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
 │   ├── scripts/prune-registry.py      what prune.yml runs: which builds to keep and which to delete
+│   ├── scripts/sign-module.py         what module.yml runs next to the module key
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
 │       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
+│       ├── module.yml                 the XPS's hm1092 module: build job without secrets, sign job
 │       ├── prune.yml                  weekly: delete builds older than a month from GHCR
 │       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
 └── images/
@@ -136,9 +142,14 @@ These are deliberate choices. Do not add them back without the owner asking:
         ├── Containerfile
         ├── build_files/
         │   ├── build.sh
+        │   ├── hm1092.sh                  builds the infrared camera's driver, unsigned (module.yml runs it)
+        │   ├── hm1092/                    that driver, its audit and the public half of the module key
         │   └── packages.txt
         └── system_files/usr/
-            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh
+            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py
+            ├── lib/systemd/user/  katze-camera.service
+            ├── lib/modprobe.d/    katze-hm1092.conf
+            ├── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
             ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
             └── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
 ```
@@ -269,6 +280,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
 - **The signing key is only in the `sign` job.** `SIGNING_SECRET` and `COSIGN_PASSWORD` are secrets of the `signing` environment, which only the `main` branch can use, so a pull request or a manual run on another branch cannot sign, even if it edits the workflow. The `build` job runs code from outside this repo (RPM scriptlets, the image's own rpm-ostree) and never sees the key. Keep both secrets out of the repository-level secrets.
+- **`module.yml`** builds the infrared camera's driver for the kernel of the base just published and signs it. The `build` job runs the compiler and has no secrets; the `sign` job has `MODULE_KEY` and `MODULE_KEY_PASSWORD` from the `signing` environment and only runs openssl through `sign-module.py`, whose output is the same as the kernel's `sign-file`. It signs what the build job left, so a compromised build could get a module signed that the owner's machine accepts. The machine image is built without the module when this fails, or when its kernel does not match: the build log has a warning and `tests/smoke.sh` a note. Pull requests only compile it.
 - **Only `main` publishes.** A pull request, or a manual run on another branch, builds and tests without pushing.
 - **Images are public** on GHCR, so machines pull without credentials.
 - **The repo is public,** so GitHub disables the schedule after 60 days without repository activity, and hosts would silently stop getting updates. Re-enable the workflow if GitHub warns about it.
@@ -373,7 +385,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 1. **Verify base** in a VM and on hardware. See `docs/status/`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
-3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
+3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in CI against the image's kernel, signed with the owner's MOK in a job of its own (decided on 2026-11-25; done: section 6, `module.yml`). Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
 4. **Secrets and per-project dev containers.** Mostly `base` and per-user setup, not this machine image. Researched on 2026-11-08, nothing implemented: see `docs/secrets-and-devbox.md`, which has the decisions, the test plan for the VM and the XPS, and the repo changes to make afterwards. Tested in a VM on 2026-11-21 (its section 8.1): the keyring, the `devbox` image with rootless `docker compose`, and that the `katze-incus` zone lets instances reach every port on the host, with a tighter zone and policy that fix it.
 5. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
 6. **Audit for bugs and security gaps.** Asked by the owner on 2026-11-24, not started, and its scope is not set yet. An earlier audit was merged as `audit-fixes`.
@@ -398,7 +410,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 **Secrets and agents (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
 
 **Pending:**
-- Whether to use the internal camera or a USB webcam for video calls.
+- Whether the internal camera, through `camera.py`, is good enough for video calls, or a USB webcam is.
 - The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, which projects keep their development credentials in Parameter Store, and cloned or mounted code in project containers.
 
 ---

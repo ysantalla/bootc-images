@@ -3,3 +3,4 @@ bib/config.toml
 cosign.key
 # written by CI before each build
 images/*/system_files/usr/share/katze/changelog
+images/*/build_files/module/

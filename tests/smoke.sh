@@ -145,6 +145,17 @@ font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
 repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '^enabled=1' "/etc/yum.repos.d/$1.repo"; }
 
+camera_loads() { # imports camera.py, and checks the GStreamer elements it names
+  PYTHONDONTWRITEBYTECODE=1 python3 -c '
+import sys
+sys.path.insert(0, "/usr/libexec/katze")
+import camera
+camera.Gst.init(None)
+missing = [e for e in ("appsrc", "pipewiresink", "libcamerasrc", "fdsink") if not camera.Gst.ElementFactory.find(e)]
+sys.exit(" ".join(missing) or 0)' || return
+  test -x /usr/bin/gst-launch-1.0 -a -e /usr/lib64/gstreamer-1.0/libgstva.so # vapostproc only exists on a machine with the GPU
+}
+
 # Every Exec line of a launcher carries (or lacks) a flag
 all_exec_have() { grep -q '^Exec=' "$1" && ! grep '^Exec=' "$1" | grep -qvF -- "$2"; }
 no_exec_has() { [[ -f "$1" ]] && ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
@@ -351,7 +362,21 @@ case "$name" in
     ok "platform profiles reach each handler" platform_profile_works
     ok "the screen turns off after 3 minutes on AC" screen_off_after AC 180
     ok "the screen turns off after 2 minutes on battery" screen_off_after Battery 120
+    for pkg in python3-gobject-base gstreamer1-plugins-bad-free libcamera-gstreamer pipewire-gstreamer; do
+      ok "package $pkg" rpm -q "$pkg"
+    done
+    # CI signs the infrared camera's driver only on main, and an image without it is still published
+    if modinfo -k "$(rpm -q kernel-core --qf '%{version}-%{release}.%{arch}')" hm1092 > /tmp/hm1092 2> /dev/null; then
+      ok "hm1092 is signed with the module key" grep -qE '^signer: +Katze module signing 2026-11-25$' /tmp/hm1092
+    else
+      echo "note: the image has no hm1092 module"
+    fi
+    ok "hm1092 is not loaded by itself" grep -qx 'blacklist hm1092' /usr/lib/modprobe.d/katze-hm1092.conf
+    ok "the camera relay is enabled" test -L /etc/systemd/user/pipewire.service.wants/katze-camera.service
+    ok "the camera relay finds its libraries" camera_loads
+    ok "WirePlumber leaves the camera to the relay" grep -q 'monitor.libcamera = disabled' /usr/share/wireplumber/wireplumber.conf.d/60-katze-camera.conf
     for launcher in "${LAUNCHERS[@]}"; do
+      ok "browser camera through PipeWire in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" WebRtcPipeWireCamera
       ok "Intel flags in $launcher" all_exec_have "/usr/share/applications/$launcher.desktop" "$ENCODE"
     done
     ;;

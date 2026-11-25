@@ -1,0 +1,15 @@
+[Unit]
+Description=Katze: offer the internal camera to applications
+After=pipewire.service wireplumber.service
+BindsTo=pipewire.service
+ConditionUser=!@system
+
+[Service]
+ExecStart=/usr/libexec/katze/camera.py
+# Only the main process is told to stop: it ends the one that has the camera open
+KillMode=mixed
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service

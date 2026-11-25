@@ -257,7 +257,15 @@ vainfo | grep -E 'iHD|H264|HEVC|AV1'           # Intel hardware only: hardware d
 4. In `chrome://webrtc-internals`, under `outbound-rtp`: `powerEfficientEncoder: true` means hardware, while `libvpx`, `OpenH264` or `libaom` as `encoderImplementation` means CPU.
 5. Repeat in a real call, because each platform picks its own codec. `gputop` shows GPU use per application.
 
-The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`build.sh` in the machine image).
+The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,WebRtcPipeWireCamera` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`build.sh` in the machine image).
+
+### Camera (xps16-da16260 only)
+
+`katze-camera.service` offers the internal camera as one PipeWire camera called Camera, and turns it on only while an application uses it. Chrome and Brave started from the menu find it. Others need PipeWire camera support.
+
+```bash
+systemctl --user status katze-camera           # "camera on" and "camera off" in its log
+```
 
 ### Power limits
 
