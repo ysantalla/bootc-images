@@ -3,11 +3,11 @@
 
 format = """
 $os\
-[](fg:#e4e4e4 bg:#262d30)\
+[](fg:#e4e4e4 bg:#262d33)\
 $directory\
 $git_branch\
 $git_status\
-[](fg:#262d30) """
+[](fg:#262d33) """
 
 right_format = """
 $cmd_duration\
@@ -26,8 +26,8 @@ Fedora = " "
 Linux = " "
 
 [directory]
-style = "bg:#262d30 fg:#00b09a"
-read_only_style = "bg:#262d30 fg:#d75f5f"
+style = "bg:#262d33 fg:#34aae8"
+read_only_style = "bg:#262d33 fg:#d75f5f"
 format = "[ $path ]($style)[$read_only]($read_only_style)"
 home_symbol = " ~"
 read_only = " "
@@ -36,11 +36,11 @@ truncation_symbol = "…/"
 
 [git_branch]
 symbol = ""
-style = "bg:#262d30 fg:#5faf00"
+style = "bg:#262d33 fg:#5faf00"
 format = "[ $symbol $branch ]($style)"
 
 [git_status]
-style = "bg:#262d30 fg:#d7af00"
+style = "bg:#262d33 fg:#d7af00"
 format = "[($all_status$ahead_behind )]($style)"
 
 [cmd_duration]

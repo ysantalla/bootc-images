@@ -475,8 +475,8 @@ def drawing(glyph: Glyph, colour: str, canvas: float, size: float, extra: str = 
 # text, background and accent. Plasma replaces all three with the colour
 # scheme's, so one drawing serves any scheme and accent.
 FALLBACK = {
-    "dark": ("#fcfcfc", "#0b0d14", "#00b09a"),
-    "light": ("#232629", "#f4f5f7", "#00b09a"),
+    "dark": ("#fcfcfc", "#0b0d14", "#34aae8"),
+    "light": ("#232629", "#f4f5f7", "#34aae8"),
 }
 # The look of each variant. These are only what is used when aliases.toml has
 # no [look] table: the values, and the reason for each, are there.

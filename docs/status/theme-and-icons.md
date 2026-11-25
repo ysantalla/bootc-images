@@ -34,10 +34,14 @@ The global themes, color schemes, Plasma style, Katze Mono icons, fonts and the 
 - The image has 80 icons and their 80 small ones, `apps/22@2x` linked to `apps/22`, the 10 `breeze/places` sections, both panel backgrounds made from Breeze at 92%, and the `Katze` color scheme named by Konsole's profile.
 - The owner had approved the look from copies in the home directory earlier that day: the accent edge, the glyphs in the text color on both themes, and the lines at 1.35 and 1.6.
 
+**Checked on the XPS (2026-11-25), by reading the values Plasma 6.8.3 writes, not by eye:**
+- On Katze Dark, accent `#3DAEE9` gives a selection of 47,128,170 with black text (white's contrast there is 4.39) and `#34AAE8` gives 41,125,169 with white (4.56). On Katze Light both give black.
+- The blue schemes were made with `plasma-apply-colorscheme` in a throwaway home. The same steps with `#00B09A` gave the teal schemes exactly, except for four keys in `[Colors:Header][Inactive]` that were edited by hand in both.
+
 ## Not tested yet
 
 - The `Katze` color scheme in Konsole and Yakuake, and the prompt's colors, by eye on an image. The owner saw them from copies in the home directory.
-- The teal schemes for a new user, and with a custom accent on top. They were seen shipped in an image for a user who already existed.
+- The blue schemes (`#34AAE8`, 2026-11-25) in an image: a new user, the login screen, Konsole and the prompt. The themes' previews and the README pictures still show the teal.
 - Inter and no sub-pixel text in a real session, and on the XPS panel. `tests/smoke.sh` reads them as a user with an empty home, with the config path Plasma sets.
 - Katze Light as a whole desktop, and switching at night, on an image. The owner saw on 2026-11-24, in the test VM, that the Dark Mode switch names Katze; the icon theme's light variant was seen in System Settings.
 - Icons for Flatpaks that finish installing after the first login: `katze-icons.service` only runs at login.
