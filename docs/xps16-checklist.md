@@ -98,7 +98,13 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
   load means little on 4 P, 8 E and 4 LP cores. The alternative is `dell-pc`
   in `performance` on AC. Decide after the RAPL checks above.
 - **VRR without a kernel patch.** An EDID with a range descriptor, through
-  `drm.edid_firmware=`. Nobody has tried it.
+  `drm.edid_firmware=`. Read on 2026-11-25: the panel gives 20 to 120 Hz only
+  in DisplayID block 0x2b, which neither 7.3.4, master nor drm-tip reads, and
+  the base EDID is marked as continuous frequency, so a range descriptor is
+  enough for that check. The kernel also wants the VBT's VRR bit and the
+  panel's MSA bit, not read. `xe` loads in the initramfs, so the file has to
+  be there too. A one-boot test kit is in `output/vrr` on the XPS (not in
+  git), not run yet.
 - **Speaker equalizer.** The speakers are said to sound weaker than on
   Windows. Omarchy ships a PipeWire EQ measured on the XPS 14 only.
 
