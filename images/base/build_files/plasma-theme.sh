@@ -58,6 +58,19 @@ kwriteconfig6 --file /etc/xdg/kwinrc --group Desktops --key Number 2
 kwriteconfig6 --file /etc/xdg/kwinrc --group Desktops --key Rows 2
 grep -q '^Number=2$' /etc/xdg/kwinrc
 
+# The owner's window and menu look: no outline around windows, a medium shadow instead of
+# Breeze's large one, and menus 79% opaque, which KWin blurs behind
+test ! -e /etc/xdg/breezerc
+# Not kwriteconfig6: it creates a new file readable by root only
+cat > /etc/xdg/breezerc <<'EOF'
+[Common]
+OutlineEnabled=false
+ShadowSize=ShadowMedium
+
+[Style]
+MenuOpacity=79
+EOF
+
 # The owner's interface fonts. Noto stays the system's sans-serif, for its language coverage.
 FONT_TAIL=-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 cat > /etc/xdg/kdeglobals <<EOF

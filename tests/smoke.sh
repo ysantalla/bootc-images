@@ -299,6 +299,11 @@ ok "a new user gets the Plasma style" kde_default plasmarc Theme name katze
 ok "a new user gets the global theme" kde_default kdeglobals KDE LookAndFeelPackage katze-dark
 ok "a new user gets two virtual desktops" kde_default kwinrc Desktops Number 2
 ok "virtual desktops are stacked" kde_default kwinrc Desktops Rows 2
+# These checks run as root, which would read a file users cannot
+ok "users can read the Breeze defaults" test "$(stat -c %a /etc/xdg/breezerc)" = 644
+ok "windows have no outline" kde_default breezerc Common OutlineEnabled false
+ok "windows have a medium shadow" kde_default breezerc Common ShadowSize ShadowMedium
+ok "menus are translucent" kde_default breezerc Style MenuOpacity 79
 ok "Dark Mode switches to Katze Dark" kde_default kdeglobals KDE DefaultDarkLookAndFeel katze-dark
 ok "Dark Mode switches back to Katze Light" kde_default kdeglobals KDE DefaultLightLookAndFeel katze-light
 ok "Slack launcher forwards links" all_exec_have /usr/share/katze/applications/com.slack.Slack.desktop "--file-forwarding com.slack.Slack"
