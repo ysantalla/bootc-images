@@ -51,8 +51,8 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 - [ ] `BAT0/charge_control_*`, `charge_types` and `PrimaryBattChargeCfg`,
       before writing the `battery:desk` and `battery:travel` tasks: the
       `dell-laptop` thresholds may only apply when `charge_types` is `Custom`.
-- [ ] `gputop` and `intel_gpu_top`. The second is said not to support `xe`;
-      fix the line in `README.md` with what works.
+- [x] `gputop` works with `xe`, without root (2026-11-25). `README.md` names
+      it. `intel_gpu_top`, said not to support `xe`, was not tried.
 
 ## Display
 
