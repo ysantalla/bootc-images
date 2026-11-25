@@ -12,3 +12,9 @@ lm_sensors
 igt-gpu-tools
 # turbostat: real package power, busy MHz and temperature, to check power limits
 kernel-tools
+
+# katze-camera.service (camera.py). The image ships them today; listed so the camera keeps working.
+python3-gobject-base
+gstreamer1-plugins-bad-free
+libcamera-gstreamer
+pipewire-gstreamer

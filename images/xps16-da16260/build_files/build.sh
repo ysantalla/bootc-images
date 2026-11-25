@@ -6,8 +6,9 @@ set -euxo pipefail
 mapfile -t PKGS < <(grep -vE '^\s*(#|$)' /ctx/packages.txt)
 dnf5 -y install "${PKGS[@]}"
 
-# 2. Intel hardware video in the native browsers (Chromium does not officially support VA-API on Linux)
-FLAGS=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
+# 2. Intel hardware video in the native browsers (Chromium does not officially support VA-API on Linux),
+# and the camera through PipeWire, where katze-camera.service offers it
+FLAGS=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,WebRtcPipeWireCamera
 for file in \
   /usr/share/applications/google-chrome.desktop \
   /usr/share/applications/com.google.Chrome.desktop \
@@ -47,6 +48,9 @@ display AC TurnOffDisplayIdleTimeoutSec 180
 display Battery DimDisplayIdleTimeoutSec 60
 display Battery TurnOffDisplayIdleTimeoutSec 120
 grep -q '^TurnOffDisplayIdleTimeoutSec=180$' /etc/xdg/powerdevilrc
+
+# 5. The internal camera, offered from our own process (camera.py)
+systemctl --global enable katze-camera.service
 
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.

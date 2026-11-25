@@ -80,9 +80,12 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 
 ## Camera
 
-- [ ] The RGB camera on the stock kernel. One Fedora bug shows a picture in
-      qcam and Chrome on stock 7.2.13 with no extra modules, upside down, with
-      a fix on its way upstream. xps-fedora reports raw nodes only.
+- [x] The RGB camera on the stock kernel: works in the sensor's full mode only,
+      upside down. See `docs/status/xps16-da16260.md`.
+- [ ] After a new kernel or libcamera: the picture is still the right way up.
+      If Fedora's kernel starts to report the rotation
+      (<https://bugzilla.redhat.com/show_bug.cgi?id=2563275>), remove
+      `video-direction` from `camera.py`.
 - [ ] When Fedora 45 ships kernel 7.4 (expected around January 2027), check
       `CONFIG_VIDEO_INTEL_IPU6_IPU7` and repeat the camera test. The camera is
       the only reason to retest on 7.4.

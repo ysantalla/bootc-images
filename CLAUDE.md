@@ -55,11 +55,13 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready, which lists up to five of the changes the new image brings: CI writes the last commits that touch `images/` to `/usr/share/katze/changelog`, and `update-changes.sh` shows the ones the running image does not have. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`, whose default, from Universal Blue, is to reject. So a machine running the image checks our signature on every pull from `ghcr.io/ysantalla`, with or without `--enforce-container-sigpolicy`: on 2026-11-24 a plain `bootc switch` and a plain `bootc upgrade` were both refused when the key did not match. Only the first switch from stock Kinoite, whose own policy accepts anything, is not checked. `mise run switch` still passes the flag, which makes bootc refuse an origin whose policy would accept unsigned images (from bootc's documentation, not tried). **A key rotation therefore locks out every installed machine**: see `README.md`, "Rotating the signing key".
 
-**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers, and makes the screen dim and turn off early for the OLED panel: off after 3 minutes on AC and 2 on battery, as PowerDevil defaults in `/etc/xdg/powerdevilrc` that a user can change.
+**`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video and camera flags to the browser launchers, and makes the screen dim and turn off early for the OLED panel: off after 3 minutes on AC and 2 on battery, as PowerDevil defaults in `/etc/xdg/powerdevilrc` that a user can change.
 
 It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`), which reports both problems on an X7 358H. Neither is confirmed on this machine yet:
 - **thermald:** a drop-in runs `thermald-wait.sh`, which waits up to 30 s for RAPL, coretemp and the `TCPU` zone, because thermald otherwise gives up on Panther Lake until the next boot.
 - **Power profiles:** four `katze-xps-*` tuned profiles call `platform-profile.sh`, which sets Dell's thermal mode (`dell-pc`) and Intel's SoC power slider separately, since the legacy `platform_profile` only offers what both share. `build.sh` points `/etc/tuned/ppd.conf` at them and turns off `sysfs_acpi_monitor`. The image has `tuned-ppd`, not power-profiles-daemon, so there is no `powerprofilesctl`.
+
+And the internal camera: `camera.py` (`katze-camera.service`, a user service) opens it through libcamera at 1440p, in a child process, since 1080p and less use a sensor mode that does not work and abort libcamera. It turns the picture over, scales it to 1080p and offers it as one PipeWire camera, on only while an application uses it and off before a suspend. `60-katze-camera.conf` takes libcamera and the raw IPU7 nodes out of WirePlumber, where the abort restarted the sound, and the browser launchers get `WebRtcPipeWireCamera`. It needs no kernel module and no closed Intel library, unlike xps-fedora and Omarchy.
 
 ### Explicit non-goals
 
@@ -138,7 +140,9 @@ These are deliberate choices. Do not add them back without the owner asking:
         │   ├── build.sh
         │   └── packages.txt
         └── system_files/usr/
-            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh
+            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py
+            ├── lib/systemd/user/  katze-camera.service
+            ├── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
             ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
             └── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
 ```
@@ -398,7 +402,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 **Secrets and agents (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
 
 **Pending:**
-- Whether to use the internal camera or a USB webcam for video calls.
+- Whether the internal camera, through `camera.py`, is good enough for video calls, or a USB webcam is.
 - The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, which projects keep their development credentials in Parameter Store, and cloned or mounted code in project containers.
 
 ---
