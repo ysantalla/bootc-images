@@ -98,6 +98,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
+│       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
 │       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
 └── images/
     ├── base/
@@ -260,6 +261,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **A pull request of documentation only** (`docs/` and the Markdown files at the root) builds no image: `lint` runs, and `base / build` reports as skipped, which satisfies the required check. A `README.md` under `images/` is shipped in the image, so it builds.
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
+- **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the Starship and Nerd Fonts versions pinned in `shell.sh` with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
 - **The signing key is only in the `sign` job.** `SIGNING_SECRET` and `COSIGN_PASSWORD` are secrets of the `signing` environment, which only the `main` branch can use, so a pull request or a manual run on another branch cannot sign, even if it edits the workflow. The `build` job runs code from outside this repo (RPM scriptlets, the image's own rpm-ostree) and never sees the key. Keep both secrets out of the repository-level secrets.
