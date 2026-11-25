@@ -66,6 +66,10 @@ fi
 # 7. Voice dictation on the NPU or the GPU
 /ctx/dictation.sh
 
+# 8. Face unlock on the lock screen (katze-face, compiled in the Containerfile, and /etc/pam.d/kde-fingerprint).
+# Nothing looks for a face until a user registers one: sudo /usr/libexec/katze/katze-face add <user>
+systemctl enable katze-ir-camera.socket katze-face.socket
+
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.
 
