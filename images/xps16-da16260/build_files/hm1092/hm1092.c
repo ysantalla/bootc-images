@@ -5,6 +5,7 @@
  * Copyright (c) 2026 Ramshouriesh R <rshouriesh@gmail.com>
  */
 
+#include <linux/capability.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
@@ -754,6 +755,14 @@ static int hm1092_enable_streams(struct v4l2_subdev *sd,
 {
 	struct hm1092 *hm1092 = to_hm1092(sd);
 	int ret;
+
+	/*
+	 * katze: no light shows that this camera is on, and the session user
+	 * can open its nodes, so only a privileged process may start it. This
+	 * runs in the process that called VIDIOC_STREAMON or VIDIOC_QBUF.
+	 */
+	if (!capable(CAP_SYS_RAWIO))
+		return -EPERM;
 
 	ret = pm_runtime_resume_and_get(hm1092->dev);
 	if (ret)

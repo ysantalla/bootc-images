@@ -1,0 +1,43 @@
+[Unit]
+Description=Katze: read the infrared camera for a few seconds
+CollectMode=inactive-or-failed
+# The kernel's camera driver refuses to suspend while the camera is on
+Conflicts=sleep.target
+Before=sleep.target
+
+[Service]
+# The driver is blacklisted: it is only loaded here, the first time
+ExecStartPre=+/usr/sbin/modprobe hm1092
+ExecStart=/usr/libexec/katze/ir-camera 5
+# Whatever ended it
+ExecStopPost=+/usr/bin/sh -c 'echo 0 > /sys/class/leds/HIMX1092_00::ir_flood_led/brightness'
+StandardInput=null
+StandardOutput=socket
+StandardError=journal
+# Longer than ir-camera's own limit, which is the one that should act
+RuntimeMaxSec=15
+TimeoutStopSec=3
+
+# hm1092 starts the sensor only for CAP_SYS_RAWIO
+CapabilityBoundingSet=CAP_SYS_RAWIO
+NoNewPrivileges=yes
+DevicePolicy=closed
+DeviceAllow=char-media rw
+DeviceAllow=char-video4linux rw
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service

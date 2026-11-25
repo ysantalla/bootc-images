@@ -63,7 +63,7 @@ It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`
 
 And the internal camera: `camera.py` (`katze-camera.service`, a user service) opens it through libcamera at 1440p, in a child process, since 1080p and less use a sensor mode that does not work and abort libcamera. It turns the picture over, scales it to 1080p and offers it as one PipeWire camera, on only while an application uses it and off before a suspend. `60-katze-camera.conf` takes libcamera and the raw IPU7 nodes out of WirePlumber, where the abort restarted the sound, and the browser launchers get `WebRtcPipeWireCamera`. It needs no kernel module and no closed Intel library, unlike xps-fedora and Omarchy.
 
-And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself: there is no reader yet, and any program of the user could watch that camera, which has no light. `sudo modprobe hm1092` loads it.
+And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself. The user can open that camera's nodes, and no udev rule may change it: libcamera drops the normal camera too when one node of the graph is denied. So the driver only starts the sensor for a process with CAP_SYS_RAWIO. `ir-camera` (C, compiled in a stage of the Containerfile) reads it for root: `katze-ir-camera.socket`, which is not enabled yet, gives 5 seconds of PGM frames with the lamp on, which the reader, its time limits and `ExecStopPost` turn off. Nothing uses it yet, and it has not run on the machine.
 
 And voice dictation in Spanish on the NPU or the GPU: Voxtype (its ONNX binary has OpenVINO) with Intel's OpenVINO GenAI SDK, both pinned in `dictation.sh`, and Fedora's `intel-npu-driver`. Fedora's OpenVINO has no NPU plugin, and the SDK brings the NPU's compiler, so Intel's own driver package is not needed. The GPU needs `intel-opencl`, which brings clang and LLVM libraries. The NPU is the default, Voxtype goes on with the GPU and then the CPU without it, and `dictation-setup.sh gpu` or `npu` changes it. The model (`whisper-large-v3-turbo-int8`, 790 MB) is not in the image: `dictation-setup.sh` downloads it once for each user, checked by sha256, and `katze-dictation.service` waits for it. Meta+H starts and stops (`kglobalaccel`). The text is pasted with ydotool instead of typed, since ydotool has no á or ñ on a US layout. Settings are in `/etc/voxtype/config.toml`, which a `~/.config/voxtype/config.toml` replaces. Nothing said leaves the machine.
 
@@ -146,12 +146,14 @@ These are deliberate choices. Do not add them back without the owner asking:
         │   ├── build.sh
         │   ├── dictation.sh               Voxtype and the OpenVINO GenAI SDK (pinned, sha256)
         │   ├── hm1092.sh                  builds the infrared camera's driver, unsigned (module.yml runs it)
+        │   ├── ir-camera/                 the infrared camera's reader, in C
         │   ├── hm1092/                    that driver, its audit and the public half of the module key
         │   └── packages.txt
         └── system_files/usr/
             ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py, dictation-setup.sh
             ├── lib/systemd/user/  katze-camera.service, katze-dictation.service, katze-ydotoold.service
             ├── lib/modprobe.d/    katze-hm1092.conf
+            ├── lib/systemd/system/ katze-ir-camera.socket, katze-ir-camera@.service
             ├── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
             ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
             └── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
