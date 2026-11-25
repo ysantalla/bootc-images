@@ -2,7 +2,7 @@
 
 Moved out of `CLAUDE.md` on 2026-11-24. `CLAUDE.md` has the hardware context (section 9) and the roadmap (section 10), and `xps16-checklist.md` has the checks to run on the machine.
 
-None of this is implemented or tested, and the figures are the owner's notes, not measurements.
+None of this is implemented or tested unless it says so, and the figures are the owner's notes, not measurements.
 
 **First day, in order:**
 1. In Windows: Dell Command Update for BIOS and firmware only, note the BIOS version, and run the F12 diagnostics.
@@ -13,7 +13,7 @@ None of this is implemented or tested, and the figures are the owner's notes, no
 6. Validate s2idle suspend before touching the camera.
 
 **System:**
-- **Encryption:** LUKS, unlocked at the end with TPM and a PIN: `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <dev>`, plus `rpm-ostree kargs --append=rd.luks.options=tpm2-device=auto`.
+- **Encryption:** LUKS, unlocked at the end with TPM and a PIN: `systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <dev>`, plus `rpm-ostree kargs --append=rd.luks.options=tpm2-device=auto`. Done on 2026-11-25, with a recovery key too: see `status/xps16-da16260.md`.
 - **Secure Boot:** on from the start. Our own kernel modules are signed with the owner's MOK during the build.
 - **Swap:** zram only, 16 GB, in `base`: `zram-size = min(ram / 4, 16384)` and `compression-algorithm = zstd`.
 - **Hibernation:** ruled out. Suspend for breaks, power off at night.
