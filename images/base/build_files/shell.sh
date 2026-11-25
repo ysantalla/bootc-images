@@ -33,10 +33,20 @@ chmod 0644 "$fontdir"/*
 
 rm -rf "$work"
 
-# zsh: load our defaults, and skip the first-run wizard for users without a ~/.zshrc
+# zsh: load our defaults, and skip the first-run wizard for users without a ~/.zshrc.
+# Fedora puts ~/.local/bin and ~/bin on PATH in the files a new account gets, and an account made
+# before zsh was installed (stock Kinoite, then the switch to this image) has only bash's. In zshenv,
+# so the login shell that starts Plasma has them too. Only when missing: a shell inside another one
+# keeps the order it inherited.
 echo 'source /usr/share/katze/zshrc' >> /etc/zshrc
 cat >> /etc/zshenv <<'ZSHENV'
 [[ -o interactive && ! -e "${ZDOTDIR:-$HOME}/.zshrc" ]] && touch "${ZDOTDIR:-$HOME}/.zshrc"
+() {
+  local dir
+  for dir in "$HOME/bin" "$HOME/.local/bin"; do
+    (( ${path[(Ie)$dir]} )) || path=("$dir" $path)
+  done
+}
 ZSHENV
 
 # New users get zsh. Konsole and Yakuake open zsh for everyone through the profile.

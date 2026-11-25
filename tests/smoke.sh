@@ -34,6 +34,20 @@ enabled() { [[ "$(systemctl is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabled ]]; }
 compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
 zsh_is_clean() { [[ -z "$(HOME=$(mktemp -d) TERM=dumb zsh -ic exit 2>&1)" ]]; }
+# What a program installed per user needs: the login shell that starts Plasma, a terminal and a script.
+# A second zsh must not change the order it inherits.
+zsh_finds_user_programs() {
+  local home flags
+  home=$(mktemp -d)
+  mkdir -p "$home/.local/bin"
+  printf '#!/bin/sh\necho found\n' >"$home/.local/bin/katze-smoke"
+  chmod +x "$home/.local/bin/katze-smoke"
+  for flags in -lc -ic -c; do
+    [[ "$(env -i HOME="$home" TERM=dumb PATH=/usr/bin:/bin zsh "$flags" katze-smoke 2>/dev/null)" == found ]] || return 1
+  done
+  # shellcheck disable=SC2016 # zsh expands it
+  [[ "$(env -i HOME="$home" PATH="/first:$home/.local/bin:$home/bin:/usr/bin" zsh -c 'echo $PATH')" == "/first:$home/.local/bin:$home/bin:/usr/bin" ]]
+}
 # Only our units: upstream's complain here. Read once: with pipefail, `verify | grep -q` misreads a match
 units_are_valid() {
   local out
@@ -183,6 +197,7 @@ ok "docker compose has the real Compose" test -x /usr/libexec/docker/cli-plugins
 ok "docker compose runs without the provider notice" compose_is_quiet
 ok "starship runs" starship --version
 ok "zsh starts without errors" zsh_is_clean
+ok "zsh finds programs in ~/.local/bin" zsh_finds_user_programs
 ok "Konsole opens our profile" grep -qx 'DefaultProfile=katze.profile' /etc/xdg/konsolerc
 ok "Yakuake starts with the session" test -f /etc/xdg/autostart/org.kde.yakuake.desktop
 ok "our system units are valid" units_are_valid
