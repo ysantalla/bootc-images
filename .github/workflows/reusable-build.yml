@@ -70,6 +70,18 @@ jobs:
           df -h /
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the change list below reads the history
+
+      # What changed in the images, newest first, as "<hash> <subject>". The update notification
+      # shows the lines a new image has that the running one does not (update-changes.sh).
+      - name: Write the change list into the image
+        env:
+          IMAGE: ${{ inputs.image }}
+        run: |
+          mkdir -p "images/$IMAGE/system_files/usr/share/katze"
+          git log -n 80 --no-merges --format='%h %s' -- images/ > "images/$IMAGE/system_files/usr/share/katze/changelog"
+          head -5 "images/$IMAGE/system_files/usr/share/katze/changelog"
 
       - name: Metadata
         id: meta
