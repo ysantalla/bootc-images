@@ -6,6 +6,5 @@ Comment=Start or stop dictating
 Comment[es]=Empezar o terminar de dictar
 Exec=/usr/bin/voxtype record toggle
 Icon=audio-input-microphone
-NoDisplay=true
 StartupNotify=false
 X-KDE-Shortcuts=Meta+H

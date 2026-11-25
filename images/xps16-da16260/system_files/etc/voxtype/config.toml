@@ -36,6 +36,9 @@ driver_order = ["ydotool"]
 restore_clipboard = true
 keep_undelivered_text = false
 
+[osd]
+enabled = false
+
 [output.notification]
 on_recording_start = true
 on_recording_stop = false
