@@ -19,6 +19,7 @@ gstreamer1-plugins-bad-free
 libcamera-gstreamer
 pipewire-gstreamer
 
-# Voice dictation (dictation.sh): the NPU's driver, and the paste key
+# Voice dictation (dictation.sh): the drivers of the NPU and of the GPU (OpenCL), and the paste key
 intel-npu-driver
+intel-opencl
 ydotool

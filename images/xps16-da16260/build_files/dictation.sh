@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Voice dictation on the NPU: Voxtype, and the part of Intel's OpenVINO GenAI SDK it needs.
+# Voice dictation on the NPU or the GPU: Voxtype, and the part of Intel's OpenVINO GenAI SDK it needs.
 # Fedora's OpenVINO has no NPU plugin and no GenAI. The driver for the NPU is Fedora's.
 # Pinned releases, checked by sha256. To update one, change its version and checksum here,
 # and try it first: the SDK has the compiler, which has to suit Fedora's driver and firmware.
@@ -24,7 +24,7 @@ echo "${OPENVINO_SHA256}  $work/openvino.tar.gz" | sha256sum -c -
 mkdir "$work/sdk"
 tar -xzf "$work/openvino.tar.gz" -C "$work/sdk" --strip-components=1 --no-same-owner
 
-# NPU and CPU only: without the GPU plugin, the other model formats, the headers and the samples (249 MB of 376)
+# Without the other model formats, the headers and the samples
 to=/usr/lib/openvino-genai/runtime/lib/intel64
 from=$work/sdk/runtime/lib/intel64
 tbb=$work/sdk/runtime/3rdparty/tbb/lib
@@ -35,7 +35,7 @@ for lib in openvino openvino_c openvino_genai openvino_genai_c openvino_ir_front
   install -m0755 "$from/$soname" "$to/$soname"
   ln -s "$soname" "$to/lib$lib.so"
 done
-install -m0755 -t "$to" "$from"/libopenvino_{tokenizers,intel_cpu_plugin,intel_npu_plugin}.so \
+install -m0755 -t "$to" "$from"/libopenvino_{tokenizers,intel_cpu_plugin,intel_gpu_plugin,intel_npu_plugin}.so \
   "$from"/libopenvino_intel_npu_{compiler,compiler_loader,vm_runtime}.so "$tbb"/libtbb.so.12 "$tbb"/libtbbmalloc.so.2
 install -m0644 "$from/cache.json" "$to/"
 install -m0644 -t /usr/share/licenses/openvino-genai "$work"/sdk/docs/licensing/* "$work/sdk/runtime/3rdparty/tbb/TBB-LICENSE"

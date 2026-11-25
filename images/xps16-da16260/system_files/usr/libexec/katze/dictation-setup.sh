@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Gets the speech model for voice dictation (790 MB), once for each user, and has the NPU compile it.
+# Gets the speech model for voice dictation (790 MB), once for each user, and compiles it.
+#   dictation-setup.sh          keeps the device in use (the NPU, unless it was changed)
+#   dictation-setup.sh gpu      transcribes on the GPU from now on
+#   dictation-setup.sh npu      back to the NPU
 # Run it without sudo. Nothing that is said leaves the machine: only this downloads something.
 set -euo pipefail
 
@@ -8,6 +11,21 @@ revision=b568445dd5dc8c695bde596f8acbb4694fd6ba64
 dir=${XDG_DATA_HOME:-$HOME/.local/share}/voxtype/models/openvino-whisper-large-v3-turbo-int8-ov
 
 [[ $EUID != 0 ]] || { echo "Run it without sudo" >&2; exit 1; }
+
+system=/etc/voxtype/config.toml
+config=${XDG_CONFIG_HOME:-$HOME/.config}/voxtype/config.toml
+case ${1-} in
+"") ;;
+npu | gpu)
+  if [[ ! -e $config ]]; then
+    mkdir -p "$(dirname "$config")"
+    { echo "# A copy of $system, for this user"; cat "$system"; } > "$config"
+  fi
+  sed -i '/^\[openvino\]/,/^\[output\]/ s/^device = .*/device = "'"${1^^}"'"/' "$config"
+  grep -qx "device = \"${1^^}\"" "$config" || { echo "No device line in [openvino] of $config: change it by hand" >&2; exit 1; }
+  ;;
+*) echo "usage: dictation-setup.sh [npu|gpu]" >&2; exit 2 ;;
+esac
 
 files() { # sha256 and name
   cat <<'LIST'
@@ -46,7 +64,7 @@ while read -r sum name; do
 done < "$dir/.files"
 rm -f "$dir/.files"
 
-echo "Compiling it for the NPU: about two and a half minutes, the first time only"
+echo "Compiling it, the first time only: about two and a half minutes for the NPU, seconds for the GPU"
 silence=$(mktemp --suffix=.wav)
 trap 'rm -f "$silence"' EXIT
 python3 -I -c '

@@ -63,7 +63,7 @@ else
   echo "::warning::no signed hm1092 module for $KERNEL: the image has no infrared camera driver"
 fi
 
-# 7. Voice dictation on the NPU
+# 7. Voice dictation on the NPU or the GPU
 /ctx/dictation.sh
 
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap

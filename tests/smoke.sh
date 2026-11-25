@@ -148,7 +148,7 @@ repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '
 dictation_libraries() { # every library of the SDK finds what it links to
   local dir=/usr/lib/openvino-genai/runtime/lib/intel64
   test -e "$dir/libopenvino_genai_c.so" || return 1
-  ! LD_LIBRARY_PATH=$dir ldd "$dir"/*.so* /usr/lib64/libze_intel_npu.so.1 | grep 'not found'
+  ! LD_LIBRARY_PATH=$dir ldd "$dir"/*.so* /usr/lib64/libze_intel_npu.so.1 /usr/lib64/intel-opencl/libigdrcl.so | grep 'not found'
 }
 
 dictation_settings() {
@@ -376,7 +376,7 @@ case "$name" in
     for pkg in python3-gobject-base gstreamer1-plugins-bad-free libcamera-gstreamer pipewire-gstreamer; do
       ok "package $pkg" rpm -q "$pkg"
     done
-    for pkg in intel-npu-driver oneapi-level-zero ydotool; do
+    for pkg in intel-npu-driver oneapi-level-zero intel-opencl ydotool; do
       ok "package $pkg" rpm -q "$pkg"
     done
     ok "Voxtype runs" voxtype --version

@@ -21,6 +21,7 @@ language = "es"
 
 [openvino]
 model = "large-v3-turbo-int8"
+# Without the NPU it goes on with the GPU, and then the CPU. `dictation-setup.sh gpu` uses the GPU first.
 device = "NPU"
 language = "es"
 # The model takes 0.9 s to load and up to 4 GB: only while dictating
