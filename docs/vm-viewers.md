@@ -20,7 +20,7 @@ The image has no viewer yet. Without one, Incus prints the socket URI and waits,
 | `spicy` (`spice-gtk-tools`) | Yes | 2 MiB | GTK3. No Ctrl+Alt+Del action. Run: UEFI screen | Rejected by the owner: ugly |
 | `remote-viewer` (`virt-viewer`) | Yes | 40 MiB, with libvirt libraries and no daemon | Header bar cannot be hidden in a window. Can send key combinations | Fallback for USB or Ctrl+Alt+Del |
 | KRDC 26.08 (Fedora today) | No | 4 MiB | No SPICE plugin | Wait |
-| KRDC nightly Flatpak | Through a TCP bridge | 8.4 MB, plus a 415 MB runtime | Real Plasma look. No USB or shared folders in its code. Run: see `status.md` | **Chosen**, once it ships |
+| KRDC nightly Flatpak | Through a TCP bridge | 8.4 MB, plus a 415 MB runtime | Real Plasma look. No USB or shared folders in its code. Run: see `status/incus-and-network.md` | **Chosen**, once it ships |
 | Remmina | Only with a script (`unix:///path`) | 9 MiB | Separate manager window | Not worth it |
 | Field Monitor | Flatpak needs a socket permission | 81.4 MB | libadwaita | Not a fit |
 | GNOME Connections | No, TCP only | 5 MiB | | No |

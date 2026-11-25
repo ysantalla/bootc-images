@@ -51,7 +51,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `katze-desktop-entries.service` and Flatpak overrides through `katze-flatpak-overrides.conf`.
 - **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `katze-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
 - **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
-- **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
+- **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready, which lists up to five of the changes the new image brings: CI writes the last commits that touch `images/` to `/usr/share/katze/changelog`, and `update-changes.sh` shows the ones the running image does not have. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`, whose default, from Universal Blue, is to reject. So a machine running the image checks our signature on every pull from `ghcr.io/ysantalla`, with or without `--enforce-container-sigpolicy`: on 2026-11-24 a plain `bootc switch` and a plain `bootc upgrade` were both refused when the key did not match. Only the first switch from stock Kinoite, whose own policy accepts anything, is not checked. `mise run switch` still passes the flag, which makes bootc refuse an origin whose policy would accept unsigned images (from bootc's documentation, not tried). **A key rotation therefore locks out every installed machine**: see `README.md`, "Rotating the signing key".
 
 **`xps16-da16260` adds:** `libva-intel-media-driver` and `libva-utils` for hardware video decode (H.264, HEVC, VP9, AV1) on the Arc B390, which `kinoite-main` also ships today and stay listed so this machine keeps them, plus `powertop`, `lm_sensors`, `igt-gpu-tools` and `kernel-tools` (`turbostat`) to measure battery, temperature, GPU use and package power on this hardware. Its `build.sh` also adds Intel video flags to the browser launchers, and makes the screen dim and turn off early for the OLED panel: off after 3 minutes on AC and 2 on battery, as PowerDevil defaults in `/etc/xdg/powerdevilrc` that a user can change.
@@ -85,7 +85,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
 ├── docs/
-│   ├── status.md                      what was tested and what was not, by date
+│   ├── status/                        what was tested and what was not, one file per subject
 │   ├── xps16-plan.md                  the owner's plan for the XPS (not implemented)
 │   ├── xps16-checklist.md             checks to run on the XPS
 │   ├── vm-viewers.md                  VM viewer research and the KRDC plan
@@ -96,8 +96,11 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   └── config.example.toml            user for test VMs built with bootc-image-builder
 ├── .github/
 │   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
+│   ├── scripts/prune-registry.py      what prune.yml runs: which builds to keep and which to delete
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
+│       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
+│       ├── prune.yml                  weekly: delete builds older than a month from GHCR
 │       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
 └── images/
     ├── base/
@@ -114,7 +117,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │   │   └── packages.txt           extra RPMs, one per line
     │   └── system_files/              copied verbatim to / in the image
     │       └── usr/
-    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
+    │           ├── libexec/katze/ setup.sh, flatpaks.sh, update-*.sh (state, allowed, notify, changes), image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
     │           ├── lib/systemd/system/ katze-*.service / .timer
     │           ├── lib/systemd/user/  katze-update-notify.*, katze-image-age.*, katze-desktop-entries.service, katze-icons.service
     │           ├── lib/tmpfiles.d/    katze-brave.conf, katze-chrome.conf, katze-flatpak-overrides.conf
@@ -249,7 +252,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 
 ## 6. CI/CD
 
-- **`build.yml`** runs on push to `main` (excluding `*.md`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
+- **`build.yml`** runs on push to `main` (excluding `*.md` and `docs/`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
 - **The `FROM` image is verified before each build:** `kinoite-main` against `.github/keys/ublue-os.pub`, and our `base` against `cosign.pub`. It is pulled by digest, and the build steps use `--pull=never`, so the build uses the verified copy. If Universal Blue rotates its key the build fails: replace the key with `/etc/pki/containers/ublue-os.pub` from the new image, after checking it against `cosign.pub` in `ublue-os/main`.
 - **`base` is rechunked** after the build (`rechunk: true`), with the image's own rpm-ostree and `--previous-build` pointing at the published tag. It re-adds the labels, since `--rootfs` drops them, and lints the result.
@@ -257,8 +260,11 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **One build date per run,** set by the `lint` job, so tags match across images.
 - **`main` is protected:** no force-pushes or deletion, and pull requests need `lint` and `base / build` to pass. The owner can still bypass it.
 - **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
+- **A pull request of documentation only** (`docs/` and the Markdown files at the root) builds no image: `lint` runs, and `base / build` reports as skipped, which satisfies the required check. A `README.md` under `images/` is shipped in the image, so it builds.
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
+- **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the Starship and Nerd Fonts versions pinned in `shell.sh` with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
+- **`prune.yml`** runs on Mondays and deletes old builds from GHCR with `.github/scripts/prune-registry.py`: dated tags older than 30 days (the newest seven always stay), untagged manifests, and the signatures of what is gone. `latest`, `staging` and the Fedora tag are never touched, nor anything from the last two days. Started by hand it only lists, unless asked to delete.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
 - **The signing key is only in the `sign` job.** `SIGNING_SECRET` and `COSIGN_PASSWORD` are secrets of the `signing` environment, which only the `main` branch can use, so a pull request or a manual run on another branch cannot sign, even if it edits the workflow. The `build` job runs code from outside this repo (RPM scriptlets, the image's own rpm-ostree) and never sees the key. Keep both secrets out of the repository-level secrets.
@@ -363,7 +369,7 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
-1. **Verify base** in a VM and on hardware. See `docs/status.md`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
+1. **Verify base** in a VM and on hardware. See `docs/status/`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
 3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
@@ -373,7 +379,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 ### Status and plans
 
-- **What was tested and what was not:** `docs/status.md`. Read it before saying something works, and add to it when something is tested.
+- **What was tested and what was not:** `docs/status/`, one file per subject (its `README.md` lists them). Read the subject's file before saying something works, and add to it when something is tested.
 - **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. None of it is implemented.
 - **Checks to run on the XPS:** `docs/xps16-checklist.md`.
 - **VM viewers,** and how to test images on a machine running the image: `docs/vm-viewers.md`.
