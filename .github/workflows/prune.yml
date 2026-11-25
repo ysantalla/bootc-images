@@ -1,0 +1,36 @@
+name: prune registry
+
+# Every build leaves a dated tag, a signature and often an untagged manifest on GHCR, and
+# nothing removed them. Once a week this deletes the builds older than a month, keeping the
+# newest seven whatever their age. See .github/scripts/prune-registry.py for the rules.
+on:
+  schedule:
+    - cron: "45 9 * * 1" # Mondays
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: Delete. Without it, the run only lists what would go
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # A scheduled run deletes; a manual one only does when asked to
+      DELETE: ${{ github.event_name == 'schedule' || inputs.delete }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prune base and the machine images
+        run: |
+          mapfile -t images < <(find images -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          args=()
+          [[ "$DELETE" == "true" ]] && args+=(--delete)
+          python3 .github/scripts/prune-registry.py "${GITHUB_REPOSITORY_OWNER,,}" "${images[@]}" "${args[@]}"
