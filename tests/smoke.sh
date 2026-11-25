@@ -145,6 +145,17 @@ font_has() { [[ -n "$(fc-list "$1:charset=$2" family)" ]]; }
 font_for() { [[ "$(fc-match -f '%{family}' "$1")" == "$2"* ]]; }
 repo_disabled() { grep -q '^enabled=0' "/etc/yum.repos.d/$1.repo" && ! grep -q '^enabled=1' "/etc/yum.repos.d/$1.repo"; }
 
+dictation_libraries() { # every library of the SDK finds what it links to
+  local dir=/usr/lib/openvino-genai/runtime/lib/intel64
+  test -e "$dir/libopenvino_genai_c.so" || return 1
+  ! LD_LIBRARY_PATH=$dir ldd "$dir"/*.so* /usr/lib64/libze_intel_npu.so.1 | grep 'not found'
+}
+
+dictation_settings() {
+  HOME=/tmp/none voxtype config > /tmp/voxtype-config 2> /dev/null
+  grep -q 'engine = OpenVino' /tmp/voxtype-config && grep -q 'mode = Paste' /tmp/voxtype-config
+}
+
 camera_loads() { # imports camera.py, and checks the GStreamer elements it names
   PYTHONDONTWRITEBYTECODE=1 python3 -c '
 import sys
@@ -365,6 +376,14 @@ case "$name" in
     for pkg in python3-gobject-base gstreamer1-plugins-bad-free libcamera-gstreamer pipewire-gstreamer; do
       ok "package $pkg" rpm -q "$pkg"
     done
+    for pkg in intel-npu-driver oneapi-level-zero ydotool; do
+      ok "package $pkg" rpm -q "$pkg"
+    done
+    ok "Voxtype runs" voxtype --version
+    ok "Voxtype's libraries are complete" dictation_libraries
+    ok "Voxtype reads our settings" dictation_settings
+    ok "dictation waits for its model" grep -q '^ConditionPathExists=%h/.*openvino_encoder_model.xml$' /usr/lib/systemd/user/katze-dictation.service
+    ok "dictation is enabled" test -L /etc/systemd/user/graphical-session.target.wants/katze-dictation.service
     # CI signs the infrared camera's driver only on main, and an image without it is still published
     if modinfo -k "$(rpm -q kernel-core --qf '%{version}-%{release}.%{arch}')" hm1092 > /tmp/hm1092 2> /dev/null; then
       ok "hm1092 is signed with the module key" grep -qE '^signer: +Katze module signing 2026-11-25$' /tmp/hm1092

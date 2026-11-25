@@ -24,6 +24,7 @@ None of this is implemented or tested, and the figures are the owner's notes, no
 - **Hardware notes:** the 388H has 4 P, 8 E and 4 LP cores. The memory gives about 153 GB/s in theory. The SSD is the weak point: it can be replaced, and no BIOS setting speeds it up.
 
 **Voice dictation, in Spanish:**
+- Done on 2026-11-25 except for use by hand, directly with phase 2: see `status/xps16-da16260.md`. `mode` is `paste`, not `type`, and the NPU driver is Fedora's. What follows is the original plan.
 - Voxtype built into `xps16-da16260`, with `language = "es"` and `mode = "type"`. It needs `ydotool`, and a KDE shortcut that runs `voxtype record toggle`.
 - Phase 1 runs on the CPU with the `small` model.
 - Phase 2 uses the NPU: a build with `--features openvino-whisper`, the OpenVINO GenAI SDK in `/usr/lib/openvino-genai`, and Intel's NPU driver, with `engine = "openvino"` and `device = "NPU"`.

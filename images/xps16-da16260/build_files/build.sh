@@ -63,6 +63,9 @@ else
   echo "::warning::no signed hm1092 module for $KERNEL: the image has no infrared camera driver"
 fi
 
+# 7. Voice dictation on the NPU
+/ctx/dictation.sh
+
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.
 
