@@ -151,7 +151,7 @@ done
 ok "the private networks policy runs before the one that accepts" test "$(firewall-offline-cmd --policy=katze-incus-private --get-priority)" -lt "$(firewall-offline-cmd --policy=katze-incus-out --get-priority)"
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/katze-flatpak-overrides.conf
 
-for pkg in toolbox distrobox moby-engine docker-cli; do
+for pkg in toolbox distrobox nvtop moby-engine docker-cli; do
   ok "package $pkg is absent" not rpm -q "$pkg"
 done
 
