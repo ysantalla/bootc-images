@@ -138,6 +138,8 @@ These are deliberate choices. Do not add them back without the owner asking:
         ├── Containerfile
         ├── build_files/
         │   ├── build.sh
+        │   ├── hm1092.sh                  builds the infrared camera's driver, not called yet (roadmap 3)
+        │   ├── hm1092/                    that driver and its audit
         │   └── packages.txt
         └── system_files/usr/
             ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py
