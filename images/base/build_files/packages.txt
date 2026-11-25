@@ -14,6 +14,9 @@ fastfetch
 # PDF and document viewer
 okular
 
+# Calculator: kinoite-main has none
+kcalc
+
 # Image viewer: the one KDE proposes as Gwenview's successor. build.sh makes it the default for images
 koko
 
