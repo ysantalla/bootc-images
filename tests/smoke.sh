@@ -110,6 +110,16 @@ home_copy_is_only_whats_new() {
 }
 # shellcheck disable=SC2053 # the third argument is a glob on purpose
 lookup_is() { [[ "$(icon_lookup "$1" "$2")" == $3 ]]; } # lookup_is <image|home> <icon name> <glob>
+# update-changes.sh: the notification lists what a new image has that the running one does not
+update_changes() {
+  local dir
+  dir=$(mktemp -d)
+  printf 'b2 Second change\na1 First change\n' >"$dir/running"
+  printf 'c3 Third change\nb2 Second change\na1 First change\n' >"$dir/new"
+  [[ "$(/usr/libexec/katze/update-changes.sh "$dir/running" "$dir/new")" == "• Third change" ]] &&
+    [[ -z "$(/usr/libexec/katze/update-changes.sh "$dir/running" "$dir/running")" ]] &&
+    [[ -z "$(/usr/libexec/katze/update-changes.sh "$dir/running" "$dir/missing")" ]]
+}
 # What a user with an empty home reads, with the config path Plasma's session sets
 kde_default() { # kde_default <file> <group> <key> <expected prefix>
   local value
@@ -242,6 +252,7 @@ for panel in widgets translucent/widgets; do
   ok "the panel is 92% opaque, or Breeze's ($panel)" panel_is_ours_or_breezes "$panel"
 done
 ok "Katze Dark is the default global theme" grep -q '^LookAndFeelPackage=katze-dark$' /etc/xdg/kdeglobals
+ok "an update says what it changes" update_changes
 ok "icon generator runs" python3 /usr/libexec/katze/katze-mono.py --report
 ok "a user's copy of the icons keeps Breeze's special folders" home_theme_keeps_breeze_folders
 ok "a user's copy of the icons holds only what the image lacks" home_copy_is_only_whats_new

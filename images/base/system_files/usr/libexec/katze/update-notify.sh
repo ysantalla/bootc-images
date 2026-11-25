@@ -3,10 +3,14 @@
 set -euo pipefail
 
 version=$(cat /run/katze/update-pending)
+# What it changes, when the build said so (update-state.sh)
+changes=$(cat /run/katze/update-changes 2>/dev/null || true)
+body="Version $version will be applied on the next restart."
+[[ -n $changes ]] && body+=$'\n\n'"$changes"
 
 action=$(notify-send --app-name="System update" --icon=system-software-update \
   --expire-time=0 --action=reboot="Restart now" \
-  "Update ready" "Version $version will be applied on the next restart.")
+  "Update ready" "$body")
 
 # Ask Plasma, so apps with unsaved work can object. Plain reboot only without Plasma.
 if [[ "$action" == reboot ]]; then
