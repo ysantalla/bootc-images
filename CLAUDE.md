@@ -332,7 +332,7 @@ vainfo | grep iHD                # xps16-da16260 only
 
 | Component | Detail |
 |---|---|
-| Model | Dell XPS 16 (2026), DA16260, board 0VRKYR |
+| Model | Dell XPS 16 (2026), DA16260, board 0W09YJ |
 | CPU | Intel Core Ultra X9 388H (Panther Lake H), 16 cores |
 | GPU | Intel Arc B390 (Xe3), `xe` kernel driver, Mesa |
 | Display | 16" tandem OLED, 3200×2000, 20–120 Hz VRR |
@@ -359,7 +359,7 @@ The research of 2026-11-21 found two upstream commits that name the DA16260 (a P
 
 ### `xps-fedora` (`.dellptl`)
 
-The project documents this model and board with an X7 358H, not the 388H, so confirm its findings on this machine first. It reports, on stock Fedora: VRR not detected, PSR glitches and link errors, RGB camera with raw nodes only, and no IR camera driver. Audio, Wi-Fi, Bluetooth, touchpad and keyboard light work. It is a small project, apparently with one maintainer.
+The project documents this model on board 0VRKYR with an X7 358H, not the 388H, so confirm its findings on this machine first. It reports, on stock Fedora: VRR not detected, PSR glitches and link errors, RGB camera with raw nodes only, and no IR camera driver. Audio, Wi-Fi, Bluetooth, touchpad and keyboard light work. It is a small project, apparently with one maintainer.
 
 It targets a Fedora install using `dnf`, signing kernels and modules locally with an akmods key, which does not fit a read-only `/usr`. The owner decided against its `.dellptl` kernel on 2026-11-23 (section 10): it is a reference to audit, and anything needed from it is ported by hand and built in this repo. The thermal and power fixes in section 1 came from its `dell-xps-ptl-config`.
 
