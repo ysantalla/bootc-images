@@ -249,7 +249,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 
 ## 6. CI/CD
 
-- **`build.yml`** runs on push to `main` (excluding `*.md`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
+- **`build.yml`** runs on push to `main` (excluding `*.md` and `docs/`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
 - **The `FROM` image is verified before each build:** `kinoite-main` against `.github/keys/ublue-os.pub`, and our `base` against `cosign.pub`. It is pulled by digest, and the build steps use `--pull=never`, so the build uses the verified copy. If Universal Blue rotates its key the build fails: replace the key with `/etc/pki/containers/ublue-os.pub` from the new image, after checking it against `cosign.pub` in `ublue-os/main`.
 - **`base` is rechunked** after the build (`rechunk: true`), with the image's own rpm-ostree and `--previous-build` pointing at the published tag. It re-adds the labels, since `--rootfs` drops them, and lints the result.
@@ -257,6 +257,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **One build date per run,** set by the `lint` job, so tags match across images.
 - **`main` is protected:** no force-pushes or deletion, and pull requests need `lint` and `base / build` to pass. The owner can still bypass it.
 - **`lint`** runs first and blocks publishing: `shellcheck`, TOML, and `cosign.pub` matching the copy in the image.
+- **A pull request of documentation only** (`docs/` and the Markdown files at the root) builds no image: `lint` runs, and `base / build` reports as skipped, which satisfies the required check. A `README.md` under `images/` is shipped in the image, so it builds.
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.

@@ -32,6 +32,11 @@ on:
         required: false
         type: boolean
         default: false
+      docs_only:
+        description: Skip the build. The job still reports, as skipped, which satisfies a required check
+        required: false
+        type: boolean
+        default: false
       machine_image:
         description: Also build and test this machine image FROM the local build, without publishing it
         required: false
@@ -49,6 +54,9 @@ jobs:
   # Runs code from outside this repository (RPM scriptlets, the image's own rpm-ostree),
   # so it never sees the signing key.
   build:
+    # Skipped here, not in the caller: a job skipped in the caller would never create the
+    # "base / build" check that main's protection requires, and the pull request would wait forever.
+    if: ${{ !inputs.docs_only }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
