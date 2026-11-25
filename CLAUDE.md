@@ -85,7 +85,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
 ├── docs/
-│   ├── status.md                      what was tested and what was not, by date
+│   ├── status/                        what was tested and what was not, one file per subject
 │   ├── xps16-plan.md                  the owner's plan for the XPS (not implemented)
 │   ├── xps16-checklist.md             checks to run on the XPS
 │   ├── vm-viewers.md                  VM viewer research and the KRDC plan
@@ -369,7 +369,7 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 
 Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
-1. **Verify base** in a VM and on hardware. See `docs/status.md`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
+1. **Verify base** in a VM and on hardware. See `docs/status/`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
    On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
 2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
 3. **IR face unlock,** on a branch named `xps-ir-face`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in the Containerfile against the image's kernel, signed with the owner's MOK during the build. Howdy uses it on the lock screen only, forced to the IR node. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
@@ -379,7 +379,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 ### Status and plans
 
-- **What was tested and what was not:** `docs/status.md`. Read it before saying something works, and add to it when something is tested.
+- **What was tested and what was not:** `docs/status/`, one file per subject (its `README.md` lists them). Read the subject's file before saying something works, and add to it when something is tested.
 - **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. None of it is implemented.
 - **Checks to run on the XPS:** `docs/xps16-checklist.md`.
 - **VM viewers,** and how to test images on a machine running the image: `docs/vm-viewers.md`.

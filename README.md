@@ -44,7 +44,7 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 
 Each machine gets its own image named after its model, containing only what that hardware needs.
 
-It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `CLAUDE.md` explains how it is built, `docs/status.md` what has and has not been tested, and `docs/xps16-plan.md` the plan for the XPS.
+It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `CLAUDE.md` explains how it is built, `docs/status/` what has and has not been tested, and `docs/xps16-plan.md` the plan for the XPS.
 
 ## What base includes
 
@@ -323,5 +323,5 @@ Rules:
 - `ujust` recipes from Universal Blue that use Distrobox or Toolbx no longer work.
 - Removing a name from `flatpaks.list` does not uninstall it from existing machines: use `flatpak uninstall`.
 - Flatpak apps don't use the host's codecs or VA-API driver; they use their runtime's (`ffmpeg-full` and the Intel VA-API extension).
-- The roadmap and the owner's decisions are in `CLAUDE.md`, and what was tested is in `docs/status.md`. What to check on the XPS first is in `docs/xps16-checklist.md`.
+- The roadmap and the owner's decisions are in `CLAUDE.md`, and what was tested is in `docs/status/`. What to check on the XPS first is in `docs/xps16-checklist.md`.
 - To take the screenshots again: `mise run theme:screenshots`, with the test VM running and its user logged in. It applies each theme there, captures the desktop and the launcher, and writes the README's pictures and both themes' previews. `katze-mono.py --follow-accent --sheet` draws the icon sheet.

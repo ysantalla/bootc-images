@@ -7,7 +7,7 @@ this file is the working list for the first days with the machine.
 
 Nothing here was measured on this machine. The findings come from other
 people's reports, mostly on an X7 358H, and were not checked again after
-that date. Tick a line when it is done, and move what it found to `status.md`.
+that date. Tick a line when it is done, and move what it found to `status/xps16-da16260.md`.
 
 ## Before installing
 
