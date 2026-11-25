@@ -52,6 +52,17 @@ grep -q '^TurnOffDisplayIdleTimeoutSec=180$' /etc/xdg/powerdevilrc
 # 5. The internal camera, offered from our own process (camera.py)
 systemctl --global enable katze-camera.service
 
+# 6. The infrared camera's driver, when CI built and signed it for this kernel (hm1092.sh).
+# Without it, or for another kernel, the image goes on: only the infrared camera is missing.
+KERNEL=$(rpm -q kernel-core --qf '%{version}-%{release}.%{arch}')
+MODULE=/ctx/module/hm1092.ko
+if [[ -e $MODULE && "$(modinfo -F vermagic "$MODULE" | cut -d' ' -f1)" == "$KERNEL" ]]; then
+  install -Dm0644 "$MODULE" "/usr/lib/modules/$KERNEL/updates/hm1092.ko"
+  depmod -a "$KERNEL"
+else
+  echo "::warning::no signed hm1092 module for $KERNEL: the image has no infrared camera driver"
+fi
+
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.
 

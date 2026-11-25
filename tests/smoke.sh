@@ -365,6 +365,13 @@ case "$name" in
     for pkg in python3-gobject-base gstreamer1-plugins-bad-free libcamera-gstreamer pipewire-gstreamer; do
       ok "package $pkg" rpm -q "$pkg"
     done
+    # CI signs the infrared camera's driver only on main, and an image without it is still published
+    if modinfo -k "$(rpm -q kernel-core --qf '%{version}-%{release}.%{arch}')" hm1092 > /tmp/hm1092 2> /dev/null; then
+      ok "hm1092 is signed with the module key" grep -qE '^signer: +Katze module signing 2026-11-25$' /tmp/hm1092
+    else
+      echo "note: the image has no hm1092 module"
+    fi
+    ok "hm1092 is not loaded by itself" grep -qx 'blacklist hm1092' /usr/lib/modprobe.d/katze-hm1092.conf
     ok "the camera relay is enabled" test -L /etc/systemd/user/pipewire.service.wants/katze-camera.service
     ok "the camera relay finds its libraries" camera_loads
     ok "WirePlumber leaves the camera to the relay" grep -q 'monitor.libcamera = disabled' /usr/share/wireplumber/wireplumber.conf.d/60-katze-camera.conf

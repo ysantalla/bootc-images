@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the infrared camera's driver, unsigned: hm1092.sh <kernel> <output file>
-# For a throwaway build stage: it installs a compiler. Nothing calls it yet, since the kernel
-# only loads the module once it is signed, and where that happens is not decided.
+# For a throwaway container: it installs a compiler. CI runs it in module.yml, signs the result
+# in a job of its own, and build.sh installs it.
 set -euo pipefail
 kernel=$1 out=$2
 src=$(dirname "$(readlink -f "$0")")/hm1092

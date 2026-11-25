@@ -17,10 +17,11 @@ import threading
 
 import gi
 
+gi.require_version("GLibUnix", "2.0")
 gi.require_version("Gst", "1.0")
 gi.require_version("GstApp", "1.0")
 gi.require_version("Wp", "0.5")
-from gi.repository import Gio, GLib, GObject, Gst, GstApp, Wp  # noqa: E402, F401
+from gi.repository import Gio, GLib, GLibUnix, GObject, Gst, GstApp, Wp  # noqa: E402, F401
 
 NAME = "katze-camera"
 WIDTH, HEIGHT = 1920, 1080
@@ -33,7 +34,9 @@ OUTPUT = (
     f'stream-properties="props,media.class=Video/Source,media.role=Camera,node.name={NAME},node.description=Camera"'
 )
 CAMERA = (
-    "/usr/bin/gst-launch-1.0 -q -e libcamerasrc ! video/x-raw,format=RGBx,width=2560,height=1440 "
+    # The colour sensor's ACPI name: the infrared one, LNK0, could be a camera to libcamera too
+    r"/usr/bin/gst-launch-1.0 -q -e libcamerasrc camera-name=\\_SB_.LNK1 ! "
+    "video/x-raw,format=RGBx,width=2560,height=1440 "
     "! queue max-size-buffers=2 leaky=downstream "
     # If a kernel starts to report that the sensor is upside down, libcamera may turn it itself:
     # then remove video-direction.
@@ -80,7 +83,7 @@ class Relay:
         self.watch_sleep()
         self.output.set_state(Gst.State.PLAYING)
         self.push_black()
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.loop.quit)
+        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.loop.quit)
         self.loop.run()
         self.stop()
         self.output.set_state(Gst.State.NULL)
