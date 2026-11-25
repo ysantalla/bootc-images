@@ -1,0 +1,45 @@
+# Katze's defaults for voice dictation. A ~/.config/voxtype/config.toml replaces this whole file.
+engine = "openvino"
+state_file = "auto"
+
+[hotkey]
+# KDE has the shortcut (Meta+H): Voxtype's own needs to read every key
+enabled = false
+mode = "toggle"
+
+[audio]
+device = "default"
+sample_rate = 16000
+max_duration_secs = 120
+
+[audio.feedback]
+enabled = true
+
+[whisper]
+model = "base"
+language = "es"
+
+[openvino]
+model = "large-v3-turbo-int8"
+# Without the NPU it goes on with the GPU, and then the CPU. `dictation-setup.sh gpu` uses the GPU first.
+device = "NPU"
+language = "es"
+# The model takes 0.9 s to load and up to 4 GB: only while dictating
+on_demand_loading = true
+openvino_dir = "/usr/lib/openvino-genai"
+
+[output]
+# Pasted, not typed: ydotool has no key for á or ñ on a US layout
+mode = "paste"
+paste_keys = "shift+insert"
+driver_order = ["ydotool"]
+restore_clipboard = true
+keep_undelivered_text = false
+
+[osd]
+enabled = false
+
+[output.notification]
+on_recording_start = true
+on_recording_stop = false
+on_transcription = false

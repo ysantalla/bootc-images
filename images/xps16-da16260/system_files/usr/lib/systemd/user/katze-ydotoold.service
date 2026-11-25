@@ -1,0 +1,14 @@
+[Unit]
+Description=Katze: press the paste key for voice dictation
+PartOf=graphical-session.target
+ConditionPathExists=%h/.local/share/voxtype/models/openvino-whisper-large-v3-turbo-int8-ov/openvino_encoder_model.xml
+ConditionUser=!@system
+
+[Service]
+# KDE Connect's udev rule already lets the user of the session open /dev/uinput
+ExecStart=/usr/bin/ydotoold --socket-path=%t/.ydotool_socket --socket-perm=0600
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

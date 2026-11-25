@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Lists the downloads that shell.sh pins by version and checksum and that have a newer
+# Lists the downloads that shell.sh and dictation.sh pin by version and checksum and that have a newer
 # release. Nothing else watches them: Dependabot only knows the GitHub Actions.
 # Prints one line per outdated pin, "<name> <pinned> <latest> <releases URL>", and nothing
 # when all are current. Needs `gh`, logged in or with GH_TOKEN.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-script=images/base/build_files/shell.sh
+scripts=(images/base/build_files/shell.sh images/xps16-da16260/build_files/dictation.sh)
 
-pinned() { sed -n "s/^$1=//p" "$script"; }
+pinned() { sed -n "s/^$1=//p" "${scripts[@]}"; }
 latest() { gh api "repos/$1/releases/latest" --jq .tag_name | sed 's/^v//'; }
 
-check() { # check <name> <variable in shell.sh> <owner/repository>
+check() { # check <name> <variable in those scripts> <owner/repository>
   local have want
   have=$(pinned "$2")
   want=$(latest "$3")
@@ -23,3 +23,5 @@ check() { # check <name> <variable in shell.sh> <owner/repository>
 
 check Starship STARSHIP_VERSION starship/starship
 check "Nerd Fonts" NERD_FONTS_VERSION ryanoasis/nerd-fonts
+check Voxtype VOXTYPE_VERSION peteonrails/voxtype
+check "OpenVINO GenAI" OPENVINO_VERSION openvinotoolkit/openvino.genai

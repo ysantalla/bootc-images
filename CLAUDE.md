@@ -65,6 +65,8 @@ And the internal camera: `camera.py` (`katze-camera.service`, a user service) op
 
 And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself: there is no reader yet, and any program of the user could watch that camera, which has no light. `sudo modprobe hm1092` loads it.
 
+And voice dictation in Spanish on the NPU or the GPU: Voxtype (its ONNX binary has OpenVINO) with Intel's OpenVINO GenAI SDK, both pinned in `dictation.sh`, and Fedora's `intel-npu-driver`. Fedora's OpenVINO has no NPU plugin, and the SDK brings the NPU's compiler, so Intel's own driver package is not needed. The GPU needs `intel-opencl`, which brings clang and LLVM libraries. The NPU is the default, Voxtype goes on with the GPU and then the CPU without it, and `dictation-setup.sh gpu` or `npu` changes it. The model (`whisper-large-v3-turbo-int8`, 790 MB) is not in the image: `dictation-setup.sh` downloads it once for each user, checked by sha256, and `katze-dictation.service` waits for it. Meta+H starts and stops (`kglobalaccel`). The text is pasted with ydotool instead of typed, since ydotool has no á or ñ on a US layout. Settings are in `/etc/voxtype/config.toml`, which a `~/.config/voxtype/config.toml` replaces. Nothing said leaves the machine.
+
 ### Explicit non-goals
 
 These are deliberate choices. Do not add them back without the owner asking:
@@ -142,12 +144,13 @@ These are deliberate choices. Do not add them back without the owner asking:
         ├── Containerfile
         ├── build_files/
         │   ├── build.sh
+        │   ├── dictation.sh               Voxtype and the OpenVINO GenAI SDK (pinned, sha256)
         │   ├── hm1092.sh                  builds the infrared camera's driver, unsigned (module.yml runs it)
         │   ├── hm1092/                    that driver, its audit and the public half of the module key
         │   └── packages.txt
         └── system_files/usr/
-            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py
-            ├── lib/systemd/user/  katze-camera.service
+            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py, dictation-setup.sh
+            ├── lib/systemd/user/  katze-camera.service, katze-dictation.service, katze-ydotoold.service
             ├── lib/modprobe.d/    katze-hm1092.conf
             ├── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
             ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
@@ -275,7 +278,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **A pull request of documentation only** (`docs/` and the Markdown files at the root) builds no image: `lint` runs, and `base / build` reports as skipped, which satisfies the required check. A `README.md` under `images/` is shipped in the image, so it builds.
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
-- **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the Starship and Nerd Fonts versions pinned in `shell.sh` with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
+- **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the versions pinned in `shell.sh` (Starship, Nerd Fonts) and `dictation.sh` (Voxtype, OpenVINO GenAI) with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
 - **`prune.yml`** runs on Mondays and deletes old builds from GHCR with `.github/scripts/prune-registry.py`: dated tags older than 30 days (the newest seven always stay), untagged manifests, and the signatures of what is gone. `latest`, `staging` and the Fedora tag are never touched, nor anything from the last two days. Started by hand it only lists, unless asked to delete.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.

@@ -1,0 +1,17 @@
+[Unit]
+Description=Katze: voice dictation
+PartOf=graphical-session.target
+After=graphical-session.target pipewire.service katze-ydotoold.service
+Wants=katze-ydotoold.service
+# dictation-setup.sh downloads it
+ConditionPathExists=%h/.local/share/voxtype/models/openvino-whisper-large-v3-turbo-int8-ov/openvino_encoder_model.xml
+ConditionUser=!@system
+
+[Service]
+Environment=LD_LIBRARY_PATH=/usr/lib/openvino-genai/runtime/lib/intel64
+ExecStart=/usr/bin/voxtype -q daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
