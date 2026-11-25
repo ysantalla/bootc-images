@@ -152,7 +152,7 @@ sys.path.insert(0, "/usr/libexec/katze")
 import camera
 camera.Gst.init(None)
 missing = [e for e in ("appsrc", "pipewiresink", "libcamerasrc", "fdsink") if not camera.Gst.ElementFactory.find(e)]
-sys.exit(" ".join(missing))' || return
+sys.exit(" ".join(missing) or 0)' || return
   test -x /usr/bin/gst-launch-1.0 -a -e /usr/lib64/gstreamer-1.0/libgstva.so # vapostproc only exists on a machine with the GPU
 }
 
