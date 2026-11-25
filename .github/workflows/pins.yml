@@ -1,6 +1,6 @@
 name: pinned downloads
 
-# shell.sh pins Starship and the Nerd Font by version and checksum, which is right for a build
+# shell.sh pins Starship and the Nerd Font, and the XPS's dictation.sh Voxtype and OpenVINO, by version and checksum, which is right for a build
 # but means nothing says when a newer release exists. Once a week this compares them and keeps
 # one issue open while any is behind. It changes no file: a new version gets a new checksum by hand.
 on:
@@ -39,7 +39,7 @@ jobs:
             exit 0
           fi
           {
-            echo "\`images/base/build_files/shell.sh\` pins these, and a newer release exists:"
+            echo "\`images/base/build_files/shell.sh\` or \`images/xps16-da16260/build_files/dictation.sh\` pins these, and a newer release exists:"
             echo
             echo "| Download | Pinned | Latest |"
             echo "|---|---|---|"
@@ -50,9 +50,9 @@ jobs:
               echo "| [$name]($url) | $pinned | $latest |"
             done < outdated.txt
             echo
-            echo "To update one: read its release notes, change the version in \`shell.sh\`, download the"
-            echo "file that script fetches, and put its \`sha256sum\` beside the version. \`tests/smoke.sh\`"
-            echo "checks that the prompt and the font still work."
+            echo "To update one: read its release notes, change the version in that script, download the"
+            echo "file it fetches, and put its \`sha256sum\` beside the version. \`tests/smoke.sh\`"
+            echo "checks that the prompt, the font and Voxtype still work. Try a dictation on the XPS before merging those two."
           } > body.md
           if [[ -n "$number" ]]; then
             gh issue edit "$number" --body-file body.md
