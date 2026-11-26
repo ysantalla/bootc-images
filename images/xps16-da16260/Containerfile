@@ -7,6 +7,15 @@ ARG BASE_IMAGE=ghcr.io/ysantalla/base
 FROM scratch AS ctx
 COPY build_files /
 
+# The infrared camera's reader, compiled here so the image gets no compiler
+FROM ${BASE_IMAGE}:${FEDORA_VERSION} AS build
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    dnf5 -y install gcc && \
+    gcc -std=gnu17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE -pie -Wl,-z,relro,-z,now \
+      -o /usr/libexec/ir-camera /ctx/ir-camera/ir-camera.c && \
+    /usr/libexec/ir-camera --self-test
+
 FROM ${BASE_IMAGE}:${FEDORA_VERSION}
 
 # Our own version, so `bootc status` and the update notification show this build
@@ -17,6 +26,7 @@ LABEL org.opencontainers.image.version="${FEDORA_VERSION}.${BUILD_DATE}"
 
 # This machine's files: scripts in /usr/libexec, units in /usr/lib/systemd, tuned profiles in /usr/lib/tuned
 COPY system_files/ /
+COPY --from=build /usr/libexec/ir-camera /usr/libexec/katze/ir-camera
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \

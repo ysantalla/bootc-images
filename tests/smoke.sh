@@ -391,6 +391,9 @@ case "$name" in
       echo "note: the image has no hm1092 module"
     fi
     ok "hm1092 is not loaded by itself" grep -qx 'blacklist hm1092' /usr/lib/modprobe.d/katze-hm1092.conf
+    ok "the infrared camera's reader passes its self-test" /usr/libexec/katze/ir-camera --self-test
+    ok "only root can ask for the infrared camera" grep -qx 'SocketMode=0600' /usr/lib/systemd/system/katze-ir-camera.socket
+    ok "the infrared camera's units are valid" systemd-analyze verify /usr/lib/systemd/system/katze-ir-camera.socket
     ok "the camera relay is enabled" test -L /etc/systemd/user/pipewire.service.wants/katze-camera.service
     ok "the camera relay finds its libraries" camera_loads
     ok "WirePlumber leaves the camera to the relay" grep -q 'monitor.libcamera = disabled' /usr/share/wireplumber/wireplumber.conf.d/60-katze-camera.conf

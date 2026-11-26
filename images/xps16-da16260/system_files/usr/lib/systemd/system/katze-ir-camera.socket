@@ -1,0 +1,15 @@
+[Unit]
+Description=Katze: the infrared camera, for root only
+ConditionPathExists=/sys/class/leds/HIMX1092_00::ir_flood_led
+
+[Socket]
+ListenStream=/run/katze-ir-camera.sock
+SocketUser=root
+SocketGroup=root
+SocketMode=0600
+Accept=yes
+# One reader at a time
+MaxConnections=1
+
+[Install]
+WantedBy=sockets.target

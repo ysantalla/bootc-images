@@ -1,6 +1,6 @@
 # hm1092: driver of the infrared camera (Himax HM1092)
 
-The kernel finds the sensor since 7.3 but has no driver for it. This is the one posted to linux-media, version 8, with four changes of ours. It goes away when Fedora's kernel has one. What follows is the audit of 2026-11-25.
+The kernel finds the sensor since 7.3 but has no driver for it. This is the one posted to linux-media, version 8, with five changes of ours. It goes away when Fedora's kernel has one. What follows is the audit of 2026-11-25.
 
 Scope: the whole file (sha256 7727a1d6...1c7127). The register tables cannot be explained line by line: they come from the Windows driver.
 
@@ -25,7 +25,7 @@ Verdict: nothing malicious found. Not blocked for this use, with the conditions 
 5. Info: reports Bayer for a mono sensor (our change), so libcamera could offer it as a colour camera. Not seen so far with it loaded by hand; not tested when it loads at boot.
 
 ## Around the driver (matter more)
-- Privacy: the session user has rw access to the sensor and video nodes, so any program of theirs can watch the infrared camera with no light on. A udev rule must take that away. The lamp needs root.
+- Privacy: the session user has rw access to the sensor and video nodes, so any program of theirs can watch the infrared camera with no light on. A udev rule cannot take that away: libcamera checks that it can open every node of the graph, and with one denied it skips the whole device, the normal camera included (libcamera 0.7.2, one node denied at a time with bwrap). So the driver refuses to start the sensor for a process without CAP_SYS_RAWIO, see the end. The lamp needs root.
 - Suspend: intel-ipu7-isys refuses to suspend while a stream is open (-EBUSY), so the reader must be short and stop before sleep.
 - CPU cache: stock intel-ipu7 isys never flushes it for a capture, so a frame read through mmap can hold old 64-byte blocks.
 - Exposure is fixed: kenners22/omarchy-xps14-face-unlock reports about 95% of the frame saturated in sunlight.
@@ -37,3 +37,9 @@ Verdict: nothing malicious found. Not blocked for this use, with the conditions 
 - W=1, sparse and -fanalyzer: no code warnings; same kernel symbols as v6. checkpatch printed nothing, so not counted. Loaded on 2026-11-25 on kernel 7.3.4, signed with the owner's module key under Secure Boot: 30 frames of 648x368, no black blocks, no kernel errors, last row dark.
 - The 2026-11-06 patch (19.2 MHz v2) was not found outside Patchwork and is not read.
 - capture.c drops the cache: 0 black blocks in 12 runs of 30 frames on CPU 0 kept awake, with the sensor's test pattern and v6 loaded.
+
+# Starting the sensor needs CAP_SYS_RAWIO
+- Our fifth change (hm1092.c now has sha256 0367c5f2...): `hm1092_enable_streams` returns -EPERM without that capability. Compiled for 7.3.4-300.fc45, not loaded yet.
+- It relies on the check running in the process that asked. Read in 7.3.4: intel-ipu7 calls `enable_streams` from `start_streaming` and `buf_queue`, inside VIDIOC_STREAMON and VIDIOC_QBUF, with no work queue or thread in between.
+- What it does not cover: while root reads the camera, for a few seconds and with the lamp on, a program of the user's can map the same buffers (vb2 does not check who owns the queue), or disturb the capture. It cannot start one.
+- When a start is refused, intel-ipu7 leaves its stream's firmware handle open (`ipu7_isys_video_set_streaming` does not close it on that path). Not tried: whether a refused start disturbs the normal camera.
