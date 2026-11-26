@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Runs on every boot (idempotent). Gets Incus ready for wheel users.
+# Runs on every boot (idempotent). Gets Incus ready: its group, and ID ranges for containers.
+# Nobody is put in incus-admin: it controls the Incus daemon, which is root without a password
+# (a privileged container with / mounted). Incus is used with sudo until each user gets a
+# restricted project (docs/secrets-and-devbox.md, section 8.2).
 set -euo pipefail
 
 GROUPS_TO_SYNC=(incus-admin)
@@ -20,20 +23,16 @@ for g in "${GROUPS_TO_SYNC[@]}"; do
   fi
 done
 
-# Add every admin user (wheel) to those groups
-members=$(getent group wheel | cut -d: -f4 | tr ',' ' ')
-for u in $members; do
-  # A stale wheel entry for a deleted user must not abort the subuid/subgid step
-  if ! id "$u" &>/dev/null; then
-    echo "warning: wheel member $u does not exist, skipping" >&2
-    continue
-  fi
-  for g in "${GROUPS_TO_SYNC[@]}"; do
-    if grep -q "^${g}:" /etc/group && ! id -nG "$u" | tr ' ' '\n' | grep -qx "$g"; then
-      usermod -aG "$g" "$u"
-    fi
+# Earlier images added every wheel user to incus-admin. Take them out once; someone added by hand
+# later stays. Groups only change at the next login.
+marker=/var/lib/katze/incus-admin-cleared
+if [[ ! -e $marker ]] && grep -q '^incus-admin:' /etc/group; then
+  for u in $(getent group incus-admin | cut -d: -f4 | tr ',' ' '); do
+    gpasswd -d "$u" incus-admin >/dev/null && echo "removed $u from incus-admin: use sudo incus"
   done
-done
+  install -d -m 0755 /var/lib/katze
+  touch "$marker"
+fi
 
 # UID/GID ranges for Incus containers
 for f in /etc/subuid /etc/subgid; do

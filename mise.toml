@@ -131,6 +131,8 @@ image="${usage_image?}"
 disk="output/$image/qcow2/disk.qcow2"
 name="$image-test"
 command -v incus >/dev/null || { echo "This needs Incus, which comes with the image" >&2; exit 1; }
+# Nobody is in incus-admin by default (it is root without a password), so this asks for sudo
+incus() { if id -nG | grep -qw incus-admin; then command incus "$@"; else sudo incus "$@"; fi; }
 test -f "$disk" || { echo "Missing $disk. Run: mise run vm $image" >&2; exit 1; }
 built="$(stat -c %Y "$disk")"
 if ! incus info "$name" >/dev/null 2>&1; then
@@ -148,13 +150,13 @@ if ! incus info "$name" >/dev/null 2>&1; then
   incus image delete "$name-disk"
   [[ "$status" -eq 0 ]] || exit "$status"
 elif [[ "$(incus config get "$name" user.katze-disk)" != "$built" ]]; then
-  echo "$disk was rebuilt, so this VM is stale. Erase it with: incus delete -f $name" >&2
+  echo "$disk was rebuilt, so this VM is stale. Erase it with: sudo incus delete -f $name" >&2
   exit 1
 fi
 if [[ "$(incus list "$name" -c s -f csv)" != "RUNNING" ]]; then
   incus start "$name"
 fi
-echo "Screen: incus console $name --type=vga"
+echo "Screen: sudo incus console $name --type=vga"
 '''
 
 [tasks.power]

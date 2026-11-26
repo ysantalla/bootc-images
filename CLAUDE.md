@@ -51,7 +51,7 @@ The layering is strict: **`base` contains nothing hardware-specific**, and machi
 - **System Flatpaks** from a declarative list (Zed, Slack, ONLYOFFICE, GNOME Network Displays).
 - **Flatpak launchers:** Slack and ONLYOFFICE get the owner's launch arguments through `katze-desktop-entries.service` and Flatpak overrides through `katze-flatpak-overrides.conf`.
 - **Zed window borders:** `ZED_WINDOW_DECORATIONS=server` in `katze-flatpak-overrides.conf` makes KWin draw them. Zed keeps its own bar below, and the variable overrides Zed's `window_decorations` setting. Seen working with that setting on the owner's machine, not yet through the override.
-- **First-boot and every-boot setup:** the `incus-admin` group and subuid/subgid ranges.
+- **First-boot and every-boot setup:** the `incus-admin` group, with nobody in it, and subuid/subgid ranges. That group is root without a password, so Incus is used with `sudo`; `setup.sh` took out, once, the wheel users that images before 2026-11-25 added (marker `/var/lib/katze/incus-admin-cleared`). A restricted project per user is planned (`docs/secrets-and-devbox.md`, section 8.2).
 - **Our own update timer** (wall-clock, every 6 h, `Persistent=true`, skipped on battery and metered connections), which replaces any upstream updater, plus a desktop notification when an update is ready, which lists up to five of the changes the new image brings: CI writes the last commits that touch `images/` to `/usr/share/katze/changelog`, and `update-changes.sh` shows the ones the running image does not have. It only announces: it never reboots by itself. A daily user timer warns if the running image is over 14 days old.
 - **Signature policy:** `signing.sh` adds our registry and key to `policy.json`, whose default, from Universal Blue, is to reject. So a machine running the image checks our signature on every pull from `ghcr.io/ysantalla`, with or without `--enforce-container-sigpolicy`: on 2026-11-24 a plain `bootc switch` and a plain `bootc upgrade` were both refused when the key did not match. Only the first switch from stock Kinoite, whose own policy accepts anything, is not checked. `mise run switch` still passes the flag, which makes bootc refuse an origin whose policy would accept unsigned images (from bootc's documentation, not tried). **A key rotation therefore locks out every installed machine**: see `README.md`, "Rotating the signing key".
 
@@ -328,7 +328,7 @@ sudo bootc status                # current image + rollback target
 rpm-ostree status                # must show no LayeredPackages
 systemctl --failed               # nothing from katze-*
 systemctl list-timers katze-update.timer
-id -nG                           # includes incus-admin
+id -nG                           # does not include incus-admin
 vainfo | grep iHD                # xps16-da16260 only
 ```
 

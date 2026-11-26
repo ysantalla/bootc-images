@@ -463,7 +463,7 @@ It closes the path to root. Two things are missing before the image can use it:
 
 It also changes how the owner works: instances in the `default` project are not visible from the restricted one, the project keeps its own images and profiles, and `incus admin` needs `sudo`. `mise run vm-incus` uses the default project today.
 
-Not done yet. It touches the firewall zone, the profile and `setup.sh` together, so it belongs with the rest of this plan.
+Not done yet. It touches the firewall zone, the profile and `setup.sh` together, so it belongs with the rest of this plan. In the meantime (2026-11-25) `setup.sh` no longer puts anyone in `incus-admin`, and took out once the users earlier images added: Incus is used with `sudo` until then.
 
 ## 9. Repo changes to make after validation
 
