@@ -1,6 +1,6 @@
 # Secrets, AI agents and dev containers
 
-**Status: plan, researched on 2026-11-08, partly in the image.** The firewall for Incus instances ships (sections 4.1 and 9), and since 2026-11-26 nobody is put in `incus-admin` (section 8.2); the rest is not implemented. Parts of it were tested in a VM on 2026-11-21 (section 8.1). It collects what the owner and Claude worked out that day; the XPS arrived on 2026-11-24. Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
+**Status: plan, researched on 2026-11-08, partly in the image.** The firewall for Incus instances ships (sections 4.1 and 9), and since 2026-11-26 nobody is put in `incus-admin` (section 8.2); the rest is not implemented. Parts of it were tested in a VM on 2026-11-21 (section 8.1), and the first real project container ran on the XPS on 2026-11-26 (section 8.3). It collects what the owner and Claude worked out that day; the XPS arrived on 2026-11-24. Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
 
 Drafts that go with this document live in [`devbox/`](../devbox/). They are not used by any image, task or workflow yet. The image they build was tested in a VM on 2026-11-21.
 
@@ -251,7 +251,7 @@ An unprivileged container (Incus's default) sees only its own filesystem plus an
 |---|---|
 | Network to the host | Make `katze-incus` accept only DHCP and DNS from `incusbr0` instead of everything. firewalld and Incus have a history of breaking container internet when the bridge is not trusted, so test that instances still reach the internet |
 | Network to other projects | Instances on `incusbr0` reach each other directly, without passing through the host's firewall. `security.port_isolation=true` on the NIC stops that, and `devbox/profile.yaml` sets it. An instance launched without the `devbox` profile is not isolated |
-| Shared folder | Mount only the project's own folder, never `~/src`. Better: clone inside the container and edit through Zed's SSH remote. If mounted, read `git diff`, especially `.git/hooks`, `mise.toml` and `package.json`, before running anything from it on the host, and never `mise trust` an unread change |
+| Shared folder | Mount only the project's own folder, never `~/src`. Snapshots do not cover it (section 8.3). Better: clone inside the container and edit through Zed's SSH remote. If mounted, read `git diff`, especially `.git/hooks`, `mise.toml` and `package.json`, before running anything from it on the host, and never `mise trust` an unread change |
 | Kernel | Keep containers unprivileged (never `security.privileged=true`). Use `--vm` for the most sensitive work |
 | Other bridges | Do not mount the Wayland, PipeWire, `ssh-agent`, `podman.sock` or Incus sockets into a project container |
 
@@ -381,12 +381,12 @@ Run in a `mise run vm-up base` VM first, then on the XPS.
    - [ ] `echo $SSH_AUTH_SOCK $SSH_ASKPASS` in a Plasma session
    - [ ] `ssh-add -c` shows a `ksshaskpass` confirmation on `ssh -T git@github.com` and on a signed commit
 3. **Incus and devbox**
-   - [ ] Build `devbox` as in section 5.3, and launch a project container from it
+   - [x] Build `devbox` as in section 5.3, and launch a project container from it (XPS, 2026-11-26)
    - [ ] Inside: rootless `docker compose up` with a database, as the `dev` user
    - [ ] `ssh dev@<name>.incus` from the host, and Zed's SSH remote
    - [ ] Claude Code login inside the container with the paste-code flow
    - [x] Network: the container reached host ports, then `katze-incus` was tightened; it still reaches the internet but not the host (VM, 2026-11-21 and 2026-11-24)
-   - [ ] Whether the container reaches the LAN and the tailnet
+   - [x] Whether the container reaches the LAN and the tailnet: it does not, refused at once (XPS, IPv4, 2026-11-26)
    - [ ] The same with `--vm`
 4. **Project credentials** (section 3.8)
    - [ ] `put-parameter` with a leading space stays out of `~/.zsh_history`
@@ -434,7 +434,7 @@ Run by Claude over SSH in the `xps16-da16260` test VM (`mise run vm-up`, kernel 
 **Found:**
 - **A locked wallet returns nothing, silently.** After locking `kdewallet` through Secret Service, `secret-tool lookup` printed nothing and exited 0, with no prompt. With `credential_process`, the AWS CLI would get empty output instead of a request to unlock. Closing the wallet on idle (section 3.2) needs this solved first.
 - `<name>.incus` does not resolve on the host until the `resolvectl` step in section 5.4, which was not tried.
-- The first `incus launch images:fedora/45/cloud` waited about 7 minutes before creating the instance; later ones were immediate. IPv6 does not work in this VM (`curl -6` times out), which may be the cause. Unconfirmed.
+- The first `incus launch images:fedora/45/cloud` waited about 7 minutes before creating the instance; later ones were immediate. IPv6 does not work in this VM (`curl -6` times out), which may be the cause. On the XPS it took 14 s (section 8.3).
 - cloud-init reports `Failed to set the hostname` in the build container. The clones get the right hostname.
 - A running container came back by itself after the host rebooted, with `incus-startup.service` disabled. Incus restores the last state when its daemon starts.
 
@@ -465,6 +465,33 @@ It also changes how the owner works: instances in the `default` project are not 
 
 Not done yet. It touches the firewall zone, the profile and `setup.sh` together, so it belongs with the rest of this plan. In the meantime (2026-11-25) `setup.sh` no longer puts anyone in `incus-admin`, and took out once the users earlier images added: Incus is used with `sudo` until then.
 
+### 8.3 First project container on the XPS (2026-11-26)
+
+The first real project, `tf`, a GitLab workspace with 17 submodules and a Docker Compose stack, was set up on the XPS (16 CPUs, 62 GiB, `/var/home` on btrfs over LUKS, SELinux enforcing). Incus ran with `sudo`, typed by the owner in Konsole; the agent worked on the host without `sudo`. The scripts used, drafts of the future `mise run devbox` task, are in `output/devbox-tf/` on the XPS (not in the repo): one builds the image as in section 5.3, the other creates the project container as described below.
+
+**Works:**
+- **Incus had never been initialised on the XPS.** The first `incus profile create devbox` failed with `Failed to load network "incusbr0" ... Network not found`. After `incus admin init` (btrfs pool under `/var/lib/incus`, bridge `incusbr0`) everything went on. The interactive init offers IPv6 `auto` for the bridge; it was set to `none` (`incus network set incusbr0 ipv6.address none`), since `katze-incus-private` was only tested with IPv4. `incusbr0` landed in the `katze-incus` zone.
+- **The `devbox` image built in 109 s**, 732 MiB (Fedora 45 cloud of 2026-11-17). The first launch of `images:fedora/45/cloud` took 14 s, not the 7 minutes of the VM. cloud-init finished with no errors, and `Failed to set the hostname` did not appear.
+- **A project container with larger limits set on the instance only,** so the `devbox` profile stays at 8 CPUs and 16 GiB for other projects: `limits.memory=24GiB`, `limits.cpu=10` and a 150 GiB root disk (`incus config device override <name> root size=150GiB`).
+- **The project folder shared from the host** as a `disk` device with `shift=true`, **at the same absolute path inside**, so git worktrees and Claude Code's per-path project folders match on both sides. A file created by `dev` inside belongs to `1000:1000` on the host, and SELinux enforcing blocked nothing. The parent directories had to be created and given to `dev` inside first.
+- **`proxy` devices** (`listen=tcp:127.0.0.1:<port> connect=tcp:127.0.0.1:<port>`), one per development port (10 here), for projects whose URLs say `localhost` (CORS, URLs the backend generates): the host's browser keeps using `localhost:<port>`. They were added without error; not yet tried with a server listening inside.
+- `loginctl enable-linger dev`, so rootless Podman and the stack keep running with no SSH session open.
+- SSH from the host to `dev@<IP>` with the owner's new key.
+- **Network, first test on real hardware:** the container reaches the internet, and the host's bridge address, the LAN router and the host's tailnet address are refused at once (`curl` exit 7). IPv4 only.
+- **Podman inside:** `docker compose` (Compose 5.7.1, as Podman's external provider), the overlay driver, the `cpu`, `memory` and `pids` controllers delegated, and `--memory 256m --cpus 1` applied (`memory.max=268435456`, `cpu.max=100000 100000`). Docker Hub images download.
+- **Git over HTTPS** with a new GitLab token limited to `read_repository`, kept with `credential.helper store` inside: every submodule, including nested ones, cloned.
+
+**Found:**
+1. **`mknod: file exists` while unpacking an image** (`mongodb/mongodb-atlas-local:8.0`, during a `docker compose up` that pulled five images in parallel): `unpacking failed (... mknod /usr/lib/.build-id/...: file exists)`. Setting `security.syscalls.intercept.mknod=false`, restarting the container and `podman system reset --force` fixed it, but which of them did is not isolated: the interception, or a race or a corrupt layer. To test: in a new container with interception on, pull that image alone; in another with `intercept.mknod` and `intercept.setxattr` both off, rootless `docker run` and Compose with a volume. **If Podman works without interception, one of the two gaps in section 8.2 goes away** (restricted projects forbid it) and the `devbox` profile can drop it.
+2. **Short image names:** Fedora's `000-shortnames.conf` resolves `node`, `alpine`, `redis` and others; for the rest, `/etc/containers/registries.conf.d/99-dockerhub.conf` with `unqualified-search-registries = ["docker.io"]` and `short-name-mode = "permissive"` was added. A candidate for `cloud-init.yaml`.
+3. **The `>>>> Executing external compose provider` notice** goes away with `[engine] compose_warning_logs = false` in `~/.config/containers/containers.conf`, as `60-katze-compose.conf` does on the host. A candidate for `cloud-init.yaml`.
+4. **Time zone:** the container runs in UTC and the host in the owner's zone. `timezone:` in `cloud-init.yaml`, or `timedatectl set-timezone` when the project is created.
+5. **Secrets in a shared folder:** `.env` is a symlink to `/home/dev/.secrets/<project>.env`, which leads nowhere on the host. Files a `Dockerfile` copies from the build context (`COPY .npmrc*`) cannot be symlinks, since the builder does not follow links out of the context, so they stay real files that the host can read. To hand the container a secret without leaving it on the host's disk: `ssh dev@<IP> 'umask 077; cat > ~/.secrets/<file>' < <file> && rm <file>`.
+6. **The host's git hooks** (proposed, not applied): `~/.config/git/devbox-no-hooks` with `[core] hooksPath = /dev/null`, included from the host's `~/.gitconfig` with `includeIf "gitdir:<project path>/"`. Nothing the agent writes in `.git/hooks` then runs on the host, and hooks still work inside the container.
+7. **Snapshots do not include the shared `disk` device:** `incus snapshot restore` does not undo changes to the code.
+
+**Not tested yet:** the Claude Code login inside, Zed's SSH remote, the real Compose stack and its memory use, the `localhost` proxies with a real server, `<name>.incus` through `resolvectl`, and `--vm`.
+
 ## 9. Repo changes to make after validation
 
 Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
@@ -474,7 +501,8 @@ Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
 - A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
 - A short example of the `dev` task from section 3.8 in `README.md`, so new projects copy it.
-- A `mise run devbox <name>` task (and one to rebuild the image) from the files in `devbox/`.
+- A `mise run devbox <name>` task (and one to rebuild the image) from the files in `devbox/` and the XPS scripts of section 8.3: options for a mounted folder at the same path, ports, memory and CPUs; `shift=true`, `localhost` proxies, linger and a `clean` snapshot.
+- From section 8.3: in `devbox/cloud-init.yaml`, the Docker Hub search rule, Compose's notice off and the time zone; in `devbox/profile.yaml`, drop `intercept.mknod` and `setxattr` if finding 1 is confirmed. `README.md` already says to answer `none` for the bridge's IPv6 in `incus admin init`.
 - Permanent `.incus` name resolution on the host, for example a `systemd-networkd` drop-in or a NetworkManager dispatcher script for `incusbr0`.
 - `README.md`: the user-facing steps from sections 3 and 5, once tested.
 
