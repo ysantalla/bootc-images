@@ -46,7 +46,7 @@ jobs:
             echo "Only documentation changed: the image build is skipped."
           fi
       - name: shellcheck
-        run: shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/katze/*.sh
+        run: shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/katze/*.sh images/base/system_files/usr/bin/zed
       - name: TOML
         run: python3 -c "import tomllib; tomllib.load(open('mise.toml','rb')); tomllib.load(open('bib/config.example.toml','rb'))"
       - name: The image ships the published signing key
