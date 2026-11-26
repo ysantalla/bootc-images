@@ -44,6 +44,7 @@
 #define MATCHES 2 // frames in a row that must match
 #define KEEP 20 // registered frames at most
 #define ADD 5 // frames registered each time
+#define CLEAR 0.85f // YuNet's score for a frame to register: infrared faces score about 0.9
 
 struct face {
 	float score, x, y, w, h;
@@ -327,7 +328,7 @@ static int add(uid_t uid)
 	struct face face;
 	while (added < ADD && next_frame(camera, frame)) {
 		// Every third frame with a clear face, so the frames differ a little
-		if (frames++ % 3 || !detect(frame, &face) || face.score < 0.9f)
+		if (frames++ % 3 || !detect(frame, &face) || face.score < CLEAR)
 			continue;
 		describe(frame, &face, known + (size_t)(n + added) * DIM);
 		added++;
