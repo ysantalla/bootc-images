@@ -98,6 +98,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── tests/xps16-vrr.sh                 on the XPS: one boot with VRR through an edited EDID (results in docs/status)
 ├── tests/theme-screenshots.sh         what mise run theme:screenshots runs in the test VM
 ├── docs/
+│   ├── how-it-works.md                the whole system with diagrams: layers, sources, CI to machine, updates, glossary
 │   ├── status/                        what was tested and what was not, one file per subject
 │   ├── xps16-plan.md                  the owner's plan for the XPS (partly done)
 │   ├── xps16-checklist.md             checks to run on the XPS
