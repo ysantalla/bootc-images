@@ -40,7 +40,7 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 | Image | FROM | What it adds |
 |---|---|---|
 | `base` | `ghcr.io/ublue-os/kinoite-main:45` | Everything above. Hardware-agnostic. Codecs and Podman come from kinoite-main. No Docker engine, no libvirt, no Toolbx or Distrobox |
-| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, fixes for thermald and Dell's power profiles, and tools to measure battery, temperature and GPU use |
+| `xps16-da16260` | `ghcr.io/ysantalla/base:45` | Dell XPS 16 (2026) DA16260: Intel video flags for the browser launchers, a pinned VA-API driver for the Arc B390, fixes for thermald and Dell's power profiles, tools to measure battery, temperature and GPU use, the internal camera through PipeWire, voice dictation in Spanish on the NPU or the GPU, and face unlock on the lock screen with the infrared camera |
 
 Each machine gets its own image named after its model, containing only what that hardware needs.
 
@@ -266,6 +266,46 @@ The image's menu launchers already pass `--enable-features=AcceleratedVideoEncod
 ```bash
 systemctl --user status katze-camera           # "camera on" and "camera off" in its log
 ```
+
+### Voice dictation (xps16-da16260 only)
+
+Spanish speech to text, on the NPU (or the GPU, or the CPU when neither is there), pasted where the cursor is. Nothing that is said leaves the machine.
+
+Once per user, without sudo, which downloads the model (790 MB, checked by sha256) and compiles it for the NPU, about 2.5 minutes the first time:
+
+```bash
+/usr/libexec/katze/dictation-setup.sh          # the NPU
+/usr/libexec/katze/dictation-setup.sh gpu      # or the GPU, faster to load (0.3 s against 0.9 s), about the same to transcribe
+```
+
+Then **Meta+H** starts recording, and **Meta+H** again stops it and pastes the text. The clipboard gets back what it had.
+
+```bash
+systemctl --user status katze-dictation        # the service, which waits for the model
+voxtype record toggle                          # what Meta+H runs
+```
+
+Settings are in `/etc/voxtype/config.toml`; a copy in `~/.config/voxtype/config.toml` replaces it (`dictation-setup.sh gpu` makes one). Measured on this machine with read Spanish: the model got 2 words wrong out of 154, and took about 0.6 s per sentence on the NPU, 0.35 s on the GPU and 3 s on the CPU.
+
+### Face unlock (xps16-da16260 only)
+
+The lock screen unlocks when it sees a registered face through the infrared camera, next to the password, which always keeps working. Login, sudo and the disk's PIN still ask for theirs. Nothing is kept but 128 numbers per registered frame, in `/var/lib/katze/face`, readable by root only.
+
+```bash
+sudo /usr/libexec/katze/katze-face add $USER       # look at the screen for a few seconds; again to add more (glasses, other light), up to 20 frames
+sudo /usr/libexec/katze/katze-face test $USER      # how close each frame comes (0 to 1); two in a row at 0.5 or more unlock
+sudo /usr/libexec/katze/katze-face remove $USER    # forget the face: the lock screen stops looking
+```
+
+Then lock with **Meta+L**, move the mouse so the prompt shows, and look at the camera: it unlocks in about a second. The camera is only on while the prompt is shown, a few seconds at a time.
+
+```bash
+journalctl -u 'katze-face@*' -u 'katze-ir-camera@*' -n 20     # "uid 1000: yes", "no", or "none" with no face registered
+```
+
+How it works: the lock screen runs as the user and cannot read the infrared camera, which only root can start (the driver checks for CAP_SYS_RAWIO). Its second way in, `/etc/pam.d/kde-fingerprint`, runs `katze-face-check`, which asks `katze-face.socket`. That service is root with no capabilities, reads the camera for up to 5 seconds through `katze-ir-camera.socket`, and answers yes or no only about the account that asked. It finds the face with YuNet and compares it with SFace, both from opencv_zoo, on OpenVINO and the CPU.
+
+Limits: tested on the owner's face only. It has not been tried with other people, a printed photo, in the dark, with glasses or after a suspend, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
 
 ### Power limits
 

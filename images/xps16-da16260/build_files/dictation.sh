@@ -24,12 +24,12 @@ echo "${OPENVINO_SHA256}  $work/openvino.tar.gz" | sha256sum -c -
 mkdir "$work/sdk"
 tar -xzf "$work/openvino.tar.gz" -C "$work/sdk" --strip-components=1 --no-same-owner
 
-# Without the other model formats, the headers and the samples
+# Without the other model formats (but ONNX, for face unlock), the headers and the samples
 to=/usr/lib/openvino-genai/runtime/lib/intel64
 from=$work/sdk/runtime/lib/intel64
 tbb=$work/sdk/runtime/3rdparty/tbb/lib
 mkdir -p "$to" /usr/share/licenses/openvino-genai
-for lib in openvino openvino_c openvino_genai openvino_genai_c openvino_ir_frontend; do
+for lib in openvino openvino_c openvino_genai openvino_genai_c openvino_ir_frontend openvino_onnx_frontend; do
   # The soname: libopenvino.so.2641 and the like
   soname=$(basename "$(find "$from" -name "lib$lib.so.*" | awk '{ print length, $0 }' | sort -n | head -1 | cut -d' ' -f2-)")
   install -m0755 "$from/$soname" "$to/$soname"

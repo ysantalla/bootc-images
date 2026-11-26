@@ -1,0 +1,14 @@
+[Unit]
+Description=Katze: face unlock with the infrared camera
+ConditionPathExists=/sys/class/leds/HIMX1092_00::ir_flood_led
+
+[Socket]
+ListenStream=/run/katze-face.sock
+# Anyone may ask, and only for themselves: katze-face reads who is asking from the socket
+SocketMode=0666
+Accept=yes
+# The camera has one reader at a time
+MaxConnections=1
+
+[Install]
+WantedBy=sockets.target

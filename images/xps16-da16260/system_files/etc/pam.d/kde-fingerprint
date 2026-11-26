@@ -1,0 +1,21 @@
+#%PAM-1.0
+# Katze: the lock screen tries this next to the password, while the prompt is shown, and here it is the face
+# (katze-face), not Fedora's fingerprint stack: this machine's reader (Synaptics 06cb:0701) has no libfprint driver.
+# A user with no face registered: unavailable at once, so the lock screen stops asking.
+auth        [success=1 default=ignore] pam_exec.so quiet /usr/libexec/katze/katze-face-check enrolled
+auth        requisite     pam_debug.so auth=authinfo_unavail
+auth        sufficient    pam_exec.so quiet /usr/libexec/katze/katze-face-check
+auth        requisite     pam_deny.so
+
+account     required      pam_nologin.so
+account     include       fingerprint-auth
+
+password    include       fingerprint-auth
+
+session     required      pam_selinux.so close
+session     required      pam_loginuid.so
+session     required      pam_selinux.so open
+session     optional      pam_keyinit.so force revoke
+session     required      pam_namespace.so
+session     include       fingerprint-auth
+session     include       postlogin

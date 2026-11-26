@@ -16,6 +16,13 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
       -o /usr/libexec/ir-camera /ctx/ir-camera/ir-camera.c && \
     /usr/libexec/ir-camera --self-test
 
+# Face unlock: katze-face against the OpenVINO that dictation.sh installs, and its models (face/build.sh)
+FROM ${BASE_IMAGE}:${FEDORA_VERSION} AS face
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=tmpfs,dst=/tmp \
+    dnf5 -y install gcc && /ctx/face/build.sh
+
 FROM ${BASE_IMAGE}:${FEDORA_VERSION}
 
 # Our own version, so `bootc status` and the update notification show this build
@@ -27,6 +34,9 @@ LABEL org.opencontainers.image.version="${FEDORA_VERSION}.${BUILD_DATE}"
 # This machine's files: scripts in /usr/libexec, units in /usr/lib/systemd, tuned profiles in /usr/lib/tuned
 COPY system_files/ /
 COPY --from=build /usr/libexec/ir-camera /usr/libexec/katze/ir-camera
+COPY --from=face /out/katze-face /out/katze-face-check /usr/libexec/katze/
+COPY --from=face /out/models/ /usr/share/katze/face/
+COPY --from=face /out/licenses/ /usr/share/licenses/katze-face/
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \

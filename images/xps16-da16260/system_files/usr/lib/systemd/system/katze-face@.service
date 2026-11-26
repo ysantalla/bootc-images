@@ -1,0 +1,36 @@
+[Unit]
+Description=Katze: look for the face of whoever asked
+CollectMode=inactive-or-failed
+Wants=katze-ir-camera.socket
+After=katze-ir-camera.socket
+
+[Service]
+ExecStart=/usr/libexec/katze/katze-face serve
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+RuntimeMaxSec=20
+
+# Root only to reach the camera's socket and read /var/lib/katze/face, with no capability at all
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# Not MemoryDenyWriteExecute: OpenVINO's CPU plugin compiles code as it runs
+SystemCallArchitectures=native
+SystemCallFilter=@system-service

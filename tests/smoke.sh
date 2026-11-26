@@ -394,6 +394,18 @@ case "$name" in
     ok "the infrared camera's reader passes its self-test" /usr/libexec/katze/ir-camera --self-test
     ok "only root can ask for the infrared camera" grep -qx 'SocketMode=0600' /usr/lib/systemd/system/katze-ir-camera.socket
     ok "the infrared camera's units are valid" systemd-analyze verify /usr/lib/systemd/system/katze-ir-camera.socket
+    ok "face unlock passes its self-test, with the image's OpenVINO" /usr/libexec/katze/katze-face --self-test
+    ok "face unlock's units are valid" systemd-analyze verify /usr/lib/systemd/system/katze-face.socket
+    ok "face unlock and its camera are enabled" test -L /etc/systemd/system/sockets.target.wants/katze-face.socket -a -L /etc/systemd/system/sockets.target.wants/katze-ir-camera.socket
+    ok "anyone may ask for their own face" grep -qx 'SocketMode=0666' /usr/lib/systemd/system/katze-face.socket
+    ok "the lock screen asks for the face" grep -q 'pam_exec.so quiet /usr/libexec/katze/katze-face-check$' /etc/pam.d/kde-fingerprint
+    ok "pam_exec is there" test -f /usr/lib64/security/pam_exec.so
+    if grep -q '"(or look at the camera)"' /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml; then
+      echo "ok   the lock screen says to look at the camera"
+    else
+      echo "note: the lock screen still mentions the fingerprint reader (build.sh did not find its text)"
+    fi
+    ok "katze-face-check refuses without PAM_USER" sh -c '! /usr/libexec/katze/katze-face-check enrolled'
     ok "the camera relay is enabled" test -L /etc/systemd/user/pipewire.service.wants/katze-camera.service
     ok "the camera relay finds its libraries" camera_loads
     ok "WirePlumber leaves the camera to the relay" grep -q 'monitor.libcamera = disabled' /usr/share/wireplumber/wireplumber.conf.d/60-katze-camera.conf
