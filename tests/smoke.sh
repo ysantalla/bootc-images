@@ -185,7 +185,7 @@ no_exec_has() { [[ -f "$1" ]] && ! grep '^Exec=' "$1" | grep -qF -- "$2"; }
 LAUNCHERS=(google-chrome com.google.Chrome brave-origin com.brave.Origin)
 ENCODE=--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL
 
-for pkg in incus okular kcalc haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq; do
+for pkg in incus okular kcalc haruna podman-docker docker-compose zsh yakuake fastfetch firefox google-chrome-stable brave-origin tailscale jq nvtop; do
   ok "package $pkg" rpm -q "$pkg"
 done
 ok "firewall defaults to katze-laptop" grep -qx 'DefaultZone=katze-laptop' /etc/firewalld/firewalld.conf
@@ -201,7 +201,7 @@ ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root 
 ok "the zed command runs the Zed Flatpak" grep -qF /var/lib/flatpak/exports/bin/dev.zed.Zed /usr/bin/zed
 ok "the zed command is executable" test -x /usr/bin/zed
 
-for pkg in toolbox distrobox nvtop moby-engine docker-cli; do
+for pkg in toolbox distrobox moby-engine docker-cli; do
   ok "package $pkg is absent" not rpm -q "$pkg"
 done
 

@@ -17,9 +17,6 @@ test -f /usr/share/applications/org.kde.koko.desktop
 # Not used here: Incus covers containers (also removes the Toolbx login message)
 dnf5 -y remove toolbox distrobox
 
-# From kinoite-main, and the owner does not use it
-dnf5 -y remove nvtop
-
 # 2. Native Brave Origin (official RPM, with the /opt workaround)
 /ctx/brave.sh
 
