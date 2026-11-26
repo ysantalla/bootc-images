@@ -101,6 +101,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   ├── xps16-plan.md                  the owner's plan for the XPS (partly done)
 │   ├── xps16-checklist.md             checks to run on the XPS
 │   ├── vm-viewers.md                  VM viewer research and the KRDC plan
+│   ├── local-llm.md                   local language models on the XPS: findings and options (not implemented)
 │   ├── secrets-and-devbox.md          plan for secrets, AI agents and per-project dev containers (firewall part done)
 │   └── screenshots/                   the README's pictures (mise run theme:screenshots)
 ├── devbox/                            drafts for that plan: cloud-init and Incus profile of the dev image
@@ -444,6 +445,7 @@ Implement these one at a time, each in its own commit. Items 1 to 3 are for `xps
 3. **IR face unlock** (done, 2026-11-26). Our trimmed `hm1092` driver, built and signed with the owner's MOK in CI (`module.yml`), the root-only reader `ir-camera`, and `katze-face` on OpenVINO, on the lock screen only (Howdy was dropped: not in Fedora, needs dlib). Works from the published image, also after a suspend. Open: other people, a photo, the dark, glasses, and the IPU7 buffer check from the security review (section 10.1). The IPU7 webcam and Intel ISH have no plan. **Ask before changing anything around the module key:** it touches Secure Boot and MOK.
 4. **Secrets and per-project dev containers** (partly done). Researched on 2026-11-08: `docs/secrets-and-devbox.md` has the decisions, the test plan and the repo changes. Done: the `katze-incus` zone with `katze-incus-out` and `katze-incus-private` (instances reach the internet, not the host, the LAN or the tailnet), and nobody in `incus-admin` (Incus with `sudo`). Not done: the `devbox` image and task, the restricted Incus project per user (its section 8.2), and the secrets audit task.
 5. **Rechunk `base`** (done). `reusable-build.yml` runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers: 201 layers, the same digest twice, and a VM `bootc switch` and rollback worked (2026-11-07). Before it, every build published one new ~675 MB layer for `base`. Machine images are not rechunked: they add their own layer on top. Still to measure: the real download between two daily builds.
+6. **Local language models** (idea, noted on 2026-11-26). xps-fedora runs gpt-oss-20b and Qwen3-30B-A3B on the Arc GPU through Vulkan; the GPU can use 3/4 of the RAM, about 48 GB here. The favoured way is Ollama's own container under rootless Podman, not an image change. Findings, options and the test to run first: `docs/local-llm.md`.
 
 ### 10.1 Audits
 
