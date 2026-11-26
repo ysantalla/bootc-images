@@ -32,6 +32,7 @@ mkdir "$work/sdk"
 tar -xzf "$work/openvino.tar.gz" -C "$work/sdk" --strip-components=1 --no-same-owner
 lib=$work/sdk/runtime/lib/intel64
 
+# shellcheck disable=SC2054 # the commas belong to the linker options
 FLAGS=(-std=gnu17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE -pie -Wl,-z,relro,-z,now)
 # The image has the SDK's libraries here (dictation.sh). RPATH, not RUNPATH, which libopenvino_c's own
 # libraries would not search
