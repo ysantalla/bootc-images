@@ -74,14 +74,14 @@ It is one person's setup, published so that it can be read and copied from, not 
   workflows/reusable-build.yml  verify the FROM image + build + test + push to GHCR + cosign signature and verify
   workflows/module.yml       the XPS's infrared camera driver: build without secrets, then sign
   workflows/pins.yml         weekly: an issue when a pinned download has a newer release
-  workflows/kernel-watch.yml weekly: an issue when a kernel change could give the XPS's panel VRR
+  workflows/kernel-watch.yml weekly: an issue when the kernel or Fedora moves on something the XPS waits for
   workflows/prune.yml        weekly: delete builds older than a month from GHCR
   scripts/                   prune-registry.py, sign-module.py
   keys/ublue-os.pub          Universal Blue's public key, to verify kinoite-main
 tests/
   smoke.sh                   checks each built image from the inside, before it is published
   check-pins.sh              what pins.yml runs
-  check-kernel-vrr.sh        what kernel-watch.yml runs
+  check-kernel.sh            what kernel-watch.yml runs
   theme-screenshots.sh       what mise run theme:screenshots runs
   xps16-vrr.sh               on the XPS: one boot with VRR through an edited EDID, and its checks
 images/

@@ -1,6 +1,6 @@
 # hm1092: driver of the infrared camera (Himax HM1092)
 
-The kernel finds the sensor since 7.3 but has no driver for it. This is the one posted to linux-media, version 8, with five changes of ours. It goes away when Fedora's kernel has one. What follows is the audit of 2026-11-25.
+The kernel finds the sensor since 7.3 but has no driver for it. This is the one posted to linux-media, version 8, with five changes of ours. It goes away when Fedora's kernel has one: `kernel-watch.yml` opens an issue when one lands upstream. What follows is the audit of 2026-11-25.
 
 Scope: the whole file (sha256 7727a1d6...1c7127). The register tables cannot be explained line by line: they come from the Windows driver.
 

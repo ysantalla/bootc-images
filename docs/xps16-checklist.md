@@ -87,10 +87,12 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 - [ ] After a new kernel or libcamera: the picture is still the right way up.
       If Fedora's kernel starts to report the rotation
       (<https://bugzilla.redhat.com/show_bug.cgi?id=2563275>), remove
-      `video-direction` from `camera.py`.
+      `video-direction` from `camera.py`. `kernel-watch.yml` opens an issue
+      when that bug leaves `NEW`.
 - [ ] When Fedora 45 ships kernel 7.4 (expected around January 2027), check
       `CONFIG_VIDEO_INTEL_IPU6_IPU7` and repeat the camera test. The camera is
-      the only reason to retest on 7.4.
+      the only reason to retest on 7.4. `kernel-watch.yml` opens an issue when
+      Fedora 45's updates have it (7.3.5 on 2026-11-25).
 - [ ] Suspend after using the camera: the IPU7 stack is reported to abort it.
 
 ## Decisions for the owner
@@ -109,7 +111,7 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
   image, since `xe` starts in it: about 240 MB more in every daily update
   unless it is built reproducibly, a boot that depends on our own dracut run,
   and an EDID that only fits this LG panel (product 0x07c5). Instead,
-  `tests/check-kernel-vrr.sh` (weekly, `kernel-watch.yml`) looks in master and
+  `tests/check-kernel.sh` (weekly, `kernel-watch.yml`) looks in master and
   drm-tip for the parser reading that block, an EDID quirk for the panel, or
   a new Intel quirk for the DA16260, and opens one issue with the steps.
 - **Speaker equalizer.** The speakers are said to sound weaker than on
@@ -120,7 +122,8 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 Done on 2026-11-25 with our own driver, reader and `katze-face` (README, "Face unlock"), and it unlocked the lock screen with a test kit on the machine. Still to check: other people, a printed photo, the dark, glasses and a suspend. The references it was weighed against:
 
 - The `HIMX1092` entry in `ipu-bridge` is upstream since 7.3. Only the sensor
-  driver is missing.
+  driver is missing: `kernel-watch.yml` opens an issue when `VIDEO_HM1092`
+  shows up in Linux master or the media tree's `next`.
 - xps-fedora: patches `0031` to `0033`, `0038` and `0039`, a relay
   (`ir-relay`) and a udev rule; it uses Gaze.
 - Omarchy pull request 15887 does it with Howdy; the camera lights only after

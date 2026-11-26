@@ -93,7 +93,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── mise.toml                          local tasks + tool versions (cosign)
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
-├── tests/check-pins.sh, check-kernel-vrr.sh  what pins.yml and kernel-watch.yml run
+├── tests/check-pins.sh, check-kernel.sh  what pins.yml and kernel-watch.yml run
 ├── tests/xps16-vrr.sh                 on the XPS: one boot with VRR through an edited EDID (results in docs/status)
 ├── docs/
 │   ├── status/                        what was tested and what was not, one file per subject
@@ -112,7 +112,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
 │       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
-│       ├── kernel-watch.yml           weekly: an issue when a kernel change could give the XPS's panel VRR
+│       ├── kernel-watch.yml           weekly: an issue when the kernel or Fedora moves on something the XPS waits for
 │       ├── module.yml                 the XPS's hm1092 module: build job without secrets, sign job
 │       ├── prune.yml                  weekly: delete builds older than a month from GHCR
 │       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
@@ -287,7 +287,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the versions pinned in `shell.sh` (Starship, Nerd Fonts) and `dictation.sh` (Voxtype, OpenVINO GenAI) with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
-- **`kernel-watch.yml`** runs on Mondays: `tests/check-kernel-vrr.sh` reads Linux master and drm-tip for the EDID parser reading DisplayID's Adaptive-Sync block, an EDID quirk for the XPS's LG panel, or a second Intel quirk for the DA16260, and opens one issue the first time it finds one. It never reopens an issue the owner closed, and changes no file.
+- **`kernel-watch.yml`** runs on Mondays: `tests/check-kernel.sh` looks for what the XPS waits on: VRR on its panel (the EDID parser reading DisplayID's Adaptive-Sync block, an EDID quirk for the LG panel, or a second Intel quirk for the DA16260, in Linux master and drm-tip), a `VIDEO_HM1092` driver in master or the media tree's `next`, Linux 7.4 in Fedora 45's updates, and Fedora bug 2563275 (the camera's rotation) leaving `NEW`. It opens one issue per subject the first time, with the steps to follow, never reopens one the owner closed, and changes no file. A new subject is a key in that script.
 - **`prune.yml`** runs on Mondays and deletes old builds from GHCR with `.github/scripts/prune-registry.py`: dated tags older than 30 days (the newest seven always stay), untagged manifests, and the signatures of what is gone. `latest`, `staging` and the Fedora tag are never touched, nor anything from the last two days. Started by hand it only lists, unless asked to delete.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
