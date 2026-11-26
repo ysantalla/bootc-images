@@ -21,7 +21,7 @@ FROM ${BASE_IMAGE}:${FEDORA_VERSION} AS face
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=tmpfs,dst=/tmp \
-    dnf5 -y install gcc && /ctx/face/build.sh
+    dnf5 -y install gcc systemd-devel && /ctx/face/build.sh
 
 FROM ${BASE_IMAGE}:${FEDORA_VERSION}
 

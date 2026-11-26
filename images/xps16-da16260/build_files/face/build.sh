@@ -37,7 +37,7 @@ FLAGS=(-std=gnu17 -O2 -Wall -Wextra -Werror -fstack-protector-strong -D_FORTIFY_
 # libraries would not search
 gcc "${FLAGS[@]}" -I"$work/sdk/runtime/include" -o /out/katze-face /ctx/face/katze-face.c \
   -L"$lib" -Wl,-rpath-link,"$lib:$work/sdk/runtime/3rdparty/tbb/lib" -Wl,--disable-new-dtags,-rpath,/usr/lib/openvino-genai/runtime/lib/intel64 \
-  -lopenvino_c -lm
+  -lopenvino_c -lsystemd -lm
 gcc "${FLAGS[@]}" -o /out/katze-face-check /ctx/face/katze-face-check.c
 
 # The self-test loads the models from where the image has them
