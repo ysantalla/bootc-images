@@ -44,7 +44,7 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 
 Each machine gets its own image named after its model, containing only what that hardware needs.
 
-It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `CLAUDE.md` explains how it is built, `docs/status/` what has and has not been tested, and `docs/xps16-plan.md` the plan for the XPS.
+It is one person's setup, published so that it can be read and copied from, not a distribution: there is no installer of its own and no support. `docs/how-it-works.md` explains the whole system with diagrams and a glossary, `CLAUDE.md` how it is built, `docs/status/` what has and has not been tested, and `docs/xps16-plan.md` the plan for the XPS.
 
 ## What base includes
 
@@ -131,7 +131,7 @@ images/
       usr/share/kglobalaccel/  Meta+H for dictation
 bib/config.example.toml      user for test VMs
 devbox/                      Incus profile and cloud-init for per-project dev containers
-docs/                        status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
+docs/                        how-it-works.md (overview, diagrams, glossary), status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
 mise.toml                    local tasks + cosign
 ```
 
