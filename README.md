@@ -224,7 +224,7 @@ curl https://mise.run | sh
 echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 ```
 
-In `incus admin init`, accept the defaults, but choose `btrfs` as the storage backend and create the subvolume under `/var/lib/incus` when asked: the disk is btrfs on Kinoite installs and `mise run vm` disks, so instances and snapshots become copy-on-write instead of full copies. Keep the bridge name `incusbr0`, which the `katze-incus` firewall zone is bound to.
+In `incus admin init`, accept the defaults, but choose `btrfs` as the storage backend and create the subvolume under `/var/lib/incus` when asked: the disk is btrfs on Kinoite installs and `mise run vm` disks, so instances and snapshots become copy-on-write instead of full copies. Keep the bridge name `incusbr0`, which the `katze-incus` firewall zone is bound to. Answer `none` for its IPv6 address: the rule that keeps instances out of the local network and the tailnet was only tested with IPv4 (on an existing bridge: `sudo incus network set incusbr0 ipv6.address none`).
 
 Incus runs with `sudo`. The `incus-admin` group would skip it, but that group is root without a password: it controls the daemon, and a privileged container with `/` mounted can change the host. So the image puts nobody in it, and takes out, once, the users that earlier images added. Each user getting a restricted project of their own, without `sudo`, is planned in `docs/secrets-and-devbox.md`, section 8.2.
 
