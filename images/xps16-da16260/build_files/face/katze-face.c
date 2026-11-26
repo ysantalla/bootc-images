@@ -26,7 +26,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#ifndef MODELS // a test build may put them elsewhere
 #define MODELS "/usr/share/katze/face"
+#endif
 #define STATE "/var/lib/katze/face"
 #define CAMERA "/run/katze-ir-camera.sock"
 
