@@ -110,7 +110,7 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 
 ## For the IR face unlock (`xps-ir-face`)
 
-References to audit, never to install from:
+Done on 2026-11-25 with our own driver, reader and `katze-face` (README, "Face unlock"), and it unlocked the lock screen with a test kit on the machine. Still to check: other people, a printed photo, the dark, glasses and a suspend. The references it was weighed against:
 
 - The `HIMX1092` entry in `ipu-bridge` is upstream since 7.3. Only the sensor
   driver is missing.

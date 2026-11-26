@@ -401,7 +401,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 ### Status and plans
 
 - **What was tested and what was not:** `docs/status/`, one file per subject (its `README.md` lists them). Read the subject's file before saying something works, and add to it when something is tested.
-- **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. None of it is implemented.
+- **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. Disk unlock and voice dictation are done; the rest is not implemented.
 - **Checks to run on the XPS:** `docs/xps16-checklist.md`.
 - **VM viewers,** and how to test images on a machine running the image: `docs/vm-viewers.md`.
 
