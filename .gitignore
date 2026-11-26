@@ -4,3 +4,5 @@ cosign.key
 # written by CI before each build
 images/*/system_files/usr/share/katze/changelog
 images/*/build_files/module/
+# Python bytecode, from running the scripts in .github/scripts
+__pycache__/
