@@ -4,7 +4,8 @@
 //   katze-face add <user>       register more of the user's face (root, in a terminal)
 //   katze-face remove <user>    forget it
 //   katze-face test <user>      print how close each frame comes, without unlocking anything
-//   katze-face serve            katze-face@.service: answers "yes", "no" or "none" for the user at the other end of stdin
+//   katze-face serve            katze-face@.service: answers "yes", "no" or "none" for the user at the other end of stdin,
+//                               and "no" without turning the camera on when that user is not the one at the screen
 //   katze-face compare <a.pgm> <b.pgm>...   offline, how close the faces in those pictures are
 //   katze-face --self-test
 //
@@ -24,6 +25,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <systemd/sd-login.h>
 #include <unistd.h>
 
 #ifndef MODELS // a test build may put them elsewhere
@@ -383,17 +385,29 @@ static int look(uid_t uid, int verbose)
 	return row >= MATCHES;
 }
 
+// Whether logind has this user in the foreground of a seat: "active", not "online" (SSH, a user switched
+// away from) or "lingering". Anyone may ask the socket, so only the user at the screen turns the camera on,
+// and another account cannot keep it busy for the lock screen.
+static int at_the_screen(uid_t uid)
+{
+	char *state = NULL;
+	int active = sd_uid_get_state(uid, &state) >= 0 && state && !strcmp(state, "active");
+	free(state);
+	return active;
+}
+
 static int serve(void)
 {
 	struct ucred peer;
 	socklen_t size = sizeof(peer);
 	if (getsockopt(STDIN_FILENO, SOL_SOCKET, SO_PEERCRED, &peer, &size))
 		die("not started from katze-face.socket: %s", strerror(errno));
-	int result = look(peer.uid, 0);
+	int present = at_the_screen(peer.uid);
+	int result = present ? look(peer.uid, 0) : 0;
 	const char *answer = result < 0 ? "none\n" : result ? "yes\n" : "no\n";
 	if (write(STDOUT_FILENO, answer, strlen(answer)) < 0)
 		return 1;
-	fprintf(stderr, "uid %u: %s", (unsigned)peer.uid, answer);
+	fprintf(stderr, "uid %u: %s%s", (unsigned)peer.uid, present ? "" : "not the active session, ", answer);
 	return 0;
 }
 

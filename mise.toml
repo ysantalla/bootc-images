@@ -59,7 +59,8 @@ run = 'mise run disk "${usage_image?}" qcow2'
 description = "Boot the test VM. Creates its throwaway copy only if it is missing"
 usage = '''
 arg "[image]" default="base"
-flag "--gl" help="OpenGL through the host GPU. Video decode stays in software"
+flag "--gl" help="OpenGL through the host GPU, in a QEMU window only. Video decode stays in software"
+flag "--vnc" help="Run in the background with its screen over VNC (mise run vm-view), even where QEMU can open a window"
 '''
 run = '''
 #!/usr/bin/env bash
@@ -80,17 +81,88 @@ if [[ ! -f "$dir/vm-test.qcow2" ]]; then
   qemu-img create -f qcow2 -F qcow2 -b "$PWD/$disk" "$dir/vm-test.qcow2"
   cp /usr/share/edk2/ovmf/OVMF_VARS.fd "$dir/vm-vars.fd"
 fi
-video=(-device virtio-vga,xres=1920,yres=1080 -display gtk,zoom-to-fit=off)
-if [[ "${usage_gl:-false}" == "true" ]]; then
-  video=(-device virtio-vga-gl,xres=1920,yres=1080 -display gtk,gl=on,zoom-to-fit=off)
+rm -f "$dir/vm-monitor.sock"
+args=(-enable-kvm -machine q35 -cpu host -smp 4 -m 4G
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd
+  -drive if=pflash,format=raw,file="$dir/vm-vars.fd"
+  -drive file="$dir/vm-test.qcow2",if=virtio
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22
+  -monitor unix:"$dir/vm-monitor.sock",server,nowait)
+# The image's own QEMU (there for Incus) has neither a window nor PipeWire sound: those are the
+# qemu-ui-gtk and qemu-audio-pipewire packages, which a workstation has and the image does not
+modules=/usr/lib64/qemu
+if [[ -f $modules/audio-pipewire.so ]]; then
+  args+=(-audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0)
 fi
-GDK_BACKEND=x11 GDK_SCALE=1 exec qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 4 -m 4G \
-  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
-  -drive if=pflash,format=raw,file="$dir/vm-vars.fd" \
-  -drive file="$dir/vm-test.qcow2",if=virtio \
-  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
-  -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
-  "${video[@]}"
+if [[ "${usage_vnc:-false}" != "true" && -f $modules/ui-gtk.so ]]; then
+  video=(-device virtio-vga,xres=1920,yres=1080 -display gtk,zoom-to-fit=off)
+  if [[ "${usage_gl:-false}" == "true" ]]; then
+    video=(-device virtio-vga-gl,xres=1920,yres=1080 -display gtk,gl=on,zoom-to-fit=off)
+  fi
+  GDK_BACKEND=x11 GDK_SCALE=1 exec qemu-system-x86_64 "${args[@]}" "${video[@]}"
+fi
+if [[ "${usage_gl:-false}" == "true" ]]; then
+  echo "--gl needs a QEMU window; going on without it" >&2
+fi
+# VNC on this machine only, with a password, so other accounts cannot watch or type
+if [[ ! -s "$dir/vnc-password" ]]; then
+  (umask 077 && head -c 12 /dev/urandom | base64 > "$dir/vnc-password")
+fi
+qemu-system-x86_64 "${args[@]}" -daemonize -pidfile "$dir/vm.pid" -serial file:"$dir/vm-serial.log" \
+  -object secret,id=vncpw,file="$dir/vnc-password" -display none -vnc 127.0.0.1:6,password-secret=vncpw \
+  -device virtio-vga,xres=1920,yres=1080 -device qemu-xhci -device usb-tablet
+echo "Running in the background. Screen: mise run vm-view $usage_image   Off: mise run vm-down $usage_image"
+'''
+
+[tasks.vm-view]
+description = "Show the screen of a test VM that runs with VNC, in KRDC"
+usage = 'arg "[image]" default="base"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dir="output/${usage_image?}"
+[[ -s "$dir/vnc-password" ]] || { echo "No VNC VM here. Run: mise run vm-up $usage_image --vnc" >&2; exit 1; }
+flatpak info org.kde.krdc >/dev/null 2>&1 || { echo "This needs KRDC: flatpak install flathub org.kde.krdc" >&2; exit 1; }
+if wl-copy < "$dir/vnc-password" 2>/dev/null; then
+  echo "The VNC password is on the clipboard, and in $dir/vnc-password"
+else
+  echo "The VNC password is in $dir/vnc-password"
+fi
+# KRDC's Medium quality (lossy) showed QEMU's screen all black once: ask for High
+kwriteconfig6 --file "$HOME/.var/app/org.kde.krdc/config/krdcrc" --group hostpreferences --group vnc://127.0.0.1:5906 --key quality 1
+exec flatpak run org.kde.krdc vnc://127.0.0.1:5906
+'''
+
+[tasks.vm-ssh]
+description = "SSH into the test VM as the user of bib/config.toml. The VM needs sshd on and open: see README"
+usage = '''
+arg "[image]" default="base" help="Only to match the other vm tasks: any running test VM answers on port 2222"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+user=$(python3 -I -c 'import tomllib; print(tomllib.load(open("bib/config.toml", "rb"))["customizations"]["user"][0]["name"])')
+exec ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@127.0.0.1"
+'''
+
+[tasks.vm-down]
+description = "Shut the test VM down cleanly, as its power button would"
+usage = 'arg "[image]" default="base"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+sock="output/${usage_image?}/vm-monitor.sock"
+python3 -I -c '
+import socket, sys
+s = socket.socket(socket.AF_UNIX)
+try:
+    s.connect(sys.argv[1])
+except OSError:
+    print("This VM is not running")
+    sys.exit(0)
+s.sendall(b"system_powerdown\n")
+print("Shutting down. QEMU closes by itself once the VM has finished")
+' "$sock"
 '''
 
 [tasks.vm-reset]
