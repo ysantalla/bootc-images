@@ -128,6 +128,8 @@ if wl-copy < "$dir/vnc-password" 2>/dev/null; then
 else
   echo "The VNC password is in $dir/vnc-password"
 fi
+# KRDC's Medium quality (lossy) showed QEMU's screen all black once: ask for High
+kwriteconfig6 --file "$HOME/.var/app/org.kde.krdc/config/krdcrc" --group hostpreferences --group vnc://127.0.0.1:5906 --key quality 1
 exec flatpak run org.kde.krdc vnc://127.0.0.1:5906
 '''
 
