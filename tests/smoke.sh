@@ -18,6 +18,17 @@ ok() { # ok <description> <command...>
 }
 
 not() { ! "$@"; }
+incus_admin_cleared() { # setup.sh takes wheel users out of incus-admin once, then leaves the group alone
+  local u=katze-smoke ok=0
+  /usr/libexec/katze/setup.sh >/dev/null && rm -f /var/lib/katze/incus-admin-cleared || return 1
+  useradd -M -G wheel,incus-admin "$u" || return 1
+  /usr/libexec/katze/setup.sh >/dev/null &&
+    ! id -nG "$u" | grep -qw incus-admin &&
+    usermod -aG incus-admin "$u" && /usr/libexec/katze/setup.sh >/dev/null &&
+    id -nG "$u" | grep -qw incus-admin || ok=1
+  userdel "$u"
+  return "$ok"
+}
 thermald_waits() { [[ "$(systemctl cat thermald.service 2>/dev/null)" == *"ExecStartPre=/usr/libexec/katze/thermald-wait.sh"* ]]; }
 platform_profile_works() { # with a copy of the two handlers the XPS has
   local dir
@@ -185,6 +196,7 @@ for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7; do
   ok "Incus instances cannot reach $net" incus_kept_out_of "$net"
 done
 ok "the private networks policy runs before the one that accepts" test "$(firewall-offline-cmd --policy=katze-incus-private --get-priority)" -lt "$(firewall-offline-cmd --policy=katze-incus-out --get-priority)"
+ok "setup.sh takes wheel users out of incus-admin, once" incus_admin_cleared
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/katze-flatpak-overrides.conf
 
 for pkg in toolbox distrobox nvtop moby-engine docker-cli; do

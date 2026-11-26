@@ -1,0 +1,57 @@
+name: kernel watch
+
+# The XPS 16 waits on the kernel and Fedora for some things: VRR on its panel, a driver for its infrared
+# sensor, Linux 7.4 for the camera, and a fix for the camera's rotation (tests/check-kernel.sh lists them).
+# Once a week that script looks at Linux master, drm-tip, the media tree, Fedora 45's updates and Fedora's
+# Bugzilla, and this opens one issue per subject the first time it moves. It changes no file, and never
+# reopens an issue the owner closed: each change needs a look by hand anyway.
+on:
+  schedule:
+    - cron: "45 9 * * 1" # Mondays, after pins.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Look for changes
+        run: |
+          set -o pipefail # a failed download must fail the step, not look like "nothing yet"
+          tests/check-kernel.sh | tee found.tsv
+      - name: Open or update one issue per subject
+        run: |
+          cut -f1 found.tsv | sort -u | while read -r key; do
+            TITLE=$(tests/check-kernel.sh title "$key")
+            export TITLE
+            issue=$(gh issue list --state all --search "in:title \"$TITLE\"" --json number,state,title \
+              --jq "map(select(.title == env.TITLE)) | .[0] // empty")
+            if [[ $(jq -r '.state // empty' <<<"$issue") == CLOSED ]]; then
+              echo "$key: the issue was closed by hand; not reopening it."
+              continue
+            fi
+            {
+              echo "\`tests/check-kernel.sh\` found:"
+              echo
+              echo "| Where | What |"
+              echo "|---|---|"
+              awk -F'\t' -v k="$key" '$1 == k { printf "| %s | [%s](%s) |\n", $2, $3, $4 }' found.tsv
+              echo
+              echo "To follow it:"
+              tests/check-kernel.sh steps "$key"
+            } > body.md
+            number=$(jq -r '.number // empty' <<<"$issue")
+            if [[ -n "$number" ]]; then
+              gh issue edit "$number" --body-file body.md
+            else
+              gh issue create --title "$TITLE" --body-file body.md
+            fi
+          done

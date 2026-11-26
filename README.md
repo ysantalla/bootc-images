@@ -69,11 +69,21 @@ It is one person's setup, published so that it can be read and copied from, not 
 ## Layout
 
 ```
-.github/workflows/
-  build.yml                  lint → base → xps16-da16260 (daily, on push, manual)
-  reusable-build.yml         verify the FROM image + build + test + push to GHCR + cosign signature and verify
+.github/
+  workflows/build.yml        lint → base → xps16-da16260 (daily, on push, manual)
+  workflows/reusable-build.yml  verify the FROM image + build + test + push to GHCR + cosign signature and verify
+  workflows/module.yml       the XPS's infrared camera driver: build without secrets, then sign
+  workflows/pins.yml         weekly: an issue when a pinned download has a newer release
+  workflows/kernel-watch.yml weekly: an issue when the kernel or Fedora moves on something the XPS waits for
+  workflows/prune.yml        weekly: delete builds older than a month from GHCR
+  scripts/                   prune-registry.py, sign-module.py
   keys/ublue-os.pub          Universal Blue's public key, to verify kinoite-main
-tests/smoke.sh               checks each built image from the inside, before it is published
+tests/
+  smoke.sh                   checks each built image from the inside, before it is published
+  check-pins.sh              what pins.yml runs
+  check-kernel.sh            what kernel-watch.yml runs
+  theme-screenshots.sh       what mise run theme:screenshots runs
+  xps16-vrr.sh               on the XPS: one boot with VRR through an edited EDID, and its checks
 images/
   base/
     Containerfile
@@ -105,11 +115,19 @@ images/
   xps16-da16260/
     Containerfile
     build_files/
-      build.sh
-      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools
+      build.sh               browser flags, screen timeouts, power profiles, face unlock prompt
+      dictation.sh           Voxtype and the OpenVINO GenAI SDK (pinned, sha256)
+      hm1092.sh, hm1092/     the infrared camera's driver, built and signed by module.yml
+      ir-camera/             the infrared camera's reader, in C
+      face/                  face unlock: katze-face and katze-face-check, in C
+      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools, kernel-tools, intel-npu-driver, intel-opencl
+    system_files/usr/
+      libexec/katze/         camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
+      lib/systemd/           camera relay, dictation, infrared camera and face unlock units, thermald drop-in
+      lib/tuned/profiles/    katze-xps-* power profiles
 bib/config.example.toml      user for test VMs
 devbox/                      Incus profile and cloud-init for per-project dev containers
-docs/                        screenshots, the checklist for the XPS, the plan for secrets and dev containers
+docs/                        status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
 mise.toml                    local tasks + cosign
 ```
 
@@ -186,15 +204,17 @@ mise run vm-reset xps16-da16260      # erases the copy, after asking
 
    If `bootc` is missing, use `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/ysantalla/xps16-da16260:latest`. If it complains about the signature, use `ostree-unverified-registry:` instead of `ostree-image-signed:docker://`.
 
-Log out and back in once so the `incus-admin` group takes effect. Then, the first time:
+Then, the first time:
 
 ```bash
-incus admin init
+sudo incus admin init
 curl https://mise.run | sh
 echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 ```
 
 In `incus admin init`, accept the defaults, but choose `btrfs` as the storage backend and create the subvolume under `/var/lib/incus` when asked: the disk is btrfs on Kinoite installs and `mise run vm` disks, so instances and snapshots become copy-on-write instead of full copies. Keep the bridge name `incusbr0`, which the `katze-incus` firewall zone is bound to.
+
+Incus runs with `sudo`. The `incus-admin` group would skip it, but that group is root without a password: it controls the daemon, and a privileged container with `/` mounted can change the host. So the image puts nobody in it, and takes out, once, the users that earlier images added. Each user getting a restricted project of their own, without `sudo`, is planned in `docs/secrets-and-devbox.md`, section 8.2.
 
 **Avoid `mise run iso` on a machine with data.** That installer may erase the disk without asking (not confirmed in its docs). It also includes the `bib/config.toml` user, and it is built from a local image, so you would have to run `bootc switch` afterwards for updates to work. The 40 GiB disk setting may not be accepted for ISOs; if the build rejects it, remove that block from `bib/config.toml`.
 
@@ -237,8 +257,7 @@ sudo bootc status                              # current image and rollback
 rpm-ostree status                              # no LayeredPackages
 systemctl status katze-setup katze-flatpaks
 systemctl list-timers katze-update.timer
-id -nG                                         # includes incus-admin
-incus list
+sudo incus list                                # Incus needs sudo: see below
 flatpak list --system
 vainfo | grep -E 'iHD|H264|HEVC|AV1'           # Intel hardware only: hardware decode
 ```
@@ -305,7 +324,7 @@ journalctl -u 'katze-face@*' -u 'katze-ir-camera@*' -n 20     # "uid 1000: yes",
 
 How it works: the lock screen runs as the user and cannot read the infrared camera, which only root can start (the driver checks for CAP_SYS_RAWIO). Its second way in, `/etc/pam.d/kde-fingerprint`, runs `katze-face-check`, which asks `katze-face.socket`. That service is root with no capabilities, reads the camera for up to 5 seconds through `katze-ir-camera.socket`, and answers yes or no only about the account that asked. It finds the face with YuNet and compares it with SFace, both from opencv_zoo, on OpenVINO and the CPU.
 
-Limits: tested on the owner's face only. It has not been tried with other people, a printed photo, in the dark, with glasses or after a suspend, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
+Limits: tested on the owner's face only, also right after a suspend. It has not been tried with other people, a printed photo, in the dark or with glasses, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
 
 ### Power limits
 
