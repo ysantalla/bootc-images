@@ -46,6 +46,13 @@ user_enabled() { [[ "$(systemctl --global is-enabled "$1" 2>/dev/null)" == enabl
 compose_is_quiet() { [[ "$(docker compose version 2>&1)" != *"external compose provider"* ]]; }
 zsh_is_clean() { [[ -z "$(HOME=$(mktemp -d) TERM=dumb zsh -ic exit 2>&1)" ]]; }
 # What a program installed per user needs: the login shell that starts Plasma, a terminal and a script.
+# Konsole's Home and End, in normal and application mode
+zsh_home_end() {
+  local keys
+  keys=$(HOME=$(mktemp -d) TERM=dumb zsh -ic 'bindkey "^[[H"; bindkey "^[OH"; bindkey "^[[F"; bindkey "^[OF"' 2>/dev/null)
+  [[ $(grep -c beginning-of-line <<<"$keys") == 2 && $(grep -c end-of-line <<<"$keys") == 2 ]]
+}
+
 # A second zsh must not change the order it inherits.
 zsh_finds_user_programs() {
   local home flags
@@ -234,6 +241,7 @@ ok "docker compose runs without the provider notice" compose_is_quiet
 ok "starship runs" starship --version
 ok "zsh starts without errors" zsh_is_clean
 ok "zsh finds programs in ~/.local/bin" zsh_finds_user_programs
+ok "Home and End move along the line in zsh" zsh_home_end
 ok "Konsole opens our profile" grep -qx 'DefaultProfile=katze.profile' /etc/xdg/konsolerc
 ok "Yakuake starts with the session" test -f /etc/xdg/autostart/org.kde.yakuake.desktop
 ok "our system units are valid" units_are_valid
