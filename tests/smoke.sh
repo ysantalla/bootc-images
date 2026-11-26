@@ -198,6 +198,8 @@ done
 ok "the private networks policy runs before the one that accepts" test "$(firewall-offline-cmd --policy=katze-incus-private --get-priority)" -lt "$(firewall-offline-cmd --policy=katze-incus-out --get-priority)"
 ok "setup.sh takes wheel users out of incus-admin, once" incus_admin_cleared
 ok "Zed uses the desktop's window borders" grep -qF 'dev.zed.Zed 0644 root root - [Environment]\nZED_WINDOW_DECORATIONS=server' /usr/lib/tmpfiles.d/katze-flatpak-overrides.conf
+ok "the zed command runs the Zed Flatpak" grep -qF /var/lib/flatpak/exports/bin/dev.zed.Zed /usr/bin/zed
+ok "the zed command is executable" test -x /usr/bin/zed
 
 for pkg in toolbox distrobox nvtop moby-engine docker-cli; do
   ok "package $pkg is absent" not rpm -q "$pkg"

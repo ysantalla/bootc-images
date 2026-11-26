@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# zed: runs Zed from its Flatpak (dev.zed.Zed), which katze-flatpaks.service
+# installs system-wide from flatpaks.list. Flatpak exports a launcher named
+# after the app ID only, and its directory is not in PATH.
+set -euo pipefail
+
+for launcher in /var/lib/flatpak/exports/bin/dev.zed.Zed \
+                "${XDG_DATA_HOME:-$HOME/.local/share}/flatpak/exports/bin/dev.zed.Zed"; do
+  if [[ -x $launcher ]]; then
+    exec "$launcher" "$@"
+  fi
+done
+
+echo "zed: Zed is not installed yet. katze-flatpaks.service installs it at boot:" >&2
+echo "     journalctl -u katze-flatpaks -b" >&2
+exit 127
