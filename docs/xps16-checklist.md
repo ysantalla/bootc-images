@@ -56,6 +56,9 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
       `dell-laptop` thresholds may only apply when `charge_types` is `Custom`.
 - [x] `gputop` works with `xe`, without root (2026-11-25). `README.md` names
       it. `intel_gpu_top`, said not to support `xe`, was not tried.
+- [x] `nvtop` 3.4.0 finds the Arc B390 on `xe` without root (2026-11-26, from
+      a container): load, clock, video engines and memory. No temperature or
+      power: `xe` registers no hwmon for this integrated GPU.
 
 ## Display
 

@@ -42,3 +42,5 @@ qemu-system-x86-core
 qemu-device-display-virtio-vga
 virtiofsd
 gdisk
+# GPU load, clock, video engines and memory. kinoite-main ships it today; listed so it stays
+nvtop

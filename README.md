@@ -286,7 +286,7 @@ vainfo | grep -E 'iHD|H264|HEVC|AV1'           # Intel hardware only: hardware d
    ```
 
 4. In `chrome://webrtc-internals`, under `outbound-rtp`: `powerEfficientEncoder: true` means hardware, while `libvpx`, `OpenH264` or `libaom` as `encoderImplementation` means CPU.
-5. Repeat in a real call, because each platform picks its own codec. `gputop` shows GPU use per application.
+5. Repeat in a real call, because each platform picks its own codec. `gputop` shows GPU use per application, and `nvtop` the GPU's load, clock, video engines and memory over time.
 
 The image's menu launchers already pass `--enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,WebRtcPipeWireCamera` on this machine. A browser started from a terminal does not get it, so add the flags to the command above. Feature names change between Chrome versions, and the browser wrappers do not read a flags file, so permanent flags go in the `.desktop` file at build time (`build.sh` in the machine image).
 
@@ -360,6 +360,7 @@ sudo bootc upgrade --check     # look for an update without downloading it
 sudo powertop                  # xps16-da16260: what uses the battery (avoid --auto-tune)
 sensors                        # xps16-da16260: temperatures and fans
 gputop                         # xps16-da16260: GPU use per application
+nvtop                          # GPU load, clock, video engines and memory, with graphs
 ```
 
 When `katze-update.timer` downloads an update, a notification shows the version and a **Restart now** button. It never restarts by itself, and it comes back at each login until you restart. The button restarts through Plasma, so apps can ask about unsaved work.
