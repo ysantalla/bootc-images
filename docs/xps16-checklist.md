@@ -28,17 +28,17 @@ X7 358H, from the research of 2026-11-21. Reviewed on 2026-11-26.
 - [x] thermald started with no error in ten boots in a row (2026-11-25 and 26).
 - [ ] One cold boot (from power off, not a restart) with thermald running: the
       `katze-wait-sensors.conf` drop-in is for that case.
-- [ ] The other three power profiles reach both handlers under
-      `/sys/class/platform-profile/` (`katze-xps-performance` does, and
-      `katze-xps-balanced` did with Secure Boot on).
+- [x] Power saver, balanced and performance each reach tuned and both
+      handlers under `/sys/class/platform-profile/` (2026-11-26, on AC).
+- [ ] `katze-xps-balanced-battery`, on battery.
 - [ ] RAPL limits in each `dell-pc` mode, on AC and on battery, for both
       `intel-rapl` and `intel-rapl-mmio`. `mise run power` records them.
       Performance read PL1 41 W and PL2 65 W on AC and on battery (2026-11-25).
 - [ ] Write PL1 and read it again after 1, 15 and 60 s, after a profile change
       and after unplugging: the firmware may overwrite it.
-- [ ] Governor and EPP in each profile (performance and performance in
-      `katze-xps-performance`, 2026-11-26), and one fixed benchmark in Balanced
-      and in Performance. `katze-xps-performance` includes
+- [x] Governor and EPP in each profile (2026-11-26): `powersave` and `power`,
+      `powersave` and `balance_performance`, `performance` and `performance`.
+- [ ] One fixed benchmark in Balanced and in Performance. `katze-xps-performance` includes
       `throughput-performance`, which a Fedora thread ties to a tuned-ppd
       regression of about 10%.
 - [ ] EPP `balance_performance` in `katze-xps-balanced-battery`, with its idle
@@ -75,16 +75,17 @@ X7 358H, from the research of 2026-11-21. Reviewed on 2026-11-26.
       A/B test on an XPS 16 (one 358H, a patched 7.2.15) got a clean 120 Hz
       with `xe.enable_psr=0 xe.enable_panel_replay=0`, and about 20 Hz when
       scrolling with only Panel Replay off.
+- [x] Two ambient light sensors, seen by `iio-sensor-proxy` (2026-11-26).
 - [ ] Refresh rate after a resume, brightness keys over several boots,
-      automatic brightness, and the Copilot key.
+      automatic brightness in use, and the Copilot key.
 - [ ] The screen turning off after 3 minutes on AC and 2 on battery
       (PowerDevil defaults of the machine image).
 
 ## Sound
 
 - [x] One card, `sof-soundwire`; the speakers play (2026-11-26).
-- [ ] The internal microphone picks up sound (it is the default input), a
-      headset, and booting with headphones plugged in (no sound in that case
+- [x] The internal microphone picks up the room: mean -30 dB (2026-11-26).
+- [ ] A headset, and booting with headphones plugged in (no sound in that case
       on an XPS 16, alsa-ucm-conf issue 833). If the microphone is silent, look
       at the BIOS first.
 
@@ -101,10 +102,13 @@ X7 358H, from the research of 2026-11-21. Reviewed on 2026-11-26.
 
 ## Video and applications
 
+- [x] VA-API with ffmpeg: H.264, HEVC and AV1 encode, and H.264, HEVC, VP9
+      and AV1 decode on the video engine; 4K60 AV1 at 373 fps (2026-11-26).
+      Haruna uses the same libraries.
 - [ ] Intel hardware decode and encode in Chrome, AV1 included (steps in
       `README.md`), and whether the browser flags of the machine image are
       needed at all: compare a real video with and without them.
-- [ ] Intel hardware decode in Haruna.
+- [ ] Haruna itself shows hardware decoding (its statistics overlay).
 - [ ] Wayland screen sharing in a real call.
 - [ ] Dictation by hand in Brave, Zed and Slack.
 
