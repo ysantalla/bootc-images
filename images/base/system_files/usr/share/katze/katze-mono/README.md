@@ -73,7 +73,7 @@ size corrections and `[skip]` leaves an application with its original icon.
 - An icon theme is only repainted if its `index.theme` says
   `FollowsColorScheme=true`.
 - Inside the panel and the launcher, the colours come from the Plasma style.
-  A style that ships a `colors` file, as `breeze-custom` does, keeps its own
+  A style that ships a `colors` file, as `breeze-custom` did, keeps its own
   blue whatever the accent is. The icons only follow the accent there with a
   Plasma style that has no `colors` file.
 - After the accent changes, the panel keeps the icons it had drawn until

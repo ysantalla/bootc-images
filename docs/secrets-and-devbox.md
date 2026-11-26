@@ -1,6 +1,6 @@
 # Secrets, AI agents and dev containers
 
-**Status: plan, researched on 2026-11-08. Nothing here is in the image yet.** Parts of it were tested in a VM on 2026-11-21 (section 8.1). It collects what the owner and Claude worked out that day, so the work can resume once the XPS arrives (around 2026-11-24). Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
+**Status: plan, researched on 2026-11-08, partly in the image.** The firewall for Incus instances ships (sections 4.1 and 9), and since 2026-11-26 nobody is put in `incus-admin` (section 8.2); the rest is not implemented. Parts of it were tested in a VM on 2026-11-21 (section 8.1). It collects what the owner and Claude worked out that day; the XPS arrived on 2026-11-24. Validate each part in a VM first (section 8), then on the XPS, and only then move it into the image, README and `CLAUDE.md`.
 
 Drafts that go with this document live in [`devbox/`](../devbox/). They are not used by any image, task or workflow yet. The image they build was tested in a VM on 2026-11-21.
 
@@ -241,7 +241,7 @@ printf '.env\n.env.*\n!.env.example\n*.pem\n*.key\n' >> ~/.config/git/ignore
 
 An unprivileged container (Incus's default) sees only its own filesystem plus any folder mounted into it. It cannot see the host's `~/.aws`, `~/.ssh`, keyring, processes or graphical session. It still has three ways to reach the host:
 
-1. **The network, today fully open to the host.** `katze-incus.xml` sets `target="ACCEPT"` on `incusbr0`, so a container reaches **every port on the host**: development servers, databases of other projects, anything bound to `0.0.0.0`. `katze-laptop` does not apply, since it covers the Wi-Fi. The container probably also reaches the LAN and the tailnet through the host's NAT; untested.
+1. **The network, closed since 2026-11-24.** Until then `katze-incus.xml` set `target="ACCEPT"` on `incusbr0`, so a container reached **every port on the host**: development servers, databases of other projects, anything bound to `0.0.0.0`. Now the zone only gives instances DHCP and DNS, `katze-incus-out` lets them reach other networks, and `katze-incus-private` rejects the LAN and the tailnet first (tested with containers and IPv4 in a VM: `status/incus-and-network.md`).
 2. **A shared folder is a path back.** With `shift=true`, files the agent writes are owned by the host user. Anything the host later runs from that folder runs the agent's code: `.git/hooks/*`, `mise.toml` tasks, `package.json` scripts, a `Makefile`, Zed tasks, `.envrc`. A symlink to `~/.aws/credentials` leads nowhere inside the container, but a host tool that follows it reads the real file.
 3. **The shared kernel.** A kernel bug could allow an escape. `security.nesting=true`, needed for Podman inside, widens that surface a little. An Incus VM (`--vm`) has its own kernel, at the cost of more memory and slower shared folders (virtiofs).
 
@@ -385,7 +385,7 @@ Run in a `mise run vm-up base` VM first, then on the XPS.
    - [ ] Inside: rootless `docker compose up` with a database, as the `dev` user
    - [ ] `ssh dev@<name>.incus` from the host, and Zed's SSH remote
    - [ ] Claude Code login inside the container with the paste-code flow
-   - [ ] Network: confirm the container reaches host ports today, then tighten `katze-incus` and confirm it still reaches the internet but not the host
+   - [x] Network: the container reached host ports, then `katze-incus` was tightened; it still reaches the internet but not the host (VM, 2026-11-21 and 2026-11-24)
    - [ ] Whether the container reaches the LAN and the tailnet
    - [ ] The same with `--vm`
 4. **Project credentials** (section 3.8)
@@ -469,8 +469,8 @@ Not done yet. It touches the firewall zone, the profile and `setup.sh` together,
 
 Each in its own commit, with a `tests/smoke.sh` check where it makes sense:
 
-- `setup.sh` and the firewall: move from `incus-admin` to the `incus` group and `incus-user.socket`, once the two gaps in section 8.2 are closed.
-- `katze-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `katze-incus-out` policy so instances still reach other networks. The files tested in the VM are in section 8.1. Still to test before it ships: an Incus VM (`--vm`), IPv6, and the tailnet.
+- `setup.sh` and the firewall: move to the `incus` group and `incus-user.socket`, once the two gaps in section 8.2 are closed. The first half is done: nobody is put in `incus-admin` since 2026-11-26.
+- ~~`katze-incus.xml`: only DHCP and DNS from `incusbr0`, plus a `katze-incus-out` policy.~~ Done, with `katze-incus-private` for the LAN and the tailnet. Still untested: an Incus VM (`--vm`), IPv6, and a real tailnet.
 - `tests/smoke.sh`: `secret-tool`, `kwallet-query` and `ksshaskpass` exist, so the build fails if upstream drops one.
 - A `mise run secrets-audit` task: flags AWS keys in `~/.aws/credentials`, plaintext `gh` or `glab` tokens, private SSH keys without a passphrase, `.env` files and password-like assignments under `~/src`, and a missing `.env` line in `~/.config/git/ignore`. It runs the inventory from section 3.8, and could run inside project containers too.
 - A short example of the `dev` task from section 3.8 in `README.md`, so new projects copy it.

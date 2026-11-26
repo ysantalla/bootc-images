@@ -14,7 +14,7 @@ The global themes, color schemes, Plasma style, Katze Mono icons, fonts and the 
 - One panel, 56 px thick, with the virtual desktop switcher next to the tray and `scaleIconsToFit`. KWin reports two virtual desktops in two rows.
 - `katze-icons.service` ran at login (1.3 s of CPU) and wrote both themes to the home directory. It ran before `katze-flatpaks.service` finished, four minutes into the first boot.
 - The four Flatpaks installed, and the Slack and ONLYOFFICE launchers were copied to the user's applications.
-- `incus-admin` for the user, no layered packages, `katze-laptop` as the default zone with `incusbr0` in `katze-incus`.
+- `incus-admin` for the user (as images did then; since 2026-11-26 nobody is in it), no layered packages, `katze-laptop` as the default zone with `incusbr0` in `katze-incus`.
 - Failed units: `mcelog.service`, as before, and the user's `grub-boot-success.service` (`grub2-set-bootflag`: "Creating tmpfile failed: Read-only file system"), which is Fedora's and not ours.
 - SSH into the VM needs `sudo firewall-cmd --add-service=ssh` besides enabling `sshd`: the default zone does not let it in.
 

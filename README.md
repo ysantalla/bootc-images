@@ -31,7 +31,7 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 - **Browsers:** Brave Origin and Google Chrome, as native packages.
 - **Development without touching the system:** Incus for containers and virtual machines, and `docker` and `docker compose` running on rootless Podman. Compilers and project tools live in containers, not in the image.
 - **A terminal ready to use:** zsh with suggestions and highlighting, a Starship prompt, a Nerd Font, Konsole and a drop-down Yakuake on F12.
-- **Apps:** Okular, Haruna, and Zed, Slack and ONLYOFFICE as Flatpaks.
+- **Apps:** Okular, Koko for images, Haruna, KCalc, and Zed, Slack and ONLYOFFICE as Flatpaks.
 - **A private network** between your devices with Tailscale, and a firewall that keeps development ports closed on networks you do not trust.
 - **Updates you do not manage:** downloaded every six hours on AC power, announced on the desktop, applied when you restart, and signed.
 
@@ -59,6 +59,8 @@ It is one person's setup, published so that it can be read and copied from, not 
 | Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons that follow the accent color, and a 56 px panel. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
+| Koko | KDE's image viewer, proposed as Gwenview's successor, and the default for images |
+| KCalc | Calculator: `kinoite-main` has none |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile, Yakuake (F12) and `fastfetch`. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
@@ -70,7 +72,7 @@ It is one person's setup, published so that it can be read and copied from, not 
 
 ```
 .github/
-  workflows/build.yml        lint → base → xps16-da16260 (daily, on push, manual)
+  workflows/build.yml        lint → base → module → xps16-da16260 (daily, on push, manual)
   workflows/reusable-build.yml  verify the FROM image + build + test + push to GHCR + cosign signature and verify
   workflows/module.yml       the XPS's infrared camera driver: build without secrets, then sign
   workflows/pins.yml         weekly: an issue when a pinned download has a newer release
@@ -96,7 +98,7 @@ images/
       shell.sh               Starship, Nerd Font and terminal defaults
       plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
       tailscale.sh           Tailscale from its official repo
-      packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
+      packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, KCalc, Koko, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
       usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
       usr/lib/systemd/system/          katze-* services and timer
@@ -107,7 +109,7 @@ images/
       usr/lib/firewalld/policies/      katze-incus-out.xml, katze-incus-private.xml
       usr/share/katze/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-katze-compose.conf
-      usr/share/konsole/               katze.profile
+      usr/share/konsole/               katze.profile, Katze.colorscheme
       usr/share/plasma/desktoptheme/   katze (Plasma style)
       usr/share/plasma/look-and-feel/  katze-dark, katze-light (global themes)
       usr/share/color-schemes/         KatzeDark.colors, KatzeLight.colors
@@ -120,11 +122,13 @@ images/
       hm1092.sh, hm1092/     the infrared camera's driver, built and signed by module.yml
       ir-camera/             the infrared camera's reader, in C
       face/                  face unlock: katze-face and katze-face-check, in C
-      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools, kernel-tools, intel-npu-driver, intel-opencl
-    system_files/usr/
-      libexec/katze/         camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
-      lib/systemd/           camera relay, dictation, infrared camera and face unlock units, thermald drop-in
-      lib/tuned/profiles/    katze-xps-* power profiles
+      packages.txt           VA-API driver, measuring tools, the camera relay's GStreamer pieces, NPU and GPU compute, ydotool
+    system_files/
+      etc/pam.d/, etc/voxtype/  face unlock on the lock screen, dictation settings
+      usr/libexec/katze/     camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
+      usr/lib/systemd/       camera relay, dictation, infrared camera and face unlock units, thermald drop-in
+      usr/lib/tuned/profiles/  katze-xps-* power profiles
+      usr/share/kglobalaccel/  Meta+H for dictation
 bib/config.example.toml      user for test VMs
 devbox/                      Incus profile and cloud-init for per-project dev containers
 docs/                        status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
@@ -145,8 +149,10 @@ git status                        # cosign.pub listed, cosign.key NOT listed
 git commit -m "Initial bootc images"
 
 gh repo create ysantalla/katze-os --public --source . --remote origin
-gh secret set SIGNING_SECRET < cosign.key
-gh secret set COSIGN_PASSWORD        # the password you just chose
+gh api -X PUT repos/ysantalla/katze-os/environments/signing   # then, in Settings > Environments, allow only main
+gh secret set --env signing SIGNING_SECRET < cosign.key
+gh secret set --env signing COSIGN_PASSWORD        # the password you just chose
+# The XPS's module key, if you build hm1092: MODULE_KEY and MODULE_KEY_PASSWORD, also with --env signing
 git push -u origin main
 ```
 
