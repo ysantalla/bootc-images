@@ -106,7 +106,7 @@ make) make_files ;;
 check)
   grep -o 'drm.edid_firmware=[^ ]*' /proc/cmdline || echo "This boot does not use the new EDID"
   # sysfs reports a size of 0, which cmp -s trusts: read it through a pipe
-  cat "$edid" | cmp -s - "$name" && echo "Kernel: has the new EDID" || echo "Kernel: has the panel's own EDID"
+  head -c 4096 "$edid" | cmp -s - "$name" && echo "Kernel: has the new EDID" || echo "Kernel: has the panel's own EDID"
   journalctl -k -b --no-pager -o cat -g 'EDID' | head || true
   kscreen-doctor -o | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/ { name = $3 } /Vrr:/ { print "KWin, " name ": " $0 }'
   ;;
