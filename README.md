@@ -173,16 +173,22 @@ Boot a throwaway copy with QEMU, leaving the built disk untouched, and log in wi
 ```bash
 mise run vm-up xps16-da16260         # boots it, and creates the copy only if it is missing
 mise run vm-up xps16-da16260 --gl    # with OpenGL through the host GPU
+mise run vm-up xps16-da16260 --vnc   # in the background, its screen over VNC
+mise run vm-view xps16-da16260       # that screen, in KRDC
+mise run vm-ssh                      # a shell inside, once sshd is on (see below)
+mise run vm-down xps16-da16260       # shuts it down, as its power button would
 mise run vm-reset xps16-da16260      # erases the copy, after asking
 ```
 
+On a machine running the image, `vm-up` always uses VNC: the image's QEMU, there for Incus, has no window and no PipeWire sound (`qemu-ui-gtk`, `qemu-audio-pipewire`). The screen is on `127.0.0.1:5906` only, with a password in `output/<image>/vnc-password` that `vm-view` puts on the clipboard. KRDC comes from Flathub (`flatpak install flathub org.kde.krdc`).
+
 - **Sharp text on a host with fractional scaling:** `vm-up` sets `GDK_BACKEND=x11 GDK_SCALE=1` so the host does not rescale QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match.
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
-- **Sound:** `vm-up` plays through the host, with no microphone input.
-- **Copying files and text:** run `sudo systemctl enable --now sshd` and `sudo firewall-cmd --add-service=ssh` in the VM (the default firewall zone does not let SSH in, and the second command lasts until the VM restarts), then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
+- **Sound:** `vm-up` plays through the host, with no microphone input, where QEMU has PipeWire sound. Not on a machine running the image.
+- **Copying files and text:** run `sudo systemctl enable --now sshd` and `sudo firewall-cmd --add-service=ssh` in the VM (the default firewall zone does not let SSH in, and the second command lasts until the VM restarts), then `mise run vm-ssh` (or `ssh -p 2222 yasmany@localhost`) and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `katze-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
-- **On a machine already running the image:** `vm-up` does not work there. Use `mise run vm-incus <image>`, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `docs/vm-viewers.md`. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
+- **On a machine already running the image:** `vm-up` runs with VNC, as above. `mise run vm-incus <image>` is the other way, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `docs/vm-viewers.md`. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
 - **What a VM cannot test:** it has no Intel GPU, so `vainfo` fails there on either image. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine

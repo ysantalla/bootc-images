@@ -221,6 +221,7 @@ mise run build base                 # build an image locally
 mise run build xps16-da16260        # builds local base first if missing
 mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2
 mise run vm-up base                 # boot the test VM, keeping its contents
+mise run vm-view base / vm-ssh / vm-down base   # its screen in KRDC (VNC, always on a machine running the image), a shell, shut down
 mise run vm-reset base              # erase the test VM's copy, after asking
 mise run vm-incus base              # boot that disk as an Incus VM, on a machine running the image
 mise run iso xps16-da16260          # installer ISO
