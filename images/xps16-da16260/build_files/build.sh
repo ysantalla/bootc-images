@@ -69,6 +69,13 @@ fi
 # 8. Face unlock on the lock screen (katze-face, compiled in the Containerfile, and /etc/pam.d/kde-fingerprint).
 # Nothing looks for a face until a user registers one: sudo /usr/libexec/katze/katze-face add <user>
 systemctl enable katze-ir-camera.socket katze-face.socket
+# The lock screen calls that slot the fingerprint reader. The new text has no translation: it shows in English.
+LOCK_QML=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml
+if grep -q '"(or scan your fingerprint on the reader)"' "$LOCK_QML"; then
+  sed -i 's|"(or scan your fingerprint on the reader)"|"(or look at the camera)"|' "$LOCK_QML"
+else
+  echo "::warning::the lock screen's fingerprint text changed: it still mentions the fingerprint reader"
+fi
 
 # Next steps for this machine go here, one at a time. CLAUDE.md section 10 has the roadmap
 # and docs/xps16-checklist.md what to check on the machine first.

@@ -400,6 +400,11 @@ case "$name" in
     ok "anyone may ask for their own face" grep -qx 'SocketMode=0666' /usr/lib/systemd/system/katze-face.socket
     ok "the lock screen asks for the face" grep -q 'pam_exec.so quiet /usr/libexec/katze/katze-face-check$' /etc/pam.d/kde-fingerprint
     ok "pam_exec is there" test -f /usr/lib64/security/pam_exec.so
+    if grep -q '"(or look at the camera)"' /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml; then
+      echo "ok   the lock screen says to look at the camera"
+    else
+      echo "note: the lock screen still mentions the fingerprint reader (build.sh did not find its text)"
+    fi
     ok "katze-face-check refuses without PAM_USER" sh -c '! /usr/libexec/katze/katze-face-check enrolled'
     ok "the camera relay is enabled" test -L /etc/systemd/user/pipewire.service.wants/katze-camera.service
     ok "the camera relay finds its libraries" camera_loads
