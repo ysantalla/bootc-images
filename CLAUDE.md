@@ -93,6 +93,8 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── mise.toml                          local tasks + tool versions (cosign)
 ├── cosign.pub                         public signing key (committed, copied into the base image)
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
+├── tests/check-pins.sh, check-kernel-vrr.sh  what pins.yml and kernel-watch.yml run
+├── tests/xps16-vrr.sh                 on the XPS: one boot with VRR through an edited EDID (results in docs/status)
 ├── docs/
 │   ├── status/                        what was tested and what was not, one file per subject
 │   ├── xps16-plan.md                  the owner's plan for the XPS (not implemented)
@@ -110,6 +112,7 @@ These are deliberate choices. Do not add them back without the owner asking:
 │   └── workflows/
 │       ├── build.yml                  orchestrator: base → machine images
 │       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
+│       ├── kernel-watch.yml           weekly: an issue when a kernel change could give the XPS's panel VRR
 │       ├── module.yml                 the XPS's hm1092 module: build job without secrets, sign job
 │       ├── prune.yml                  weekly: delete builds older than a month from GHCR
 │       └── reusable-build.yml         build job: verify FROM → build → test → push to staging; sign job: cosign sign, verify, move tags
@@ -284,6 +287,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 - **On pull requests,** nothing is pushed and the `sign` job is skipped, so a change to that job is first exercised on `main`. The `base` job also builds `xps16-da16260` FROM its local base, so machine changes are validated. A new machine image has to replace that name or add its own step.
 - **`tests/smoke.sh`** runs inside each built image before it is pushed. Add a check there when you add something that must stay true.
 - **`pins.yml`** runs on Mondays: `tests/check-pins.sh` compares the versions pinned in `shell.sh` (Starship, Nerd Fonts) and `dictation.sh` (Voxtype, OpenVINO GenAI) with their latest releases, and the workflow keeps one issue open while any is behind. It changes no file.
+- **`kernel-watch.yml`** runs on Mondays: `tests/check-kernel-vrr.sh` reads Linux master and drm-tip for the EDID parser reading DisplayID's Adaptive-Sync block, an EDID quirk for the XPS's LG panel, or a second Intel quirk for the DA16260, and opens one issue the first time it finds one. It never reopens an issue the owner closed, and changes no file.
 - **`prune.yml`** runs on Mondays and deletes old builds from GHCR with `.github/scripts/prune-registry.py`: dated tags older than 30 days (the newest seven always stay), untagged manifests, and the signatures of what is gone. `latest`, `staging` and the Fedora tag are never touched, nor anything from the last two days. Started by hand it only lists, unless asked to delete.
 - **Actions are pinned by SHA** and Dependabot proposes updates. CI's cosign stays on 2.x (`cosign-release`, independent of the installer action's version), because enforcing machines were tested against its `.sig` format. `mise.toml`'s cosign 3.x is only for local key generation.
 - **`reusable-build.yml`** has two jobs. `build` verifies the `FROM` image, builds with buildah and pushes to the `staging` tag on GHCR using `GITHUB_TOKEN` (the owner is lowercased). `sign` signs that digest with cosign and verifies the signature with `cosign.pub`, so a bad key fails the run. Only then does it move `latest`, `<fedora>` and the dated tag to that digest with `skopeo copy --preserve-digests`. Machines never follow `staging`.
@@ -416,6 +420,8 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 **VM viewer (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See `docs/vm-viewers.md`.
 
 **Secrets and agents (2026-11-08):** no new software for secrets; KWallet stays the Secret Service provider; AI agents run in an Incus container per project, with one Claude Code account each; one minimal `devbox` image for every project. Details in `docs/secrets-and-devbox.md`.
+
+**VRR on the XPS (2026-11-25):** wait for the kernel. The panel can do 20 to 120 Hz, tried for one boot with an edited EDID, but keeping that EDID would mean regenerating the initramfs in the machine image (about 240 MB more in every daily update) for a file that only fits this panel. `kernel-watch.yml` says when a kernel change could fix it. Details in `docs/xps16-checklist.md`, "VRR".
 
 **Pending:**
 - Whether the internal camera, through `camera.py`, is good enough for video calls, or a USB webcam is.

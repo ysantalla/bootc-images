@@ -69,11 +69,21 @@ It is one person's setup, published so that it can be read and copied from, not 
 ## Layout
 
 ```
-.github/workflows/
-  build.yml                  lint → base → xps16-da16260 (daily, on push, manual)
-  reusable-build.yml         verify the FROM image + build + test + push to GHCR + cosign signature and verify
+.github/
+  workflows/build.yml        lint → base → xps16-da16260 (daily, on push, manual)
+  workflows/reusable-build.yml  verify the FROM image + build + test + push to GHCR + cosign signature and verify
+  workflows/module.yml       the XPS's infrared camera driver: build without secrets, then sign
+  workflows/pins.yml         weekly: an issue when a pinned download has a newer release
+  workflows/kernel-watch.yml weekly: an issue when a kernel change could give the XPS's panel VRR
+  workflows/prune.yml        weekly: delete builds older than a month from GHCR
+  scripts/                   prune-registry.py, sign-module.py
   keys/ublue-os.pub          Universal Blue's public key, to verify kinoite-main
-tests/smoke.sh               checks each built image from the inside, before it is published
+tests/
+  smoke.sh                   checks each built image from the inside, before it is published
+  check-pins.sh              what pins.yml runs
+  check-kernel-vrr.sh        what kernel-watch.yml runs
+  theme-screenshots.sh       what mise run theme:screenshots runs
+  xps16-vrr.sh               on the XPS: one boot with VRR through an edited EDID, and its checks
 images/
   base/
     Containerfile
@@ -105,11 +115,19 @@ images/
   xps16-da16260/
     Containerfile
     build_files/
-      build.sh
-      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools
+      build.sh               browser flags, screen timeouts, power profiles, face unlock prompt
+      dictation.sh           Voxtype and the OpenVINO GenAI SDK (pinned, sha256)
+      hm1092.sh, hm1092/     the infrared camera's driver, built and signed by module.yml
+      ir-camera/             the infrared camera's reader, in C
+      face/                  face unlock: katze-face and katze-face-check, in C
+      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools, kernel-tools, intel-npu-driver, intel-opencl
+    system_files/usr/
+      libexec/katze/         camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
+      lib/systemd/           camera relay, dictation, infrared camera and face unlock units, thermald drop-in
+      lib/tuned/profiles/    katze-xps-* power profiles
 bib/config.example.toml      user for test VMs
 devbox/                      Incus profile and cloud-init for per-project dev containers
-docs/                        screenshots, the checklist for the XPS, the plan for secrets and dev containers
+docs/                        status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
 mise.toml                    local tasks + cosign
 ```
 
@@ -305,7 +323,7 @@ journalctl -u 'katze-face@*' -u 'katze-ir-camera@*' -n 20     # "uid 1000: yes",
 
 How it works: the lock screen runs as the user and cannot read the infrared camera, which only root can start (the driver checks for CAP_SYS_RAWIO). Its second way in, `/etc/pam.d/kde-fingerprint`, runs `katze-face-check`, which asks `katze-face.socket`. That service is root with no capabilities, reads the camera for up to 5 seconds through `katze-ir-camera.socket`, and answers yes or no only about the account that asked. It finds the face with YuNet and compares it with SFace, both from opencv_zoo, on OpenVINO and the CPU.
 
-Limits: tested on the owner's face only. It has not been tried with other people, a printed photo, in the dark, with glasses or after a suspend, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
+Limits: tested on the owner's face only, also right after a suspend. It has not been tried with other people, a printed photo, in the dark or with glasses, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
 
 ### Power limits
 

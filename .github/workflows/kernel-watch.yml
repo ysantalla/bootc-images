@@ -1,0 +1,63 @@
+name: kernel watch
+
+# The XPS 16's panel can do VRR (tried on 2026-11-25 with tests/xps16-vrr.sh), but the kernel does not read
+# the range it gives, and the image does not carry the edited EDID (see docs/xps16-checklist.md, "VRR").
+# Once a week tests/check-kernel-vrr.sh looks at Linux master and drm-tip for a change that could fix it,
+# and opens one issue the first time it finds one. It changes no file, and never reopens an issue the
+# owner closed: a later fix needs a look by hand anyway.
+on:
+  schedule:
+    - cron: "45 9 * * 1" # Mondays, after pins.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TITLE: A kernel change may give the XPS 16's panel VRR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Look at Linux master and drm-tip
+        id: kernel
+        run: |
+          set -o pipefail # a failed download must fail the step, not look like "nothing yet"
+          tests/check-kernel-vrr.sh | tee found.txt
+          echo "count=$(wc -l < found.txt)" >> "$GITHUB_OUTPUT"
+      - name: Open or update the issue
+        if: steps.kernel.outputs.count != '0'
+        run: |
+          issue=$(gh issue list --state all --search "in:title \"$TITLE\"" --json number,state,title \
+            --jq "map(select(.title == env.TITLE)) | .[0] // empty")
+          if [[ $(jq -r '.state // empty' <<<"$issue") == CLOSED ]]; then
+            echo "The issue was closed by hand; not reopening it."
+            exit 0
+          fi
+          {
+            echo "\`tests/check-kernel-vrr.sh\` found a change that could let the kernel see the VRR range of the XPS 16's panel:"
+            echo
+            echo "| Tree | What | File |"
+            echo "|---|---|---|"
+            while read -r tree what url; do
+              echo "| $tree | ${what//-/ } | [$(basename "$url")]($url) |"
+            done < found.txt
+            echo
+            echo "To follow it:"
+            echo "1. Read the change, and find the first release that has it (\`git tag --contains <commit>\`)."
+            echo "2. Wait for Fedora 45's kernel to reach that release: it comes in the daily build, with nothing to change here."
+            echo "3. On the XPS, after a normal boot of that image: \`kscreen-doctor -o\` should show eDP-1 with \`Vrr:\` other than \`incapable\`."
+            echo "   Then \`tests/xps16-vrr.sh compare\` (from Konsole) checks the range and PSR, and leaves VRR on Automatic."
+            echo "4. Record it in \`docs/status/xps16-da16260.md\` and close this issue."
+          } > body.md
+          number=$(jq -r '.number // empty' <<<"$issue")
+          if [[ -n "$number" ]]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi
