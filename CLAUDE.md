@@ -63,9 +63,9 @@ It also carries two fixes adapted from `onuralpszr/xps-fedora` (commit `98e8400`
 
 And the internal camera: `camera.py` (`katze-camera.service`, a user service) opens it through libcamera at 1440p, in a child process, since 1080p and less use a sensor mode that does not work and abort libcamera. It turns the picture over, scales it to 1080p and offers it as one PipeWire camera, on only while an application uses it and off before a suspend. `60-katze-camera.conf` takes libcamera and the raw IPU7 nodes out of WirePlumber, where the abort restarted the sound, and the browser launchers get `WebRtcPipeWireCamera`. It needs no kernel module and no closed Intel library, unlike xps-fedora and Omarchy.
 
-And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself. The user can open that camera's nodes, and no udev rule may change it: libcamera drops the normal camera too when one node of the graph is denied. So the driver only starts the sensor for a process with CAP_SYS_RAWIO. `ir-camera` (C, compiled in a stage of the Containerfile) reads it for root: `katze-ir-camera.socket` gives 5 seconds of PGM frames with the lamp on, which the reader, its time limits and `ExecStopPost` turn off. It has not run on the machine.
+And the infrared camera's driver, `hm1092`, out of tree and signed with the owner's module key (enrolled as a MOK on this machine), in `/usr/lib/modules/<kernel>/updates`. `katze-hm1092.conf` keeps it from loading by itself. The user can open that camera's nodes, and no udev rule may change it: libcamera drops the normal camera too when one node of the graph is denied. So the driver only starts the sensor for a process with CAP_SYS_RAWIO. `ir-camera` (C, compiled in a stage of the Containerfile) reads it for root: `katze-ir-camera.socket` gives 5 seconds of PGM frames with the lamp on, which the reader, its time limits and `ExecStopPost` turn off. It runs on the XPS through face unlock (`docs/status/xps16-da16260.md`).
 
-And face unlock on the lock screen, with that camera: `katze-face` (C, compiled in a stage of the Containerfile against the OpenVINO that dictation installs, plus its ONNX reader) finds the face with YuNet and describes it with SFace, both from opencv_zoo and pinned in `face/build.sh`, on the CPU. `sudo /usr/libexec/katze/katze-face add <user>` registers 5 frames each time (128 numbers each, no picture) in `/var/lib/katze/face/<uid>`, and `test` shows how close each frame comes. The lock screen runs PAM as the user, so it cannot read the camera: `/etc/pam.d/kde-fingerprint`, which kscreenlocker tries next to the password while its prompt is shown, runs `katze-face-check`, which asks `katze-face.socket` (anyone may ask, only about themselves: the service reads the uid from the socket). Two frames in a row with a cosine similarity of 0.5 unlock. Fedora's fingerprint stack is not used there, since this machine's reader has no libfprint driver, and `build.sh` changes the prompt's "(or scan your fingerprint on the reader)" to "(or look at the camera)", untranslated, with a warning if Plasma changes that text. A user with no face registered sees nothing new. Login, sudo and the disk do not use it. It has not run on the machine.
+And face unlock on the lock screen, with that camera: `katze-face` (C, compiled in a stage of the Containerfile against the OpenVINO that dictation installs, plus its ONNX reader) finds the face with YuNet and describes it with SFace, both from opencv_zoo and pinned in `face/build.sh`, on the CPU. `sudo /usr/libexec/katze/katze-face add <user>` registers 5 frames each time (128 numbers each, no picture) in `/var/lib/katze/face/<uid>`, and `test` shows how close each frame comes. The lock screen runs PAM as the user, so it cannot read the camera: `/etc/pam.d/kde-fingerprint`, which kscreenlocker tries next to the password while its prompt is shown, runs `katze-face-check`, which asks `katze-face.socket` (anyone may ask, only about themselves: the service reads the uid from the socket, and only turns the camera on when logind has that user active at the screen, so another account gets "no" at once and cannot keep the camera busy). Two frames in a row with a cosine similarity of 0.5 unlock. Fedora's fingerprint stack is not used there, since this machine's reader has no libfprint driver, and `build.sh` changes the prompt's "(or scan your fingerprint on the reader)" to "(or look at the camera)", untranslated, with a warning if Plasma changes that text. A user with no face registered sees nothing new. Login, sudo and the disk do not use it. It works on the XPS's lock screen from the published image, also right after a suspend; other people, a photo, the dark and glasses are untested.
 
 And voice dictation in Spanish on the NPU or the GPU: Voxtype (its ONNX binary has OpenVINO) with Intel's OpenVINO GenAI SDK, both pinned in `dictation.sh`, and Fedora's `intel-npu-driver`. Fedora's OpenVINO has no NPU plugin, and the SDK brings the NPU's compiler, so Intel's own driver package is not needed. The GPU needs `intel-opencl`, which brings clang and LLVM libraries. The NPU is the default, Voxtype goes on with the GPU and then the CPU without it, and `dictation-setup.sh gpu` or `npu` changes it. The model (`whisper-large-v3-turbo-int8`, 790 MB) is not in the image: `dictation-setup.sh` downloads it once for each user, checked by sha256, and `katze-dictation.service` waits for it. Meta+H starts and stops (`kglobalaccel`). The text is pasted with ydotool instead of typed, since ydotool has no á or ñ on a US layout. Settings are in `/etc/voxtype/config.toml`, which a `~/.config/voxtype/config.toml` replaces. Nothing said leaves the machine.
 
@@ -95,23 +95,27 @@ These are deliberate choices. Do not add them back without the owner asking:
 ├── tests/smoke.sh                     checks a built image from the inside, in CI before publishing
 ├── tests/check-pins.sh, check-kernel.sh  what pins.yml and kernel-watch.yml run
 ├── tests/xps16-vrr.sh                 on the XPS: one boot with VRR through an edited EDID (results in docs/status)
+├── tests/theme-screenshots.sh         what mise run theme:screenshots runs in the test VM
 ├── docs/
 │   ├── status/                        what was tested and what was not, one file per subject
-│   ├── xps16-plan.md                  the owner's plan for the XPS (not implemented)
+│   ├── xps16-plan.md                  the owner's plan for the XPS (partly done)
 │   ├── xps16-checklist.md             checks to run on the XPS
 │   ├── vm-viewers.md                  VM viewer research and the KRDC plan
-│   └── secrets-and-devbox.md          plan for secrets, AI agents and per-project dev containers (not implemented)
+│   ├── local-llm.md                   local language models on the XPS: findings and options (not implemented)
+│   ├── secrets-and-devbox.md          plan for secrets, AI agents and per-project dev containers (firewall part done)
+│   └── screenshots/                   the README's pictures (mise run theme:screenshots)
 ├── devbox/                            drafts for that plan: cloud-init and Incus profile of the dev image
 ├── .gitignore                         output/, bib/config.toml, cosign.key
 ├── bib/
 │   └── config.example.toml            user for test VMs built with bootc-image-builder
 ├── .github/
+│   ├── dependabot.yml                 weekly updates of the pinned GitHub Actions
 │   ├── keys/ublue-os.pub              Universal Blue's public key, to verify kinoite-main
 │   ├── scripts/prune-registry.py      what prune.yml runs: which builds to keep and which to delete
 │   ├── scripts/sign-module.py         what module.yml runs next to the module key
 │   └── workflows/
-│       ├── build.yml                  orchestrator: base → machine images
-│       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh has a newer release
+│       ├── build.yml                  orchestrator: lint → base → module → machine images
+│       ├── pins.yml                   weekly: an issue when a download pinned in shell.sh or dictation.sh has a newer release
 │       ├── kernel-watch.yml           weekly: an issue when the kernel or Fedora moves on something the XPS waits for
 │       ├── module.yml                 the XPS's hm1092 module: build job without secrets, sign job
 │       ├── prune.yml                  weekly: delete builds older than a month from GHCR
@@ -140,7 +144,7 @@ These are deliberate choices. Do not add them back without the owner asking:
     │           ├── lib/firewalld/policies/ katze-incus-out.xml, katze-incus-private.xml
     │           ├── share/katze/ flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
     │           ├── share/containers/containers.conf.d/ 60-katze-compose.conf
-    │           ├── share/konsole/     katze.profile
+    │           ├── share/konsole/     katze.profile, Katze.colorscheme
     │           ├── share/katze/katze-mono/ aliases.toml, glyphs/, README.md
     │           ├── share/plasma/desktoptheme/ katze
     │           ├── share/plasma/look-and-feel/ katze-dark, katze-light
@@ -155,14 +159,19 @@ These are deliberate choices. Do not add them back without the owner asking:
         │   ├── face/                      face unlock: katze-face, katze-face-check and the build stage's build.sh
         │   ├── hm1092/                    that driver, its audit and the public half of the module key
         │   └── packages.txt
-        └── system_files/usr/
-            ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py, dictation-setup.sh
-            ├── lib/systemd/user/  katze-camera.service, katze-dictation.service, katze-ydotoold.service
-            ├── lib/modprobe.d/    katze-hm1092.conf
-            ├── lib/systemd/system/ katze-ir-camera.socket, katze-ir-camera@.service, katze-face.socket, katze-face@.service
-            ├── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
-            ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
-            └── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
+        └── system_files/
+            ├── etc/pam.d/kde-fingerprint      the lock screen's second way in: katze-face-check
+            ├── etc/voxtype/config.toml        dictation settings, which ~/.config/voxtype/config.toml replaces
+            └── usr/
+                ├── libexec/katze/  thermald-wait.sh, platform-profile.sh, camera.py, dictation-setup.sh
+                ├── lib/systemd/user/  katze-camera.service, katze-dictation.service, katze-ydotoold.service
+                ├── lib/systemd/system/ katze-ir-camera.socket, katze-ir-camera@.service, katze-face.socket, katze-face@.service
+                ├── lib/systemd/system/thermald.service.d/ katze-wait-sensors.conf
+                ├── lib/modprobe.d/    katze-hm1092.conf
+                ├── lib/tmpfiles.d/    katze-face.conf
+                ├── lib/tuned/profiles/    katze-xps-powersave, -balanced, -balanced-battery, -performance
+                ├── share/kglobalaccel/ katze-dictation.desktop (Meta+H)
+                └── share/wireplumber/wireplumber.conf.d/ 60-katze-camera.conf
 ```
 
 ### Build pattern (every image follows it)
@@ -213,23 +222,57 @@ All code, comments, unit descriptions and docs are in **English**.
 
 ## 5. Common tasks
 
-All local tasks are defined in `mise.toml`. They need `mise` and rootful `podman` (via `sudo`).
+All local tasks are defined in `mise.toml` (`mise tasks` lists them). Building needs rootful `podman`, through `sudo`, which asks in a terminal.
 
+**Build and test images**
 ```bash
-mise tasks                          # list tasks
 mise run build base                 # build an image locally
 mise run build xps16-da16260        # builds local base first if missing
-mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2
-mise run vm-up base                 # boot the test VM, keeping its contents
-mise run vm-reset base              # erase the test VM's copy, after asking
-mise run vm-incus base              # boot that disk as an Incus VM, on a machine running the image
+mise run vm base                    # qcow2 disk → output/base/qcow2/disk.qcow2 (needs bib/config.toml)
+mise run disk base anaconda-iso     # any disk type bootc-image-builder makes; `iso` is the installer
 mise run iso xps16-da16260          # installer ISO
-mise run switch-local base          # switch THIS machine to a local build (the name is required)
-mise run switch xps16-da16260       # switch THIS machine to the published image, requiring its signature
-mise run power --load 60            # THIS machine: profile, RAPL limits, turbostat idle and under load → output/power/
-mise run icons:preview              # one picture of the icons in both themes; --set dark.tint=0.3 tries a look
-mise run theme:screenshots          # previews of both themes and the README's pictures, from the running test VM
 mise run clean                      # remove output/, after asking
+```
+
+**Test VM** (on a machine running the image it always runs with VNC: the image's QEMU has no window or sound)
+```bash
+mise run vm-up base                 # boot it, keeping its contents; --vnc in the background, --gl with OpenGL
+mise run vm-view base               # its screen in KRDC (VNC 127.0.0.1:5906, password on the clipboard)
+mise run vm-ssh                     # a shell inside, once sshd is on there (README, section 2)
+mise run vm-down base               # shut it down cleanly
+mise run vm-reset base              # erase its copy, after asking
+mise run vm-incus base              # the same disk as an Incus VM (sudo incus)
+mise run theme:screenshots          # previews of both themes and the README's pictures, from the running test VM
+mise run icons:preview              # one picture of the icons in both themes; --set dark.tint=0.3 tries a look
+```
+
+**This machine**
+```bash
+mise run switch xps16-da16260       # switch to the published image, requiring its signature
+mise run switch-local base          # switch to a local build (the name is required)
+mise run power --load 60            # profile, RAPL limits, turbostat idle and under load → output/power/
+sudo bootc status                   # running image, staged update, rollback
+sudo bootc upgrade && systemctl reboot
+sudo bootc rollback                 # back to the previous image on the next boot
+journalctl -u 'katze-*' -b          # our services in this boot (--user for the user units)
+```
+
+**XPS features** (`README.md`, section 4, has the details)
+```bash
+/usr/libexec/katze/dictation-setup.sh           # download and compile the dictation model, once per user (npu or gpu)
+sudo /usr/libexec/katze/katze-face add $USER    # register the face; `test` shows how close each frame comes
+journalctl -u 'katze-face@*' -u 'katze-ir-camera@*' -n 20
+tests/xps16-vrr.sh check                        # VRR: what the kernel and KWin see (the kit's other modes in its header)
+```
+
+**CI and GitHub**
+```bash
+gh pr checks <number> --watch       # a pull request's build
+gh run list --workflow build.yml    # recent builds; `gh run view <id> --log-failed` for a failure
+gh workflow run build.yml           # build and publish main now, without waiting for the daily run
+gh workflow run kernel-watch.yml    # look for kernel changes now (pins.yml likewise)
+tests/check-kernel.sh               # the same check, locally; nothing printed means nothing moved
+tests/check-pins.sh                 # pinned downloads with a newer release
 ```
 
 ### Add a package
@@ -275,7 +318,7 @@ For custom launch arguments, add a `.desktop` to `usr/share/katze/applications/`
 
 ## 6. CI/CD
 
-- **`build.yml`** runs on push to `main` (excluding `*.md` and `docs/`), on pull requests, daily at 08:30 UTC (after Universal Blue's builds), and on manual dispatch.
+- **`build.yml`** runs on push to `main` (excluding `*.md` and `docs/`), on pull requests, daily (the cron says 08:30 UTC, after Universal Blue's builds, but GitHub starts scheduled runs hours late: between 16:18 and 20:27 UTC in November 2026), and on manual dispatch.
 - **`base`** is built first. Machine images use `needs: base` and build `FROM` the base that was just pushed.
 - **The `FROM` image is verified before each build:** `kinoite-main` against `.github/keys/ublue-os.pub`, and our `base` against `cosign.pub`. It is pulled by digest, and the build steps use `--pull=never`, so the build uses the verified copy. If Universal Blue rotates its key the build fails: replace the key with `/etc/pki/containers/ublue-os.pub` from the new image, after checking it against `cosign.pub` in `ublue-os/main`.
 - **`base` is rechunked** after the build (`rechunk: true`), with the image's own rpm-ostree and `--previous-build` pointing at the published tag. It re-adds the labels, since `--rootfs` drops them, and lints the result.
@@ -306,11 +349,14 @@ A failed build, test or signature never reaches a machine: `latest` only moves a
 Run these before considering a change done. Never claim something was tested if it wasn't.
 
 ```bash
-# Shell scripts
-shellcheck tests/*.sh images/*/build_files/*.sh images/*/system_files/usr/libexec/katze/*.sh
+# Shell and Python, as CI's lint job does (shellcheck is not in the image: podman run docker.io/koalaman/shellcheck:v0.10.0)
+shellcheck tests/*.sh images/*/build_files/*.sh images/*/build_files/*/build.sh \
+  images/*/system_files/usr/libexec/katze/*.sh images/*/system_files/usr/lib/tuned/profiles/*/script.sh
+git ls-files -z '*.py' | xargs -0 python3 -c "import ast, sys; [ast.parse(open(f).read(), f) for f in sys.argv[1:]]"
 
 # Workflows and TOML
 python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]"
+podman run --rm -v "$PWD:/repo:ro,Z" -w /repo docker.io/rhysd/actionlint:latest   # optional, stricter
 python3 -c "import tomllib; tomllib.load(open('mise.toml','rb')); tomllib.load(open('bib/config.example.toml','rb'))"
 
 # Units (on a systemd host)
@@ -370,11 +416,11 @@ Panther Lake is new hardware. Prefer upstream Fedora kernel and Mesa support, an
 
 Reviewed on 2026-11-04, when the image had Fedora's 7.2.15. The owner does not want a kernel swap for now, so do not propose one unprompted. Linux 7.4 was at rc1 and arrives through the daily build once Fedora ships it.
 
-Fedora's kernel moved to 7.3.3-300.fc45 in the `45.20261111` image, through the daily build, with no change here. The other rows were not checked again, so their versions are from 2026-11-04.
+Fedora's kernel came through the daily build with no change here: 7.3.3 in the `45.20261111` image, 7.3.4 on the XPS on 2026-11-25, and 7.3.5 in Fedora 45's updates the same day. The other rows were not checked again, so their versions are from 2026-11-04. `kernel-watch.yml` says when Fedora 45 reaches 7.4.
 
 | Option | Version seen | Notes |
 |---|---|---|
-| Fedora `updates` | 7.3.3 (2026-11-11) | Default. No extra work |
+| Fedora `updates` | 7.3.5 (2026-11-25) | Default. No extra work |
 | Fedora Koji build | 7.3.1-200.fc45 | Built by Fedora, but pinned by hand and gets no patches until bumped. Now older than the default |
 | `@kernel-vanilla/stable` COPR | 7.3.1 | Needs an owner MOK, or Secure Boot off |
 | `@kernel-vanilla/mainline` COPR | 7.4 pre-release | Too risky for the main machine |
@@ -392,20 +438,23 @@ It targets a Fedora install using `dnf`, signing kernels and modules locally wit
 
 ## 10. Roadmap
 
-Implement these one at a time, each in its own commit, in `xps16-da16260` only:
+Implement these one at a time, each in its own commit. Items 1 to 3 are for `xps16-da16260`; 4 and 5 are `base`.
 
-1. **Verify base** in a VM and on hardware. See `docs/status/`, and `docs/xps16-checklist.md` for the checks to run on the XPS.
-   On the XPS, run `mise run power --load 60` on AC first: the profile, RAPL limits and `turbostat` under load decide whether auto-boost is needed at all, since the firmware may already raise the limits in the `performance` profile, or overwrite values written to RAPL.
-2. **auto-boost service.** A systemd daemon in `/usr` that raises the sustained RAPL limit, PL1 (`constraint_0_power_limit_uw`), on AC power when CPU load is above 40%, and returns to the stock value plus the `balanced` profile otherwise, polling every 10 s. The owner changed the target from PL2 to PL1 on 2026-11-23: Dell is said to hold about 35 W sustained with bursts near 65 W, so the bursts are already there. Neither figure is measured on this machine, so read the real limits before choosing values: `grep . /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_*_power_limit_uw`. The image has no `powerprofilesctl` (section 1), so the profile changes through tuned. The design is open: `docs/xps16-checklist.md` has the case against a load-polling daemon.
-3. **IR face unlock** (in progress: the driver, the reader and `katze-face` are in, nothing of it has run on the machine), on branches `xps-ir-face`, `xps-ir-reader` and `xps-ir-unlock`. The owner decided on 2026-11-23 against the `.dellptl` kernel: the Himax HM1092 sensor's driver is forked into this repo, trimmed, and built in CI against the image's kernel, signed with the owner's MOK in a job of its own (decided on 2026-11-25; done: section 6, `module.yml`). Howdy was the plan; it is not in Fedora and needs dlib built, so the owner chose on 2026-11-25 our own `katze-face` with OpenVINO instead, on the lock screen only. The IPU7 stack may abort s2idle, so suspend is validated first. The IPU7 webcam and Intel ISH have no plan. **Ask before starting:** it touches Secure Boot and MOK.
-4. **Secrets and per-project dev containers.** Mostly `base` and per-user setup, not this machine image. Researched on 2026-11-08, nothing implemented: see `docs/secrets-and-devbox.md`, which has the decisions, the test plan for the VM and the XPS, and the repo changes to make afterwards. Tested in a VM on 2026-11-21 (its section 8.1): the keyring, the `devbox` image with rootless `docker compose`, and that the `katze-incus` zone lets instances reach every port on the host, with a tighter zone and policy that fix it.
-5. **Rechunk `base`** (in progress). Before it, every build published one new ~675 MB layer for `base` and ~51 MB for the machine, measured on 2026-11-07, plus whatever changed in `kinoite-main`'s own unchunked layer. `reusable-build.yml` now runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers. Tested locally on 2026-11-07, rootless: 201 layers, and two runs gave the same digest. Brave, Chrome and the initramfs get their own layers; the initramfs shares one with unpackaged files (309 MB compressed), which an `user.component` xattr could split. The first update after the switch downloads the whole image once (about 4.2 GB). Machine images are not rechunked: they add their own layer on top. In a VM on 2026-11-07, `bootc switch` to a rechunked `base` fetched 200 layers (4.3 GB), booted with no new failed units and `incus-admin` in place, and `bootc rollback` returned to the previous image. CI on the PR: 201 layers, lint and `tests/smoke.sh` pass, and the build went from about 6 to 13 minutes. Still to check: the real download between two daily builds.
-6. **Audit for bugs and security gaps.** Asked by the owner on 2026-11-24, not started, and its scope is not set yet. An earlier audit was merged as `audit-fixes`.
+1. **Verify on hardware** (mostly done). `docs/status/` has what was tested, and `docs/xps16-checklist.md` what is left: overnight suspend and battery drain, sound and the displays after resume, the other power profiles, AV1 in Chrome, Wi-Fi 7, and Incus.
+2. **auto-boost service** (on hold). The idea: raise PL1 on AC under load. Measured on 2026-11-25 (`mise run power --load 60`, AC, performance): PL1 41 W and PL2 65 W, 64.6 W for 26 s, then a steady 31.6 W, below PL1, held by something other than RAPL. The owner is content with that ("creo que está bien así"), so nothing is planned. `docs/xps16-checklist.md` has the case against a load-polling daemon, if it comes back.
+3. **IR face unlock** (done, 2026-11-26). Our trimmed `hm1092` driver, built and signed with the owner's MOK in CI (`module.yml`), the root-only reader `ir-camera`, and `katze-face` on OpenVINO, on the lock screen only (Howdy was dropped: not in Fedora, needs dlib). Works from the published image, also after a suspend. Open: other people, a photo, the dark, glasses, and the IPU7 buffer check from the security review (section 10.1). The IPU7 webcam and Intel ISH have no plan. **Ask before changing anything around the module key:** it touches Secure Boot and MOK.
+4. **Secrets and per-project dev containers** (partly done). Researched on 2026-11-08: `docs/secrets-and-devbox.md` has the decisions, the test plan and the repo changes. Done: the `katze-incus` zone with `katze-incus-out` and `katze-incus-private` (instances reach the internet, not the host, the LAN or the tailnet), and nobody in `incus-admin` (Incus with `sudo`). Not done: the `devbox` image and task, the restricted Incus project per user (its section 8.2), and the secrets audit task.
+5. **Rechunk `base`** (done). `reusable-build.yml` runs `rpm-ostree compose build-chunked-oci` on `base` with `--previous-build`, so unchanged packages keep their layers: 201 layers, the same digest twice, and a VM `bootc switch` and rollback worked (2026-11-07). Before it, every build published one new ~675 MB layer for `base`. Machine images are not rechunked: they add their own layer on top. Still to measure: the real download between two daily builds.
+6. **Local language models** (idea, noted on 2026-11-26). xps-fedora runs gpt-oss-20b and Qwen3-30B-A3B on the Arc GPU through Vulkan; the GPU can use 3/4 of the RAM, about 48 GB here. The favoured way is Ollama's own container under rootless Podman, not an image change. Findings, options and the test to run first: `docs/local-llm.md`.
+
+### 10.1 Audits
+
+Three so far: `audit-fixes` (#19), `audit-round-2` (#21), and a security review on 2026-11-25. That review found no way past PAM, no uid spoofing and no memory bugs in the root services, and led to: nobody in `incus-admin`, face unlock only for the user at the screen, CI linting every script, SHA-pinned actions required, Dependabot alerts on, and the old MOK key deleted. Still open from it: whether another process can write into the IPU7 capture buffers while `ir-camera` reads them (a test on the XPS: `mmap` the node as the user while the reader streams; if it works, copy each frame before using it).
 
 ### Status and plans
 
 - **What was tested and what was not:** `docs/status/`, one file per subject (its `README.md` lists them). Read the subject's file before saying something works, and add to it when something is tested.
-- **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. Disk unlock and voice dictation are done; the rest is not implemented.
+- **The owner's plan for the XPS** (first day, encryption, swap, battery, voice dictation): `docs/xps16-plan.md`. Secure Boot, disk unlock with TPM and PIN, the screen timeouts and voice dictation are done; swap and battery are not.
 - **Checks to run on the XPS:** `docs/xps16-checklist.md`.
 - **VM viewers,** and how to test images on a machine running the image: `docs/vm-viewers.md`.
 
@@ -415,7 +464,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 
 **Incus at boot (2026-11-06):** `incus-startup.service` stays disabled. Instances are started by hand: Incus is meant for running large stacks with resource limits, so they cannot starve video calls, and nothing needs to start at boot.
 
-**Firewall (2026-11-07):** the default zone is `katze-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `katze-tailscale`, which accepts everything. Validated with `firewall-offline-cmd --check-config` only: KDE Connect, Network Displays, Tailscale and Incus forwarding under the new default zone are untested. The Network Displays ports come from Miracast, not from its documentation.
+**Firewall (2026-11-07):** the default zone is `katze-laptop`: DHCPv6, mDNS, KDE Connect, and TCP 7236 and 7250 for GNOME Network Displays, which the owner also uses away from home. Trusted home networks are set to `FedoraWorkstation` by hand. `tailscale0` is in `katze-tailscale`, which accepts everything. It is the default zone on the XPS, and Incus forwarding was tested in a VM (`docs/status/incus-and-network.md`); KDE Connect, Network Displays and Tailscale through it are untested. The Network Displays ports come from Miracast, not from its documentation.
 
 **VM viewer (2026-11-06):** KRDC, KDE's own viewer, once it ships with SPICE. The image has no VM viewer until then. See `docs/vm-viewers.md`.
 
@@ -424,7 +473,7 @@ Implement these one at a time, each in its own commit, in `xps16-da16260` only:
 **VRR on the XPS (2026-11-25):** wait for the kernel. The panel can do 20 to 120 Hz, tried for one boot with an edited EDID, but keeping that EDID would mean regenerating the initramfs in the machine image (about 240 MB more in every daily update) for a file that only fits this panel. `kernel-watch.yml` says when a kernel change could fix it. Details in `docs/xps16-checklist.md`, "VRR".
 
 **Pending:**
-- Whether the internal camera, through `camera.py`, is good enough for video calls, or a USB webcam is.
+- Whether the internal camera is good enough for video calls, or a USB webcam is. The owner found it fine in one Chrome call, with `camera.py` from a checkout; not yet from the image.
 - The open questions in `docs/secrets-and-devbox.md`, section 10: password manager, a FIDO2 key, IAM Identity Center, which projects keep their development credentials in Parameter Store, and cloned or mounted code in project containers.
 
 ---

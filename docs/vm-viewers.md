@@ -32,13 +32,13 @@ The image has no viewer yet. Without one, Incus prints the socket URI and waits,
 
 ## Testing images on a machine running the image
 
-The owner tests branches on the XPS with Incus and KRDC, not with `vm-up`, which needs QEMU's GTK and PipeWire modules that the image does not have.
+Two ways. `mise run vm-up <image>` runs the disk with QEMU in the background, with its screen over VNC, since the image's QEMU has no window (GTK) and no PipeWire sound, and `mise run vm-view <image>` shows it in KRDC (README, section 2). Or with Incus and KRDC, as below.
 
 ```bash
 mise run vm base
 mise run vm-incus base --cpus 8 --memory 16GiB   # defaults: 4 vCPUs, 8GiB
-incus console base-test --type=vga
-incus delete -f base-test                        # needed after rebuilding the disk
+sudo incus console base-test --type=vga        # Incus needs sudo: nobody is in incus-admin
+sudo incus delete -f base-test                   # needed after rebuilding the disk
 ```
 
 After a rebuild, `vm-incus` refuses to start until the old VM is erased. Hardware checks still need `mise run switch-local`, since a VM cannot see the Intel GPU.

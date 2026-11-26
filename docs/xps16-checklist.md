@@ -5,13 +5,14 @@ Tasks taken from the research of 2026-11-21 on Linux support for this model.
 and `xps16-plan.md` the owner's plan;
 this file is the working list for the first days with the machine.
 
-Nothing here was measured on this machine. The findings come from other
-people's reports, mostly on an X7 358H, and were not checked again after
-that date. Tick a line when it is done, and move what it found to `status/xps16-da16260.md`.
+The open items come from other people's reports, mostly on an X7 358H, and
+were not checked again after that date. The ticked ones were measured on this
+machine, and what they found is in `status/xps16-da16260.md`. Tick a line when
+it is done, and move what it found there.
 
 ## Before installing
 
-- [ ] Have a USB Ethernet adapter or a phone to tether: nobody has described
+- [x] Have a USB Ethernet adapter or a phone to tether (the install went through): nobody has described
       the install path for this model, and Wi-Fi may not work in the installer.
 
 ## Baseline, once
@@ -19,8 +20,8 @@ that date. Tick a line when it is done, and move what it found to `status/xps16-
 Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 `lspci -nnk`, `dmesg`):
 
-- [ ] DMI ids, `lsusb`, and `edid-decode` of the panel.
-- [ ] The panel's sink OUI and the PSR status from debugfs. A second panel for
+- [ ] DMI ids and `lsusb`. The panel's EDID was decoded for the VRR trial (2026-11-25).
+- [ ] The panel's sink OUI. PSR status from debugfs: PSR2 with Early Transport, Panel Replay not supported by the sink (2026-11-25). A second panel for
       this model (sink OUI `00:aa:01`) is not covered by the upstream Panel
       Replay quirk and is reported to run at about 5 fps until
       `xe.enable_panel_replay=0`.
@@ -28,16 +29,17 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
       xps-fedora needs it set to `MSHPD` for the camera; whether the stock
       camera path needs it is unknown.
 - [ ] `systemctl is-enabled intel_lpmd thermald`.
-- [ ] `dmesg | grep -i ish`, and whether `ish_ptl` firmware is present. Intel
+- [x] `dmesg | grep -i ish`, and whether `ish_ptl` firmware is present: it loads (2026-11-25). Intel
       ISH is said to need only firmware that linux-firmware already has.
 
 ## Power and heat
 
 - [ ] thermald survives two or three cold boots (the `katze-wait-sensors.conf`
-      drop-in), and each power profile reaches both handlers under
-      `/sys/class/platform-profile/`.
+      drop-in; one so far), and each power profile reaches both handlers under
+      `/sys/class/platform-profile/` (performance and balanced do).
 - [ ] RAPL limits in each `dell-pc` mode, on AC and on battery, for both
       `intel-rapl` and `intel-rapl-mmio`. `mise run power` records them.
+      Performance read PL1 41 W and PL2 65 W on AC and on battery (2026-11-25).
 - [ ] Write PL1 and read it again after 1, 15 and 60 s, after a profile change
       and after unplugging: the firmware may overwrite it.
 - [ ] Governor and EPP in each profile, and one fixed benchmark in Balanced and
@@ -48,7 +50,8 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
       0.17 W more. Low evidence.
 - [ ] Idle watts on battery at 120 Hz and at 60 Hz. Add a refresh switch only
       if the saving is real.
-- [ ] `BAT0/charge_control_*`, `charge_types` and `PrimaryBattChargeCfg`,
+- [x] `BAT0/charge_control_*`, `charge_types` and `PrimaryBattChargeCfg`
+      (50 and 80 with `charge_types` on `Custom`, 2026-11-25),
       before writing the `battery:desk` and `battery:travel` tasks: the
       `dell-laptop` thresholds may only apply when `charge_types` is `Custom`.
 - [x] `gputop` works with `xe`, without root (2026-11-25). `README.md` names
@@ -119,7 +122,7 @@ Add these to the first-day baseline of `xps16-plan.md` (`fwupdmgr get-devices`,
 
 ## For the IR face unlock (`xps-ir-face`)
 
-Done on 2026-11-25 with our own driver, reader and `katze-face` (README, "Face unlock"), and it unlocked the lock screen with a test kit on the machine. Still to check: other people, a printed photo, the dark, glasses and a suspend. The references it was weighed against:
+Done on 2026-11-25 with our own driver, reader and `katze-face` (README, "Face unlock"), and it unlocks the lock screen from the published image, also right after a suspend. Still to check: other people, a printed photo, the dark and glasses. The references it was weighed against:
 
 - The `HIMX1092` entry in `ipu-bridge` is upstream since 7.3. Only the sensor
   driver is missing: `kernel-watch.yml` opens an issue when `VIDEO_HM1092`

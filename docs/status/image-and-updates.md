@@ -6,7 +6,7 @@ Building and publishing, `bootc switch`, upgrades and rollback, the signature po
 
 Images build, publish and verify with `cosign.pub`, and pull without credentials.
 
-**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, and its agent can take over 60 s to come up (`incus exec` was confirmed later on a KDE guest); `incus-admin` group; Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
+**Verified in a VM (`base`):** Incus container with IPv4, DNS and internet; Incus VM boots with IPv4, and its agent can take over 60 s to come up (`incus exec` was confirmed later on a KDE guest); `incus-admin` group (the user is no longer put in it since 2026-11-26); Flatpaks; `bootc switch` from a local disk to GHCR; `bootc upgrade`; the update notification, end to end as reported by the owner; zsh, Starship, Konsole profile and Yakuake.
 
 **Verified in a VM (`xps16-da16260`, `45.20261105`, 2026-11-05):** boots from a local disk; `bootc switch` to GHCR; no layered packages; `bootc rollback` in both directions, with the home directory kept; Flatpak install. `bootc switch --enforce-container-sigpolicy` deploys as `ostree-image-signed`, and `bootc upgrade --check` reports no error, but that was the same digest, so no new image has been accepted or refused under it yet.
 

@@ -31,7 +31,7 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 - **Browsers:** Brave Origin and Google Chrome, as native packages.
 - **Development without touching the system:** Incus for containers and virtual machines, and `docker` and `docker compose` running on rootless Podman. Compilers and project tools live in containers, not in the image.
 - **A terminal ready to use:** zsh with suggestions and highlighting, a Starship prompt, a Nerd Font, Konsole and a drop-down Yakuake on F12.
-- **Apps:** Okular, Haruna, and Zed, Slack and ONLYOFFICE as Flatpaks.
+- **Apps:** Okular, Koko for images, Haruna, KCalc, and Zed, Slack and ONLYOFFICE as Flatpaks.
 - **A private network** between your devices with Tailscale, and a firewall that keeps development ports closed on networks you do not trust.
 - **Updates you do not manage:** downloaded every six hours on AC power, announced on the desktop, applied when you restart, and signed.
 
@@ -59,6 +59,8 @@ It is one person's setup, published so that it can be read and copied from, not 
 | Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons that follow the accent color, and a 56 px panel. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
+| Koko | KDE's image viewer, proposed as Gwenview's successor, and the default for images |
+| KCalc | Calculator: `kinoite-main` has none |
 | Haruna | KDE video player, native, using the image's full ffmpeg (H.264, HEVC, VP9, AV1, DTS and more) and VA-API |
 | Office fonts | Carlito and Caladea stand in for Calibri and Cambria with the same metrics, and Liberation covers Arial, Times New Roman and Courier New. Microsoft's own fonts are not in this public image: if you need them, copy them to `~/.local/share/fonts` on each machine and check your license |
 | Terminal | zsh, Starship with a Powerlevel10k-style prompt, MesloLGS Nerd Font, Konsole profile, Yakuake (F12) and `fastfetch`. Personal settings go in `~/.zshrc`, and `~/.config/starship.toml` replaces the factory prompt |
@@ -70,7 +72,7 @@ It is one person's setup, published so that it can be read and copied from, not 
 
 ```
 .github/
-  workflows/build.yml        lint → base → xps16-da16260 (daily, on push, manual)
+  workflows/build.yml        lint → base → module → xps16-da16260 (daily, on push, manual)
   workflows/reusable-build.yml  verify the FROM image + build + test + push to GHCR + cosign signature and verify
   workflows/module.yml       the XPS's infrared camera driver: build without secrets, then sign
   workflows/pins.yml         weekly: an issue when a pinned download has a newer release
@@ -96,7 +98,7 @@ images/
       shell.sh               Starship, Nerd Font and terminal defaults
       plasma-theme.sh        Katze Dark as the default, Katze Mono icons, fonts
       tailscale.sh           Tailscale from its official repo
-      packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, Haruna, fonts, Docker commands
+      packages.txt           Incus, QEMU, zsh, Yakuake, fastfetch, Okular, KCalc, Koko, Haruna, fonts, Docker commands
     system_files/            copied as-is to / in the image
       usr/libexec/katze/           setup.sh, flatpaks.sh, update-*.sh, image-age.sh, desktop-entries.sh, icons.sh, katze-mono.py
       usr/lib/systemd/system/          katze-* services and timer
@@ -107,7 +109,7 @@ images/
       usr/lib/firewalld/policies/      katze-incus-out.xml, katze-incus-private.xml
       usr/share/katze/          flatpaks.list, zshrc, starship.toml, applications/, cosign.pub
       usr/share/containers/containers.conf.d/ 60-katze-compose.conf
-      usr/share/konsole/               katze.profile
+      usr/share/konsole/               katze.profile, Katze.colorscheme
       usr/share/plasma/desktoptheme/   katze (Plasma style)
       usr/share/plasma/look-and-feel/  katze-dark, katze-light (global themes)
       usr/share/color-schemes/         KatzeDark.colors, KatzeLight.colors
@@ -120,11 +122,13 @@ images/
       hm1092.sh, hm1092/     the infrared camera's driver, built and signed by module.yml
       ir-camera/             the infrared camera's reader, in C
       face/                  face unlock: katze-face and katze-face-check, in C
-      packages.txt           libva-intel-media-driver, libva-utils, powertop, lm_sensors, igt-gpu-tools, kernel-tools, intel-npu-driver, intel-opencl
-    system_files/usr/
-      libexec/katze/         camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
-      lib/systemd/           camera relay, dictation, infrared camera and face unlock units, thermald drop-in
-      lib/tuned/profiles/    katze-xps-* power profiles
+      packages.txt           VA-API driver, measuring tools, the camera relay's GStreamer pieces, NPU and GPU compute, ydotool
+    system_files/
+      etc/pam.d/, etc/voxtype/  face unlock on the lock screen, dictation settings
+      usr/libexec/katze/     camera.py, dictation-setup.sh, platform-profile.sh, thermald-wait.sh
+      usr/lib/systemd/       camera relay, dictation, infrared camera and face unlock units, thermald drop-in
+      usr/lib/tuned/profiles/  katze-xps-* power profiles
+      usr/share/kglobalaccel/  Meta+H for dictation
 bib/config.example.toml      user for test VMs
 devbox/                      Incus profile and cloud-init for per-project dev containers
 docs/                        status/ (what was tested), screenshots, the XPS's plan and checklist, VM viewers, secrets and dev containers
@@ -145,8 +149,10 @@ git status                        # cosign.pub listed, cosign.key NOT listed
 git commit -m "Initial bootc images"
 
 gh repo create ysantalla/katze-os --public --source . --remote origin
-gh secret set SIGNING_SECRET < cosign.key
-gh secret set COSIGN_PASSWORD        # the password you just chose
+gh api -X PUT repos/ysantalla/katze-os/environments/signing   # then, in Settings > Environments, allow only main
+gh secret set --env signing SIGNING_SECRET < cosign.key
+gh secret set --env signing COSIGN_PASSWORD        # the password you just chose
+# The XPS's module key, if you build hm1092: MODULE_KEY and MODULE_KEY_PASSWORD, also with --env signing
 git push -u origin main
 ```
 
@@ -173,16 +179,22 @@ Boot a throwaway copy with QEMU, leaving the built disk untouched, and log in wi
 ```bash
 mise run vm-up xps16-da16260         # boots it, and creates the copy only if it is missing
 mise run vm-up xps16-da16260 --gl    # with OpenGL through the host GPU
+mise run vm-up xps16-da16260 --vnc   # in the background, its screen over VNC
+mise run vm-view xps16-da16260       # that screen, in KRDC
+mise run vm-ssh                      # a shell inside, once sshd is on (see below)
+mise run vm-down xps16-da16260       # shuts it down, as its power button would
 mise run vm-reset xps16-da16260      # erases the copy, after asking
 ```
 
+On a machine running the image, `vm-up` always uses VNC: the image's QEMU, there for Incus, has no window and no PipeWire sound (`qemu-ui-gtk`, `qemu-audio-pipewire`). The screen is on `127.0.0.1:5906` only, with a password in `output/<image>/vnc-password` that `vm-view` puts on the clipboard. KRDC comes from Flathub (`flatpak install flathub org.kde.krdc`).
+
 - **Sharp text on a host with fractional scaling:** `vm-up` sets `GDK_BACKEND=x11 GDK_SCALE=1` so the host does not rescale QEMU's window. It needs KDE's XWayland scaling to match the monitor, and the VM stays on Wayland. Set the scale inside the VM to match.
 - **Restarting:** use `sudo reboot` and `sudo poweroff` inside the VM. Closing the QEMU window is like pulling the plug.
-- **Sound:** `vm-up` plays through the host, with no microphone input.
-- **Copying files and text:** run `sudo systemctl enable --now sshd` and `sudo firewall-cmd --add-service=ssh` in the VM (the default firewall zone does not let SSH in, and the second command lasts until the VM restarts), then `ssh -p 2222 yasmany@localhost` and `scp -P 2222` from the host.
+- **Sound:** `vm-up` plays through the host, with no microphone input, where QEMU has PipeWire sound. Not on a machine running the image.
+- **Copying files and text:** run `sudo systemctl enable --now sshd` and `sudo firewall-cmd --add-service=ssh` in the VM (the default firewall zone does not let SSH in, and the second command lasts until the VM restarts), then `mise run vm-ssh` (or `ssh -p 2222 yasmany@localhost`) and `scp -P 2222` from the host.
 - **Updates in the VM:** the disk points at `localhost/<image>:latest`, so `katze-update.service` fails until you run `sudo bootc switch ghcr.io/ysantalla/<image>:latest`.
 - **`--gl`:** gives the VM OpenGL for testing GPU compositing, but no Vulkan. It froze the desktop once, with Plasma and KWin using most of the CPU, so leave it off unless you need it. Do not trust the `Video Decode` line in `chrome://gpu` here: nothing shows video really decoding in hardware.
-- **On a machine already running the image:** `vm-up` does not work there. Use `mise run vm-incus <image>`, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `docs/vm-viewers.md`. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
+- **On a machine already running the image:** `vm-up` runs with VNC, as above. `mise run vm-incus <image>` is the other way, which boots the same disk as the Incus VM `<image>-test`. Enter it with SSH or `incus console`. Its screen needs a viewer: see `docs/vm-viewers.md`. After rebuilding the disk, erase the VM with `incus delete -f <image>-test`.
 - **What a VM cannot test:** it has no Intel GPU, so `vainfo` fails there on either image. An Incus VM inside this VM is slow, and its agent may take more than a minute to start.
 
 ## 3. Install on a machine
@@ -322,7 +334,7 @@ Then lock with **Meta+L**, move the mouse so the prompt shows, and look at the c
 journalctl -u 'katze-face@*' -u 'katze-ir-camera@*' -n 20     # "uid 1000: yes", "no", or "none" with no face registered
 ```
 
-How it works: the lock screen runs as the user and cannot read the infrared camera, which only root can start (the driver checks for CAP_SYS_RAWIO). Its second way in, `/etc/pam.d/kde-fingerprint`, runs `katze-face-check`, which asks `katze-face.socket`. That service is root with no capabilities, reads the camera for up to 5 seconds through `katze-ir-camera.socket`, and answers yes or no only about the account that asked. It finds the face with YuNet and compares it with SFace, both from opencv_zoo, on OpenVINO and the CPU.
+How it works: the lock screen runs as the user and cannot read the infrared camera, which only root can start (the driver checks for CAP_SYS_RAWIO). Its second way in, `/etc/pam.d/kde-fingerprint`, runs `katze-face-check`, which asks `katze-face.socket`. That service is root with no capabilities, reads the camera for up to 5 seconds through `katze-ir-camera.socket`, and answers yes or no only about the account that asked. It only turns the camera on for the user logind has at the screen: anyone else, such as an SSH session or another account, gets no at once. It finds the face with YuNet and compares it with SFace, both from opencv_zoo, on OpenVINO and the CPU.
 
 Limits: tested on the owner's face only, also right after a suspend. It has not been tried with other people, a printed photo, in the dark or with glasses, and the threshold of 0.5 is not tuned on real data. A phone screen shows nothing in infrared. Treat it as a convenience for the lock screen, not as a stronger lock.
 
