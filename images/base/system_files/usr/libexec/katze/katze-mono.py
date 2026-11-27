@@ -575,11 +575,12 @@ def icon_body(glyph: Glyph, shape: str, background: str, colour: str, accent: bo
     parts = [scheme_style(variant)]
     if SHADOW[variant]:
         # Black and white, here and in the gradient and highlight, need no class:
-        # they are the same in every scheme.
-        parts.append('<filter id="katze-shadow" x="-20%" y="-20%" width="140%" height="150%">'
-                     '<feGaussianBlur stdDeviation="1.4"/></filter>'
-                     '<g transform="translate(0,1.6)" filter="url(#katze-shadow)">'
-                     + shape_svg(shape, "#000000", f' fill-opacity="{SHADOW[variant]:g}"') + '</g>')
+        # they are the same in every scheme. The shadow is three copies of the
+        # shape, each a little lower, not a blur: Qt draws a filter through a
+        # buffer, which System Settings' icon page puts in the wrong place.
+        for step in (0.6, 1.2, 1.8):
+            parts.append(f'<g transform="translate(0,{step:g})">'
+                         + shape_svg(shape, "#000000", f' fill-opacity="{SHADOW[variant] / 3:.3g}"') + '</g>')
     parts += [
         shape_svg(shape, "currentColor", ' class="ColorScheme-Background"'),
         shape_svg(shape, "currentColor", f'{tint} fill-opacity="{TINT[variant]}"'),
