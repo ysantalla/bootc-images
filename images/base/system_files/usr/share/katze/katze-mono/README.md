@@ -1,8 +1,8 @@
 # Katze Mono
 
 An icon theme for Plasma, generated for the applications that are installed:
-each one gets a thin line glyph on a dark rounded shape. Everything that is
-not an application icon is inherited from Breeze.
+each one gets a thin line glyph on a rounded shape in the application's own
+colour. Everything that is not an application icon is inherited from Breeze.
 
 The image is built with the icons of its own applications, in
 `/usr/share/icons/katze-mono` and `katze-mono-light`. `katze-icons.service`
@@ -23,9 +23,9 @@ regenerated theme. `/usr/libexec/plasma-changeicons breeze-dark` goes back.
 
 ## Changing the look
 
-How much accent the shape takes, its edge, and the colour and width of the
+The shape's colours, its edge and depth, and the colour and width of the
 glyph's lines are the `[look]` tables of `aliases.toml`, one per variant, with
-the reason for each value. To judge a change before building anything:
+the reason for each value. Each application's colour is in `[brand]`. To judge a change before building anything:
 
 ```sh
 mise run icons:preview                        # as it is
@@ -42,12 +42,23 @@ pointer, the lines too faint.
 
 - **One shape.** A squircle (or `--shape circle`) of 60 units on a 64 unit
   canvas, `#12233a`.
-- **One colour.** `#8ab4d8` on `#12233a`, or the colour scheme's with
-  `--follow-accent`: the shape is the scheme's background with a wash of the
-  accent, and the glyph is the accent moved a little towards the text colour,
-  more so on a light scheme. The same drawing serves any scheme and accent;
-  the two variants only differ in which Breeze they inherit from and in the
-  colours shown outside Plasma.
+- **The application's colour.** With `palette = "brand"` (both variants since
+  2026-11-26) each shape takes its application's colour from `[brand]`: its
+  brand's, as close as possible, or for a KDE application the main colour of
+  its own Breeze icon. Every other application takes `default`, Breeze's
+  charcoal (a lighter grey in the dark scheme, where the charcoal was too
+  close to the panel), so that those with a colour stand out. The glyph is white: the
+  text colour in the dark scheme, and cut out in the background colour in the
+  light one (`invert`), where the dark text colour lacked contrast on colour.
+  Before, every shape took the accent ("One colour"), and the theme looked
+  lifeless to the owner; `palette = "accent"` still draws it that way.
+- **The accent no longer paints the shapes.** These colours are fixed, so a
+  new accent in System Settings does not change them. The scheme still paints
+  the shape's base and the glyph, and every small icon (`apps/22`, the tray's
+  `-symbolic`) still follows it.
+- **Depth, only a touch.** A lighter top, a light edge along it and a soft
+  shadow (`gradient`, `highlight`, `shadow`). More of them made the icons look
+  too deep.
 - **Lines, not fills.** Lines are 1.25 units wide (`LINE_WIDTH`). Line glyphs
   are drawn at that width whatever their collection uses, Breeze's filled
   lines are thinned to it, and solid marks listed under `[outline]` are drawn

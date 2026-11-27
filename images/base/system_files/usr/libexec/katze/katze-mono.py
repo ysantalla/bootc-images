@@ -90,6 +90,7 @@ class Glyph:
     full_bleed: bool = False
     outline: bool = False  # draw a solid mark as its contour
     scale: float = 1.0     # this glyph's own size correction
+    hue: str | None = None # the shape's own colour, with palette = "brand"; None: the accent
 
 
 # --- Finding applications and glyphs -----------------------------------------
@@ -171,7 +172,21 @@ def find_glyph(app: App, roots: list[Path], own: Path, aliases: dict[str, str],
         name = glyph.path.stem.removesuffix("-symbolic")
         glyph.outline = name in outlined
         glyph.scale = float((scales or {}).get(name, 1))
+    if PALETTE[VARIANT] == "brand":
+        glyph.hue = brand_colour(app, glyph)
     return glyph
+
+
+def brand_colour(app: App, glyph: Glyph) -> str | None:
+    """The application's colour from [brand], by its Icon= value or its glyph's
+    name, for the variant being drawn first; else "default"."""
+    name = glyph.path.stem.removesuffix("-symbolic") if glyph.path else ""
+    for table in (BRAND.get(VARIANT, {}), BRAND):
+        hit = table.get(app.icon) or table.get(name)
+        if isinstance(hit, str):
+            return hit
+    default = BRAND.get(VARIANT, {}).get("default") or BRAND.get("default")
+    return default if isinstance(default, str) else None
 
 
 def pick_glyph(app: App, roots: list[Path], own: Path, aliases: dict[str, str]) -> Glyph:
@@ -488,13 +503,34 @@ TINT = {"dark": 0.4, "light": 0.6}
 EDGE = {"dark": 1.0, "light": 0.85}
 SHADE = {"dark": 1.0, "light": 1.0}
 LINE_SCALE = {"dark": 1.35, "light": 1.6}
-LOOK = {"tint": TINT, "edge": EDGE, "shade": SHADE, "line": LINE_SCALE}
+#   GREY        how much of the text colour lightens the shape
+#   GRADIENT    how much lighter the shape's top and darker its bottom are
+#   HIGHLIGHT   how bright a light edge along the top of the shape is
+#   SHADOW      how dark a soft shadow under the shape is
+#   INVERT      1: the glyph in the background colour, cut out of the shape
+GREY = {"dark": 0.0, "light": 0.0}
+GRADIENT = {"dark": 0.0, "light": 0.0}
+HIGHLIGHT = {"dark": 0.0, "light": 0.0}
+SHADOW = {"dark": 0.0, "light": 0.0}
+INVERT = {"dark": 0.0, "light": 0.0}
+LOOK = {"tint": TINT, "edge": EDGE, "shade": SHADE, "line": LINE_SCALE, "grey": GREY,
+        "gradient": GRADIENT, "highlight": HIGHLIGHT, "shadow": SHADOW, "invert": INVERT}
+# palette, per variant: "accent" paints every shape with the accent, "brand"
+# with each application's colour from [brand] in aliases.toml.
+PALETTE = {"dark": "accent", "light": "accent"}
+BRAND: dict = {}    # [brand] of aliases.toml
+VARIANT = "dark"    # the variant being drawn, which PALETTE and [brand.<variant>] depend on
 
 
 def set_look(variant: str, key: str, value) -> None:
+    if key == "palette" and variant in FALLBACK:
+        if value not in ("accent", "brand"):
+            raise SystemExit(f"{variant}.palette is accent or brand, not {value!r}")
+        PALETTE[variant] = value
+        return
     if key not in LOOK or variant not in FALLBACK:
         raise SystemExit(f"unknown look setting {variant}.{key}: use one of "
-                         + ", ".join(f"{v}.{k}" for v in FALLBACK for k in LOOK))
+                         + ", ".join(f"{v}.{k}" for v in FALLBACK for k in (*LOOK, "palette")))
     try:
         LOOK[key][variant] = float(value)
     except (TypeError, ValueError):
@@ -533,20 +569,50 @@ def icon_body(glyph: Glyph, shape: str, background: str, colour: str, accent: bo
     # opacity through a buffer, and System Settings' icon page, which paints
     # into a scaled viewport, puts that buffer in the wrong place and size.
     # The glyph layers go through faint_layer, for the same reason.
-    parts = [
-        scheme_style(variant),
+    # With palette = "brand" the shape takes the application's colour, which no
+    # colour scheme repaints; otherwise the accent's class.
+    tint = f' style="color:{glyph.hue}"' if glyph.hue else ' class="ColorScheme-Accent"'
+    parts = [scheme_style(variant)]
+    if SHADOW[variant]:
+        # Black and white, here and in the gradient and highlight, need no class:
+        # they are the same in every scheme. The shadow is three copies of the
+        # shape, each a little lower, not a blur: Qt draws a filter through a
+        # buffer, which System Settings' icon page puts in the wrong place.
+        for step in (0.6, 1.2, 1.8):
+            parts.append(f'<g transform="translate(0,{step:g})">'
+                         + shape_svg(shape, "#000000", f' fill-opacity="{SHADOW[variant] / 3:.3g}"') + '</g>')
+    parts += [
         shape_svg(shape, "currentColor", ' class="ColorScheme-Background"'),
-        shape_svg(shape, "currentColor", f' class="ColorScheme-Accent" fill-opacity="{TINT[variant]}"'),
-        layer("Accent"),
-        layer("Text", fade=SHADE[variant]),
+        shape_svg(shape, "currentColor", f'{tint} fill-opacity="{TINT[variant]}"'),
     ]
+    if GREY[variant]:
+        parts.append(shape_svg(shape, "currentColor", f' class="ColorScheme-Text" fill-opacity="{GREY[variant]:g}"'))
+    if GRADIENT[variant]:
+        parts.append('<linearGradient id="katze-gradient" x1="0" y1="0" x2="0" y2="1">'
+                     f'<stop offset="0" stop-color="#ffffff" stop-opacity="{GRADIENT[variant] * 0.25:.3g}"/>'
+                     '<stop offset="0.45" stop-color="#000000" stop-opacity="0"/>'
+                     f'<stop offset="1" stop-color="#000000" stop-opacity="{GRADIENT[variant]:g}"/>'
+                     '</linearGradient>' + shape_svg(shape, "url(#katze-gradient)"))
+    if INVERT[variant]:
+        # The glyph cut out of the shape: white on a coloured shape in a light scheme.
+        parts.append(layer("Background"))
+    else:
+        parts += [layer("Accent"), layer("Text", fade=SHADE[variant])]
     if on_grid:
-        # The thinning strokes repeat the two coats of the shape they cover.
+        # The thinning strokes repeat the coats of the shape they cover.
         parts.append(layer("Background", background="currentColor", edges=True))
-        parts.append(layer("Accent", background="currentColor", edges=True, fade=TINT[variant]))
+        parts.append(drawing(glyph, "currentColor", CANVAS, size, f'{tint}', background="currentColor",
+                             edges=True, fade=TINT[variant]))
+        if GREY[variant]:
+            parts.append(layer("Text", background="currentColor", edges=True, fade=GREY[variant]))
     if EDGE[variant]:
-        parts.append(shape_svg(shape, "none", f' class="ColorScheme-Accent" stroke="currentColor" '
+        parts.append(shape_svg(shape, "none", f'{tint} stroke="currentColor" '
                                               f'stroke-width="1" stroke-opacity="{EDGE[variant]}"'))
+    if HIGHLIGHT[variant]:
+        parts.append('<linearGradient id="katze-highlight" x1="0" y1="0" x2="0" y2="1">'
+                     f'<stop offset="0" stop-color="#ffffff" stop-opacity="{HIGHLIGHT[variant]:g}"/>'
+                     '<stop offset="0.4" stop-color="#ffffff" stop-opacity="0"/></linearGradient>'
+                     + shape_svg(shape, "none", ' stroke="url(#katze-highlight)" stroke-width="1.2"'))
     return "".join(parts)
 
 
@@ -780,6 +846,8 @@ def write_preview(path: Path, apps: list[App], glyphs: Path, aliases: dict[str, 
     blocks, y = [], 0
     for variant, scheme in (("dark", "KatzeDark.colors"), ("light", "KatzeLight.colors")):
         colours = scheme_colours(schemes / scheme, FALLBACK[variant])
+        global VARIANT
+        VARIANT = variant
         LINE_WIDTH = base * LINE_SCALE[variant]
         rows = [(app, find_glyph(app, roots, glyphs, aliases, outlined, scales))
                 for app in apps if app.icon not in skip and "/" not in app.icon]
@@ -976,6 +1044,7 @@ def main() -> int:
         skip = set(table.get("skip", {}).get("icons", []))
         outlined = set(table.get("outline", {}).get("glyphs", []))
         scales = table.get("scale", {})
+        BRAND.update(table.get("brand", {}))
         for variant, values in table.get("look", {}).items():
             for key, value in values.items():
                 set_look(variant, key, value)
@@ -995,6 +1064,8 @@ def main() -> int:
         write_preview(args.preview, apps, args.glyphs, aliases, outlined, scales, skip, roots,
                       args.schemes, args)
         return 0
+    global VARIANT
+    VARIANT = args.variant
     if args.follow_accent:
         global LINE_WIDTH
         LINE_WIDTH *= LINE_SCALE[args.variant]

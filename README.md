@@ -18,9 +18,9 @@ Katze comes with two global themes, **Katze Dark** (the default) and **Katze Lig
 
 ![Katze Light: the desktop with the file manager and Discover open](docs/screenshots/katze-light.jpg)
 
-- **Katze Mono icons.** Each application gets a thin line glyph on a rounded shape, drawn for it when the image is built: the application's own mark where it has one, a line glyph for what it does otherwise. Icons and shapes take the accent color you choose in System Settings.
+- **Katze Mono icons.** Each application gets a white line glyph on a rounded shape in its own color, drawn for it when the image is built: the application's own mark where it has one, a line glyph for what it does otherwise. The color is the brand's (Firefox red, Slack aubergine) or, for KDE's applications, the one of their own icon; the rest take Breeze's charcoal, a lighter grey in the dark theme.
 - **One panel,** 56 px thick, with the virtual desktop switcher next to the tray and tray icons that scale with it.
-- **Colors that follow you.** The panel, the launcher and the icons use the color scheme and its accent, in light and in dark.
+- **Colors that follow you.** The panel, the launcher and the small icons use the color scheme and its accent, in light and in dark. The application icons keep their own colors.
 - **Inter** for the interface, with no sub-pixel text, since OLED panels often lack RGB stripes.
 
 ![Katze Mono icons for the image's applications, dark and light](docs/screenshots/katze-mono.png)
@@ -56,7 +56,7 @@ It is one person's setup, published so that it can be read and copied from, not 
 | Google Chrome | Official RPM, for video calls. Installed in `/usr/lib/google`, linked to `/opt` via `tmpfiles.d` |
 | Browser defaults | Both browsers pick Wayland on their own. `xps16-da16260` adds Intel video flags to the menu launchers, which terminal launches and installed web apps do not get. The system title bar and Qt colors are first-run preferences, so existing profiles keep their settings |
 | Docker commands | `docker` and `docker compose` run on rootless Podman, through `podman-docker` and the real Compose. There is no Docker engine, and images and volumes from Docker are not carried over |
-| Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons that follow the accent color, and a 56 px panel. Settings already in `~/.config` keep their choice |
+| Katze theme | Two global themes, Katze Dark (the default for new users) and Katze Light: their own colors, a Plasma style with custom taskbar indicators, Katze Mono icons in each application's color, and a 56 px panel. Settings already in `~/.config` keep their choice |
 | Interface fonts | Inter 11 across KDE, with no sub-pixel text. Noto stays the system sans-serif, and settings already in `~/.config` keep their choice |
 | Okular | Native PDF and document viewer |
 | Koko | KDE's image viewer, proposed as Gwenview's successor, and the default for images |
