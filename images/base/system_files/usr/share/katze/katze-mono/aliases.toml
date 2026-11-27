@@ -60,6 +60,7 @@
 
 # Remote access and networks
 "krdc" = "screen-share-line"
+"scrcpy" = "android-line"   # Android screen mirroring; scrcpy's own launcher names this icon
 "org.kde.krdc" = "screen-share-line"
 "firewall-config" = "security-high"
 
