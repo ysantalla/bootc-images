@@ -115,31 +115,47 @@
 
 # How the icons look, per variant. Try a change with
 # `katze-mono.py --preview p.svg --set dark.tint=0.3` (`mise run icons:preview`)
-# before building: it draws both variants in the Katze colour schemes.
+# before building: it draws both variants in the Katze colour schemes. The
+# owner chose this look on the XPS on 2026-11-26, out of some forty tried.
 #
-# tint   how much of the accent the shape takes over the background colour.
-#        Dark: at 0.16 the shape was hardly apart from the panel. Light: a faint
-#        wash is lost against a light panel.
-# edge   how strong the shape's 1 px edge in the accent is. At tint 0.4 the dark
-#        shape is the colour Plasma gives a hovered item, and without the edge it
-#        disappeared under the pointer.
-# shade  how far the glyph goes from the accent (0) to the text colour (1).
-#        Plasma paints an icon's accent with the selection's shade, nearly the
-#        shape's own colour, so the glyph is the text colour outright.
-# line   the width of the glyph's lines, as a multiple of the base width. Dark
-#        lines on a light shape look thinner than light ones on a dark shape, so
-#        the two numbers differ to look the same.
+# palette    "brand": each shape in its application's colour from [brand], so
+#            that an application is found by its colour. "accent" paints every
+#            shape with the accent instead, as the theme did before.
+# tint       how much of that colour the shape takes over the background colour.
+#            Dark: at 0.72 the colours looked muddy against the panel. Light: the
+#            whole colour, or the white glyph is lost on a pastel.
+# grey       how much of the text colour lightens the shape. A touch, in the dark,
+#            so that a charcoal shape stays apart from the panel.
+# edge       how strong the shape's 1 px edge is. None: on a coloured shape the
+#            edge only made it look smaller.
+# shade      how far the glyph goes from the accent (0) to the text colour (1).
+# invert     1 cuts the glyph out of the shape in the background colour: white on
+#            colour in the light scheme, where the dark text colour lacked contrast.
+# line       the width of the glyph's lines, as a multiple of the base width.
+# gradient, highlight, shadow
+#            a light top, a light edge along it and a soft shadow. Only a touch:
+#            at 0.15 to 0.35 the owner found the icons too deep.
 [look.dark]
-tint = 0.4
-edge = 1.0
+palette = "brand"
+tint = 0.88
+grey = 0.04
+edge = 0.0
 shade = 1.0
-line = 1.35
+line = 1.55
+gradient = 0.06
+highlight = 0.12
+shadow = 0.12
 
 [look.light]
-tint = 0.6
-edge = 0.85
+palette = "brand"
+tint = 0.95
+edge = 0.0
 shade = 1.0
+invert = 1.0
 line = 1.6
+gradient = 0.05
+highlight = 0.1
+shadow = 0.1
 
 # Applications left with their original icon, for any whose tray item still
 # takes the shape. Tray items that ask for "<icon>-symbolic" do not need it:
@@ -162,3 +178,49 @@ glyphs = [
 # name without ".svg". 1 is the normal size.
 [scale]
 "brave-line" = 1.15
+
+# Each application's colour, for palette = "brand", by its Icon= value or its
+# glyph's file name (without ".svg"): its brand's colour as close as possible,
+# and for KDE's applications the main colour of their own Breeze icon. Every
+# other application takes "default", Breeze's charcoal, so that the ones with
+# a colour stand out. [brand.dark] and [brand.light] override a colour in one
+# variant.
+[brand]
+"default" = "#31363b"             # Breeze's charcoal
+# Brands
+"brave-line" = "#fb542b"          # Brave's orange
+"firefox" = "#e8303c"             # the red of Firefox's flame
+"googlechrome-line" = "#4285f4"   # Google's blue
+"slack-line" = "#4a154b"          # Slack's aubergine
+"zed-line" = "#084ccf"
+"telegram-line" = "#26a5e4"
+"whatsapp-line" = "#25d366"
+"zoom-line" = "#0b5cff"
+"youtubemusic-line" = "#ff0000"
+"onlyoffice-line" = "#ff6f3d"
+"postman" = "#ff6c37"
+"mongodb" = "#47a248"
+"bambulab" = "#00ae42"
+"rustdesk-line" = "#024eff"
+"gimp" = "#5c5543"
+"android-line" = "#3ddc84"        # scrcpy: Android's green
+"androidstudio" = "#3ddc84"
+"cast-line" = "#4a86cf"           # GNOME Network Displays
+# KDE: the main colour of the application's own Breeze icon. Those whose icon
+# is dark (System Settings, Konsole, Yakuake, Haruna, KCalc, KDE Connect) are
+# not listed: they take "default", the same charcoal.
+"layout-grid-add-line" = "#1d99f3" # Discover's bag
+"dolphin-line" = "#3daee9"         # Dolphin's folder
+"kate" = "#2a8ae2"
+"aperture-line" = "#da4b8f"        # Spectacle's magenta
+"graphics-viewer-document" = "#2f7dd1" # Okular
+"photo" = "#e8606a"                # Photos (Koko)
+"screen-share-line" = "#1fa38a"    # KRDC's screen
+"package" = "#7f8c8d"              # Ark
+"chart-donut-line" = "#2ab27b"     # Filelight's ring
+"cpu-line" = "#8e44ad"             # nvtop
+
+[brand.dark]
+# On the dark panel the charcoal and the aubergine were too close to it.
+"default" = "#56606c"
+"slack-line" = "#7c3085"

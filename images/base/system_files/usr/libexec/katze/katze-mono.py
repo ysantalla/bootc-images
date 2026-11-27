@@ -185,7 +185,7 @@ def brand_colour(app: App, glyph: Glyph) -> str | None:
         hit = table.get(app.icon) or table.get(name)
         if isinstance(hit, str):
             return hit
-    default = BRAND.get("default")
+    default = BRAND.get(VARIANT, {}).get("default") or BRAND.get("default")
     return default if isinstance(default, str) else None
 
 
