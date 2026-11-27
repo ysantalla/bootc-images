@@ -89,8 +89,8 @@ Color=158,170,180
 Color=255,255,255
 
 [General]
-Blur=false
+Blur=true
 ColorRandomization=false
 Description=Katze
-Opacity=1
+Opacity=0.95
 Wallpaper=
